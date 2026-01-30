@@ -7,50 +7,50 @@
 // DxLibのキー数を想定
 class KeyInput {
 public:
-    static constexpr int KEY_COUNT = 256;
+	static constexpr int KEY_COUNT = 256;
 
-    // シングルトン取得（画面遷移で状態を保持するため）
-    static KeyInput& Instance() noexcept;
+	// シングルトン取得（画面遷移で状態を保持するため）
+	static KeyInput& Instance() noexcept;
 
-    KeyInput();
-    ~KeyInput();
+	KeyInput();
+	~KeyInput();
 
-    // コピー禁止（シングルトン運用）
-    KeyInput(const KeyInput&) = delete;
-    KeyInput& operator=(const KeyInput&) = delete;
-    KeyInput(KeyInput&&) = delete;
-    KeyInput& operator=(KeyInput&&) = delete;
+	// コピー禁止（シングルトン運用）
+	KeyInput(const KeyInput&) = delete;
+	KeyInput& operator=(const KeyInput&) = delete;
+	KeyInput(KeyInput&&) = delete;
+	KeyInput& operator=(KeyInput&&) = delete;
 
-    // 初期化（コンストラクタから呼ぶ）
-    void Initialize();
+	// 初期化（コンストラクタから呼ぶ）
+	void Initialize();
 
-    // 押下判定（押された瞬間に true を返す）
-    bool IsKeyInputTrigger(int KeyCode);
+	// 押下判定（押された瞬間に true を返す）
+	bool IsKeyInputTrigger(int KeyCode);
 
-    // 押している間 true を返す（連続）
-    bool IsKeyInputHeld(int KeyCode);
+	// 押している間 true を返す（連続）
+	bool IsKeyInputHeld(int KeyCode);
 
-    // 離された瞬間に true を返す
-    bool IsKeyInputReleased(int KeyCode);
+	// 離された瞬間に true を返す
+	bool IsKeyInputReleased(int KeyCode);
 
-    // 一定間隔で断続的に true を返す（パルス／リピート）
-    bool IsKeyInputRepeated(int KeyCode);
+	// 一定間隔で断続的に true を返す（パルス／リピート）
+	bool IsKeyInputRepeated(int KeyCode);
 
-    // キーごとの繰り返し間隔をセット（秒）
-    void SetInputRepeatedTime(int KeyCode, double SetTime);
+	// キーごとの繰り返し間隔をセット（秒）
+	void SetInputRepeatedTime(int KeyCode, double SetTime);
 
-    // 入力のオン／オフ
-    void BeginKeyInput(); // 入力有効化
-    void EndKeyInput();   // 入力無効化
+	// 入力のオン／オフ
+	void BeginKeyInput(); // 入力有効化
+	void EndKeyInput();   // 入力無効化
 
 private:
-    // DxLib の GetHitKeyStateAll は char[256] を期待するので char 型を使う
-    char m_currntKey[KEY_COUNT];
-    char m_previousKey[KEY_COUNT];
+	// DxLib の GetHitKeyStateAll は char[256] を期待するので char 型を使う
+	char m_currntKey[KEY_COUNT];
+	char m_previousKey[KEY_COUNT];
 
-    // 繰り返し間隔（秒）と経過タイマー（秒）
-    double m_repeatedTime[KEY_COUNT];
-    double m_repeatedTimer[KEY_COUNT];
+	// 繰り返し間隔（秒）と経過タイマー（秒）
+	double m_repeatedTime[KEY_COUNT];
+	double m_repeatedTimer[KEY_COUNT];
 
-    bool IsKeyInputON;
+	bool IsKeyInputON;
 };

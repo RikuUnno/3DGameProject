@@ -5,9 +5,9 @@
 
 class TitleScene : public SceneTpl<TitleScene> {
 public:
- static std::string StaticName() { return "TitleScene"; }
+	static std::string StaticName() { return "TitleScene"; }
 
- void Start() override;
- void Update() override;
- void Draw() override;
+	void Start() override;
+	void Update() override;
+	void Draw() override;
 };

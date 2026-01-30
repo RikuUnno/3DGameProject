@@ -28,8 +28,10 @@ public:
 	const MATRIX& LocalMatrix() const;
 	const MATRIX& WorldMatrix() const;
 
+	// ワールド変換成分の取得
 	VECTOR WorldPosition() const;
 
+	// 状態を dirty にする
 	void MarkDirty() noexcept;
 
 private:
@@ -38,10 +40,12 @@ private:
 	VECTOR _localEulerRad{}; // pitch(x), yaw(y), roll(z)
 	VECTOR _localScale{};
 
+	// 親子関係
 	Transform* _parent = nullptr;
 
-	mutable bool _localDirty = true;
-	mutable bool _worldDirty = true;
-	mutable MATRIX _localMatrix{};
-	mutable MATRIX _worldMatrix{};
+	// キャッシュ
+	mutable bool _localDirty = true;	// ローカル行列が最新でない
+	mutable bool _worldDirty = true;	// ワールド行列が最新でない
+	mutable MATRIX _localMatrix{};		// ローカル行列キャッシュ
+	mutable MATRIX _worldMatrix{};		// ワールド行列キャッシュ
 };

@@ -27,7 +27,7 @@ namespace {
 		}
 
 		void Draw() override {
-			DrawString(10,40, label_.c_str(), GetColor(200,255,200));
+			DrawString(10, 40, label_.c_str(), GetColor(200, 255, 200));
 		}
 
 	private:
@@ -36,16 +36,16 @@ namespace {
 
 	bool g_demoInitialized = false;
 	ObjectController g_controller;
-	int g_demoCreateCount =0;
+	int g_demoCreateCount = 0;
 }
 
 void MenuScene::Start() {
 	//1呼び出しで完結：Factory登録 + Pool登録(初回のみ) + Spawn + Controller登録
-	g_controller.SpawnAuto(	"DemoObject", [](const VariantMap&) {
-			++g_demoCreateCount;
-			return std::make_unique<DemoObject>();
-		}, 8, {{"label", "DemoObject生成（シーン開始）"}}
-	);
+	g_controller.SpawnAuto("DemoObject", [](const VariantMap&) {
+		++g_demoCreateCount;
+		return std::make_unique<DemoObject>();
+		}, 8, { {"label", "DemoObject生成（シーン開始）"} }
+			);
 }
 
 void MenuScene::Update() {
@@ -60,9 +60,9 @@ void MenuScene::Update() {
 }
 
 void MenuScene::Draw() {
-	DrawString(10,10, "メニューシーン - Spaceで戻る", GetColor(255,255,255));
-	DrawString(10,25, "[デモ] ObjectController: Spawn/Update/Draw/ReleaseAll", GetColor(180,255,180));
-	DrawFormatString(10,70, GetColor(255,255,0), "[デモ] Factory new回数: %d", g_demoCreateCount);
+	DrawString(10, 10, "メニューシーン - Spaceで戻る", GetColor(255, 255, 255));
+	DrawString(10, 25, "[デモ] ObjectController: Spawn/Update/Draw/ReleaseAll", GetColor(180, 255, 180));
+	DrawFormatString(10, 70, GetColor(255, 255, 0), "[デモ] Factory new回数: %d", g_demoCreateCount);
 
 	// シーン内で生成したオブジェクトの Draw をまとめて実行
 	g_controller.DrawAll();

@@ -7,7 +7,7 @@
 class IScene {
 public:
 	virtual ~IScene() = default;        // 仮想デストラクタ必須
-    virtual void Awake() {}             // 初期化処理
+	virtual void Awake() {}             // 初期化処理
 	virtual void Start() {}             // 開始処理
 	virtual void Update() {}   // 更新処理
 	virtual void Draw() {}              // 描画処理
@@ -22,15 +22,16 @@ public:
 template<typename Derived>
 class SceneTpl : public IScene {
 public:
-    virtual ~SceneTpl() = default;
+	virtual ~SceneTpl() = default;
 
-    // デフォルト Name() は Derived::StaticName() があれば使う、
-    // なければ typeid の名前を返す
-    virtual std::string Name() const override {
-        if constexpr (std::is_same_v<void, decltype(Derived::StaticName())>) {
-            return typeid(Derived).name();
-        } else {
-            return Derived::StaticName();
-        }
-    }
+	// デフォルト Name() は Derived::StaticName() があれば使う、
+	// なければ typeid の名前を返す
+	virtual std::string Name() const override {
+		if constexpr (std::is_same_v<void, decltype(Derived::StaticName())>) {
+			return typeid(Derived).name();
+		}
+		else {
+			return Derived::StaticName();
+		}
+	}
 };

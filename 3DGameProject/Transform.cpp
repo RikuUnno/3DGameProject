@@ -2,14 +2,14 @@
 
 // ƒwƒ‹ƒp[
 namespace {
-	inline VECTOR Vec(float x, float y, float z) noexcept { return VGet(x,y,z); }
+	inline VECTOR Vec(float x, float y, float z) noexcept { return VGet(x, y, z); }
 }
 
 // Transform ŽÀ‘•
 Transform::Transform() {
-	_localPosition = Vec(0,0,0);
-	_localEulerRad = Vec(0,0,0);
-	_localScale = Vec(1,1,1);
+	_localPosition = Vec(0, 0, 0);
+	_localEulerRad = Vec(0, 0, 0);
+	_localScale = Vec(1, 1, 1);
 	_localMatrix = MGetIdent();
 	_worldMatrix = MGetIdent();
 }
@@ -66,7 +66,8 @@ const MATRIX& Transform::WorldMatrix() const {
 	const MATRIX L = LocalMatrix();
 	if (_parent) {
 		_worldMatrix = MMult(L, _parent->WorldMatrix());
-	} else {
+	}
+	else {
 		_worldMatrix = L;
 	}
 	return _worldMatrix;

@@ -67,5 +67,5 @@ private:
 	std::unique_ptr<IScene> _pendingPush;
 	bool _pendingPop = false;
 
-	int _currentSceneId =0;
+	int _currentSceneId = 0;
 };

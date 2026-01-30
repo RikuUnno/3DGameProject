@@ -68,7 +68,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 			ObjectManager::Instance().TrimAllPoolsUnused(kPoolMaxIdleSec);
 			poolTrimAccumSec = 0.0;
 		}
-
 		// •`‰æ
 		ClearDrawScreen();					// ‰æ–ÊƒNƒŠƒA
 

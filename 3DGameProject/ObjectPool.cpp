@@ -10,14 +10,15 @@
 	- スレッド安全: 内部の freeList_ 操作は mtx_ によって保護される。
 	- 挙動要約:
 	  Acquire()
-	    - プールに利用可能なオブジェクトがあれば取り出して返す（Deleter はこのプールへ返却する関数）。
-	    - なければ creator_ を使って新規生成し、同様にプールへ返却する Deleter で包んで返す。
+		- プールに利用可能なオブジェクトがあれば取り出して返す（Deleter はこのプールへ返却する関数）。
+		- なければ creator_ を使って新規生成し、同様にプールへ返却する Deleter で包んで返す。
 	  Release(obj)
-	    - プールが満杯でなければ freeList_ に戻す。満杯なら delete して破棄する。
+		- プールが満杯でなければ freeList_ に戻す。満杯なら delete して破棄する。
 */
 
 ObjectPool::ObjectPool(Creator creator, size_t maxSize)
-	: creator_(std::move(creator)), maxSize_(maxSize) {}
+	: creator_(std::move(creator)), maxSize_(maxSize) {
+}
 
 // Acquire: プールからオブジェクトを取得する。
 ObjectPool::UniquePtr ObjectPool::Acquire() {
@@ -91,7 +92,7 @@ size_t ObjectPool::TrimUnused(double maxIdleSeconds, double nowSeconds) {
 			if (idle < maxIdleSeconds) return false;
 			delete e.obj;
 			return true;
-		}),
+			}),
 		freeList_.end()
 	);
 

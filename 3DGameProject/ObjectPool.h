@@ -16,22 +16,22 @@ public:
 	ObjectPool() = default; // デフォルトコンストラクタ
 	explicit ObjectPool(Creator creator, size_t maxSize = 64); // コンストラクタ
 
-    // Acquire: プールにあれば取り出し、なければ creator で生成
-    UniquePtr Acquire();
+	// Acquire: プールにあれば取り出し、なければ creator で生成
+	UniquePtr Acquire();
 
-    // Release: 生ポインタを pool に戻す（Deleter を介して呼ばれる）
-    void Release(GameObject* obj);
+	// Release: 生ポインタを pool に戻す（Deleter を介して呼ばれる）
+	void Release(GameObject* obj);
 
-    // プール内（未使用）の数
-    size_t Size() const;
-    void SetMaxSize(size_t maxSize);
+	// プール内（未使用）の数
+	size_t Size() const;
+	void SetMaxSize(size_t maxSize);
 
-    // freeList を全破棄（使用中のオブジェクトには触れない）
-    void Clear();
+	// freeList を全破棄（使用中のオブジェクトには触れない）
+	void Clear();
 
-    // 指定秒以上「未使用」のストックを削除（使用中のオブジェクトには触れない）
-    // 戻り値: 削除した個数
-    size_t TrimUnused(double maxIdleSeconds, double nowSeconds);
+	// 指定秒以上「未使用」のストックを削除（使用中のオブジェクトには触れない）
+	// 戻り値: 削除した個数
+	size_t TrimUnused(double maxIdleSeconds, double nowSeconds);
 
 private:
 	struct FreeEntry {

@@ -20,5 +20,5 @@ void TitleScene::Update() {
 }
 
 void TitleScene::Draw() {
-	DrawString(10,10, "Title Scene - Press Enter", GetColor(255,255,255));
+	DrawString(10, 10, "Title Scene - Press Enter", GetColor(255, 255, 255));
 }

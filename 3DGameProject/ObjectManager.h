@@ -12,8 +12,8 @@ using VariantMap = std::unordered_map<std::string, std::string>;
 class ObjectManager {
 public:
 	// シングルトンインスタンス取得
-    static ObjectManager& Instance() noexcept;
-    
+	static ObjectManager& Instance() noexcept;
+
 	// オブジェクト管理 API
 	GameObject* Spawn(const std::string& key, const VariantMap& params = {});   // オブジェクト取得
 	void RegisterPool(const std::string& key, size_t maxSize = 64);             // プール登録
@@ -46,13 +46,13 @@ public:
 #endif
 
 	// コピー禁止
-    ObjectManager(const ObjectManager&) = delete;
-    ObjectManager& operator=(const ObjectManager&) = delete;
+	ObjectManager(const ObjectManager&) = delete;
+	ObjectManager& operator=(const ObjectManager&) = delete;
 
 private:
 	// コンストラクタ・デストラクタ
 	ObjectManager() = default;
-    virtual ~ObjectManager();
+	virtual ~ObjectManager();
 
 	// _objects は ObjectPool::UniquePtr を保持する（プール由来/工場由来の両方を格納可能）
 	std::vector<ObjectPool::UniquePtr> _objects;
@@ -61,11 +61,11 @@ private:
 	std::unordered_map<std::string, std::unique_ptr<class ObjectPool>> _pools; // key -> ObjectPool
 	mutable std::mutex _mtx; // スレッド安全用ミューテックス
 
-	int _currentSceneId =0; // 現在のシーンID
+	int _currentSceneId = 0; // 現在のシーンID
 
 #ifdef _DEBUG
 	// デバッグ用統計
-	size_t _debugTotalSpawn =0;
-	size_t _debugTotalDeleted =0;
+	size_t _debugTotalSpawn = 0;
+	size_t _debugTotalDeleted = 0;
 #endif
 };

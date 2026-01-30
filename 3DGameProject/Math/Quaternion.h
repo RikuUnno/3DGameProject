@@ -2,17 +2,17 @@
 
 // Euler（見やすい）を主に扱いつつ、内部計算に Quaternion を使えるようにするための最小クラス。
 // - DxLib の数値型（VECTOR/MATRIX）と併用する。
-// - 今後の補間(Slerp等)追加を見越して、実装は cpp に分離する。
+// - 補間(Slerp等)や合成(乗算)など、3Dで必要になりやすい演算を提供する。
 
 #include "DxLib.h"
 
 class Quaternion {
 public:
 	// 成分
-	float x =0.0f; // i
-	float y =0.0f; // j
-	float z =0.0f; // k
-	float w =1.0f; //1
+	float x = 0.0f; // i
+	float y = 0.0f; // j
+	float z = 0.0f; // k
+	float w = 1.0f; //1
 
 	// コンストラクタ
 	Quaternion() = default;
@@ -20,14 +20,38 @@ public:
 
 	static Quaternion Identity() noexcept;
 
+	// --- 基本演算 ---
+	float LengthSq() const noexcept;			// 二乗長さ
+	float Length() const noexcept;				// 長さ
+	Quaternion Normalized() const noexcept;		// 正規化
+	Quaternion Conjugate() const noexcept;		// 共役
+	Quaternion Inverse() const noexcept;		// 逆元
+
+	// 内積、乗算
+	static float Dot(const Quaternion& a, const Quaternion& b) noexcept;			// 内積
+	static Quaternion Multiply(const Quaternion& a, const Quaternion& b) noexcept;  // 乗算 a*b
+
+	Quaternion operator*(const Quaternion& rhs) const noexcept { return Multiply(*this, rhs); }
+
+	// --- creation ---
 	// オイラー角（ラジアン）からクォータニオンを生成
 	// pitch: X, yaw: Y, roll: Z
 	// 回転順序: Z(roll) * Y(yaw) * X(pitch)
 	static Quaternion FromEulerRad(float pitch, float yaw, float roll) noexcept;
 
-	// 正規化クォータニオンを取得
-	Quaternion Normalized() const noexcept;
+	// 軸回転（axisは正規化されている前提。未正規化でも内部で正規化する）
+	static Quaternion FromAxisAngleRad(const VECTOR& axis, float angleRad) noexcept;
 
-	// 回転行列を取得
+	// --- interpolation ---
+	// 正規化線形補間（高速、tが小さい/誤差許容の用途）
+	static Quaternion Nlerp(const Quaternion& a, const Quaternion& b, float t) noexcept;
+	// 球面線形補間（回転として自然）
+	static Quaternion Slerp(const Quaternion& a, const Quaternion& b, float t) noexcept;
+
+	// --- conversion ---
 	MATRIX ToRotationMatrix() const noexcept;
+
+	// --- utility ---
+	// ベクトルを回転させる（q * v * q^-1）
+	VECTOR RotateVector(const VECTOR& v) const noexcept;
 };

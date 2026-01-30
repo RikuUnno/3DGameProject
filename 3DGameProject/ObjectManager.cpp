@@ -218,21 +218,21 @@ bool ObjectManager::UnregisterPool(const std::string& key) {
 void ObjectManager::DebugDraw(int x, int y) const {
 	std::lock_guard lk(_mtx);
 
-	DrawFormatString(x, y, GetColor(255,255,0), "[ObjectManager] 現在オブジェクト数: %d", (int)_objects.size());
-	y +=16;
-	DrawFormatString(x, y, GetColor(255,255,0), "[ObjectManager] 総生成数(取得回数): %d", (int)_debugTotalSpawn);
-	y +=16;
-	DrawFormatString(x, y, GetColor(255,255,0), "[ObjectManager] 総削除数(破棄回数): %d", (int)_debugTotalDeleted);
-	y +=16;
-	DrawFormatString(x, y, GetColor(255,255,0), "[ObjectManager] 現在SceneId: %d", _currentSceneId);
-	y +=16;
-	DrawFormatString(x, y, GetColor(255,255,0), "[ObjectManager] プール数: %d", (int)_pools.size());
-	y +=16;
+	DrawFormatString(x, y, GetColor(255, 255, 0), "[ObjectManager] 現在オブジェクト数: %d", (int)_objects.size());
+	y += 16;
+	DrawFormatString(x, y, GetColor(255, 255, 0), "[ObjectManager] 総生成数(取得回数): %d", (int)_debugTotalSpawn);
+	y += 16;
+	DrawFormatString(x, y, GetColor(255, 255, 0), "[ObjectManager] 総削除数(破棄回数): %d", (int)_debugTotalDeleted);
+	y += 16;
+	DrawFormatString(x, y, GetColor(255, 255, 0), "[ObjectManager] 現在SceneId: %d", _currentSceneId);
+	y += 16;
+	DrawFormatString(x, y, GetColor(255, 255, 0), "[ObjectManager] プール数: %d", (int)_pools.size());
+	y += 16;
 
 	for (const auto& [key, pool] : _pools) {
-		const size_t freeCount = pool ? pool->Size() :0;
-		DrawFormatString(x, y, GetColor(200,255,200), "- %s 未使用ストック: %d", key.c_str(), (int)freeCount);
-		y +=16;
+		const size_t freeCount = pool ? pool->Size() : 0;
+		DrawFormatString(x, y, GetColor(200, 255, 200), "- %s 未使用ストック: %d", key.c_str(), (int)freeCount);
+		y += 16;
 	}
 }
 #endif

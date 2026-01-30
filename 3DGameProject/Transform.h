@@ -11,7 +11,7 @@ class Transform {
 public:
 	Transform();
 
-	// ---- local TRS ----
+	// ローカル変換成分の取得・設定
 	const VECTOR& LocalPosition() const noexcept { return _localPosition; }
 	const VECTOR& LocalEulerRad() const noexcept { return _localEulerRad; }
 	const VECTOR& LocalScale() const noexcept { return _localScale; }
@@ -20,11 +20,11 @@ public:
 	void SetLocalEulerRad(const VECTOR& eulerRad) noexcept;
 	void SetLocalScale(const VECTOR& s) noexcept;
 
-	// ---- hierarchy ----
+	// 親子関係
 	Transform* Parent() const noexcept { return _parent; }
 	void SetParent(Transform* parent) noexcept;
 
-	// ---- matrices ----
+	// 行列
 	const MATRIX& LocalMatrix() const;
 	const MATRIX& WorldMatrix() const;
 
@@ -33,11 +33,7 @@ public:
 	void MarkDirty() noexcept;
 
 private:
-	static MATRIX MakeScale(const VECTOR& s);
-	static MATRIX MakeTranslation(const VECTOR& p);
-	static MATRIX Mul(const MATRIX& a, const MATRIX& b);
-
-	// local TRS
+	// ローカル変換成分
 	VECTOR _localPosition{};
 	VECTOR _localEulerRad{}; // pitch(x), yaw(y), roll(z)
 	VECTOR _localScale{};

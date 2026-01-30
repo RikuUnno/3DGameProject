@@ -32,9 +32,9 @@ public:
 	void UpdateAll();
 	void DrawAll();
 
-	size_t Count() const { return objects_.size(); }
+	size_t Count() const { return _objects.size(); }
 
 private:
-	std::unordered_set<std::string> registeredKeys_;
-	std::vector<GameObject*> objects_;
+	std::unordered_set<std::string> _registeredKeys;
+	std::vector<GameObject*> _objects;
 };

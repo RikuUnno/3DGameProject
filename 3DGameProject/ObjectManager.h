@@ -51,21 +51,21 @@ public:
 
 private:
 	// コンストラクタ・デストラクタ
-    ObjectManager() = default;
+	ObjectManager() = default;
     virtual ~ObjectManager();
 
-    // objects_ をプールの UniquePtr 型に変更（プール由来/工場由来の両方を格納可能）
-    std::vector<ObjectPool::UniquePtr> objects_;
+	// _objects は ObjectPool::UniquePtr を保持する（プール由来/工場由来の両方を格納可能）
+	std::vector<ObjectPool::UniquePtr> _objects;
 
 	// プール管理コンテナ
-	std::unordered_map<std::string, std::unique_ptr<class ObjectPool>> pools_; // key -> ObjectPool
-	mutable std::mutex mtx_;												   // スレッド安全用ミューテックス
+	std::unordered_map<std::string, std::unique_ptr<class ObjectPool>> _pools; // key -> ObjectPool
+	mutable std::mutex _mtx; // スレッド安全用ミューテックス
 
-	int currentSceneId_ = 0; // 現在のシーンID
+	int _currentSceneId =0; // 現在のシーンID
 
 #ifdef _DEBUG
 	// デバッグ用統計
-	size_t debugTotalSpawn_ = 0;  // 総生成数（Spawn呼び出しで取得した回数）
-	size_t debugTotalDeleted_ = 0; // 総削除数（完全破棄した回数 + プールのトリム/クリアで破棄した回数）
+	size_t _debugTotalSpawn =0;
+	size_t _debugTotalDeleted =0;
 #endif
 };

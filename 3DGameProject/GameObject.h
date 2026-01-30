@@ -4,39 +4,45 @@
 #include <unordered_map>
 #include <memory>
 
+#include "Transform.h"
+
 using VariantMap = std::unordered_map<std::string, std::string>; // パラメータマップ定義
 
 class GameObject {
 public:
-    GameObject() = default;
-    virtual ~GameObject() = default;
+	GameObject() = default;
+	virtual ~GameObject() = default;
 
-    // ライフサイクル
-    virtual void Awake() {}
-    virtual void Start() {}
-    virtual void Update() {}
-    virtual void Draw() {}
-    virtual void OnDestroy() {}
+	// Transform（位置・回転・スケール）
+	// - 見やすさ重視で Euler(rad) を保持
+	// - 行列生成は Quaternion を使用
+	// - 親子関係を見越した local/world キャッシュ
+	Transform transform;
 
-    // プール/再利用フック
-    virtual void OnAcquire(const VariantMap& params) {} // 取得時初期化
-    virtual void OnRelease() {}                         // 返却時クリア
+	// ライフサイクル
+	virtual void Awake() {}
+	virtual void Start() {}
+	virtual void Update() {}
+	virtual void Draw() {}
+	virtual void OnDestroy() {}
 
-    // Prototype: 深い複製（派生で実装）
-    virtual std::unique_ptr<GameObject> Clone() const { return nullptr; }
+	// プール/再利用フック
+	virtual void OnAcquire(const VariantMap& params) {} //取得時初期化
+	virtual void OnRelease() {} //返却時クリア
 
-    // 再利用設定
-    // - poolKey が空でない場合はプール返却対象として扱う（ObjectManager::Release が参照）
-    std::string poolKey;
+	// Prototype: 深い複製（派生で実装）
+	virtual std::unique_ptr<GameObject> Clone() const { return nullptr; }
 
-    // 所属情報（シーン終了時の一括回収用）
-    // - SceneManager が現在シーンのIDを払い出し、ObjectManager::Spawn が設定する
-    int ownerSceneId = -1;
+	// 再利用設定
+	std::string poolKey;
 
-    // ID 管理（ObjectManager の検索/削除用）
-    int GetId() const { return id_; }
-    void SetId(int id) { id_ = id; }
+	// 所属情報（シーン終了時の一括回収用）
+	int ownerSceneId = -1;
+
+	// ID 管理（ObjectManager の検索/削除用）
+	int GetId() const { return id_; }
+	void SetId(int id) { id_ = id; }
 
 private:
-    int id_ = -1;
+	int id_ = -1;
 };

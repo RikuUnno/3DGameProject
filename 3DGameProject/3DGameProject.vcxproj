@@ -140,6 +140,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Assert.cpp" />
+    <ClCompile Include="Math\Quaternion.cpp" />
     <ClCompile Include="ObjectController.cpp" />
     <ClCompile Include="ObjectFactory.cpp" />
     <ClCompile Include="GameObject.cpp" />
@@ -151,9 +152,11 @@
     <ClCompile Include="SceneManager.cpp" />
     <ClCompile Include="Time.cpp" />
     <ClCompile Include="TitleScene.cpp" />
+    <ClCompile Include="Transform.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Assert.h" />
+    <ClInclude Include="Math\Quaternion.h" />
     <ClInclude Include="ObjectController.h" />
     <ClInclude Include="ObjectFactory.h" />
     <ClInclude Include="GameObject.h" />
@@ -166,12 +169,15 @@
     <ClInclude Include="SceneTpl.h" />
     <ClInclude Include="Time.h" />
     <ClInclude Include="TitleScene.h" />
+    <ClInclude Include="Transform.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="オブジェクト構造想定.txt" />
     <Text Include="シーン遷移構造.txt" />
     <Text Include="ファクトリーメソッド.txt" />
     <Text Include="手順書.txt" />
+    <Text Include="方針.txt" />
+    <Text Include="現在の実装内容.txt" />
     <Text Include="現状追加一覧.txt" />
     <Text Include="生成と再利用(オブジェクト).txt" />
     <Text Include="生成アルゴリズム.txt" />

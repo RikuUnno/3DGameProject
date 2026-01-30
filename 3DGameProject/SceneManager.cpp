@@ -8,89 +8,88 @@ SceneManager& SceneManager::Instance() noexcept {
 }
 
 void SceneManager::Update() {
-	if (!m_stack_.empty()) {
-		m_stack_.back()->Update();
+	if (!_stack.empty()) {
+		_stack.back()->Update();
 	}
 }
 
 void SceneManager::Draw() {
-	if (!m_stack_.empty()) {
-		// 必要なら下層も描画するロジックを追加可能
-		m_stack_.back()->Draw();
+	if (!_stack.empty()) {
+		_stack.back()->Draw();
 	}
 }
 
 void SceneManager::ChangeScene(std::unique_ptr<IScene> scene) {
 	//既存シーンを破棄する前に、そのシーンに紐づくオブジェクトを一括回収
-	if (!m_stack_.empty()) {
-		ObjectManager::Instance().ReleaseBySceneId(m_currentSceneId_);
+	if (!_stack.empty()) {
+		ObjectManager::Instance().ReleaseBySceneId(_currentSceneId);
 	}
 
 	//既存シーンを破棄
-	if (!m_stack_.empty()) {
-		m_stack_.back()->OnDestroy();
-		m_stack_.clear();
+	if (!_stack.empty()) {
+		_stack.back()->OnDestroy();
+		_stack.clear();
 	}
 
 	// シーンIDを進めて、新シーンで Spawnされるオブジェクトに反映
-	++m_currentSceneId_;
-	ObjectManager::Instance().SetCurrentSceneId(m_currentSceneId_);
+	++_currentSceneId;
+	ObjectManager::Instance().SetCurrentSceneId(_currentSceneId);
 
 	if (scene) {
 		scene->Awake();
 		scene->Start();
-		m_stack_.push_back(std::move(scene));
+		_stack.push_back(std::move(scene));
 	}
 }
 
 void SceneManager::PushScene(std::unique_ptr<IScene> scene) {
-	if (!m_stack_.empty()) {
-		m_stack_.back()->OnSuspend();
+	if (!_stack.empty()) {
+		_stack.back()->OnSuspend();
 	}
 	// Push はシーンスタックを保持するので sceneId は進めない（同一シーン空間として扱う）
 	if (scene) {
 		scene->Awake();
 		scene->Start();
-		m_stack_.push_back(std::move(scene));
+		_stack.push_back(std::move(scene));
 	}
 }
 
 void SceneManager::PopScene() {
-	if (m_stack_.empty()) return;
+	if (_stack.empty()) return;
 
 	// Popするシーンに紐づく、現在 sceneId のオブジェクトを一括回収
-	ObjectManager::Instance().ReleaseBySceneId(m_currentSceneId_);
+	ObjectManager::Instance().ReleaseBySceneId(_currentSceneId);
 
-	m_stack_.back()->OnDestroy();
-	m_stack_.pop_back();
-	if (!m_stack_.empty()) {
-		m_stack_.back()->OnResume();
+	_stack.back()->OnDestroy();
+	_stack.pop_back();
+	if (!_stack.empty()) {
+		_stack.back()->OnResume();
 	}
 }
 
 void SceneManager::RequestChange(std::unique_ptr<IScene> scene) {
-	m_pendingChange_ = std::move(scene);
+	_pendingChange = std::move(scene);
 	// Request を呼んだ時点ではすぐに切り替えず、ProcessPendingChanges() で実行する想定
 }
 
 void SceneManager::RequestPush(std::unique_ptr<IScene> scene) {
-	m_pendingPush_ = std::move(scene);
+	_pendingPush = std::move(scene);
 }
 
 void SceneManager::RequestPop() {
-	m_pendingPop_ = true;
+	_pendingPop = true;
 }
 
 void SceneManager::ProcessPendingChanges() {
 	// 優先順位：Change > Pop > Push
-	if (m_pendingChange_) {
-		ChangeScene(std::move(m_pendingChange_));
+	if (_pendingChange) {
+		ChangeScene(std::move(_pendingChange));
 	}
-	if (m_pendingPop_) {
+	if (_pendingPop) {
 		PopScene();
-		m_pendingPop_ = false;
+		_pendingPop = false;
 	}
-	if (m_pendingPush_) {
-		PushScene(std::move(m_pendingPush_));
+	if (_pendingPush) {
+		PushScene(std::move(_pendingPush));
 	}
 }

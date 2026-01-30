@@ -7,15 +7,15 @@
 
 GameObject* ObjectController::Spawn(const std::string& key, const VariantMap& params) {
 	GameObject* obj = ObjectManager::Instance().Spawn(key, params);
-	if (obj) objects_.push_back(obj);
+	if (obj) _objects.push_back(obj);
 	return obj;
 }
 
 GameObject* ObjectController::SpawnAuto( const std::string& key, ObjectFactory::Creator creator,
 	size_t poolSize, const VariantMap& params) {
 	// –¢“o˜^‚È‚çA‚±‚±‚Å Factory/Pool ‚ð“o˜^‚·‚é
-	if (!registeredKeys_.contains(key)) {
-		registeredKeys_.insert(key);
+	if (!_registeredKeys.contains(key)) {
+		_registeredKeys.insert(key);
 		ObjectFactory::Instance().RegisterCreator(key, std::move(creator));
 		if (poolSize >0) {
 			ObjectManager::Instance().RegisterPool(key, poolSize);
@@ -27,22 +27,21 @@ GameObject* ObjectController::SpawnAuto( const std::string& key, ObjectFactory::
 void ObjectController::Release(GameObject* obj) {
 	if (!obj) return;
 	ObjectManager::Instance().Release(obj);
-	objects_.erase(std::remove(objects_.begin(), objects_.end(), obj), objects_.end());
+	_objects.erase(std::remove(_objects.begin(), _objects.end(), obj), _objects.end());
 }
 
 void ObjectController::ReleaseAll() {
-	for (auto* obj : objects_) {
+	for (auto* obj : _objects) {
 		ObjectManager::Instance().Release(obj);
 	}
-	objects_.clear();
+	_objects.clear();
 }
 
 void ObjectController::UpdateAll() {
-	// Release“™‚Å–³Œø‚É‚È‚Á‚½ŽQÆ‚ð‘|œ‚µ‚È‚ª‚ç Update
-	for (auto it = objects_.begin(); it != objects_.end();) {
+	for (auto it = _objects.begin(); it != _objects.end();) {
 		GameObject* obj = *it;
 		if (!obj) {
-			it = objects_.erase(it);
+			it = _objects.erase(it);
 			continue;
 		}
 		obj->Update();
@@ -51,10 +50,10 @@ void ObjectController::UpdateAll() {
 }
 
 void ObjectController::DrawAll() {
-	for (auto it = objects_.begin(); it != objects_.end();) {
+	for (auto it = _objects.begin(); it != _objects.end();) {
 		GameObject* obj = *it;
 		if (!obj) {
-			it = objects_.erase(it);
+			it = _objects.erase(it);
 			continue;
 		}
 		obj->Draw();

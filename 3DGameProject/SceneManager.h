@@ -44,10 +44,10 @@ public:
 	void ProcessPendingChanges();
 
 	// シーンがあるか
-	bool HasScene() const { return !m_stack_.empty(); }
+	bool HasScene() const { return !_stack.empty(); }
 
 	// 現在アクティブなシーンID（シーン切替ごとに増加）
-	int CurrentSceneId() const noexcept { return m_currentSceneId_; }
+	int CurrentSceneId() const noexcept { return _currentSceneId; }
 
 	// コピー/ムーブ禁止（シングルトン）
 	SceneManager(const SceneManager&) = delete;
@@ -60,12 +60,12 @@ private:
 	~SceneManager() = default;
 
 	// スタック（トップが現在アクティブなシーン）
-	std::vector<std::unique_ptr<IScene>> m_stack_;
+	std::vector<std::unique_ptr<IScene>> _stack;
 
 	// 保留中のシーン遷移
-	std::unique_ptr<IScene> m_pendingChange_;
-	std::unique_ptr<IScene> m_pendingPush_;
-	bool m_pendingPop_ = false;
+	std::unique_ptr<IScene> _pendingChange;
+	std::unique_ptr<IScene> _pendingPush;
+	bool _pendingPop = false;
 
-	int m_currentSceneId_ =0;
+	int _currentSceneId =0;
 };

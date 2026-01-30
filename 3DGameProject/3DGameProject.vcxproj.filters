@@ -97,6 +97,24 @@
     <Filter Include="ソース ファイル\System\Object\Controller">
       <UniqueIdentifier>{c7f55215-b9a4-4a4b-87f0-31eea6d754af}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ヘッダー ファイル\System\Transform">
+      <UniqueIdentifier>{dfe6f4d5-6929-4f85-8b52-bbd2779c0f90}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Transform">
+      <UniqueIdentifier>{9ba1468b-5176-43f9-b0cb-85fa4a7bbf2c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Camera">
+      <UniqueIdentifier>{7c903bf4-9f83-49f1-abd8-c71481b276da}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Camera">
+      <UniqueIdentifier>{2c043859-5e20-4081-a964-840b96b1ce3e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Quaternion">
+      <UniqueIdentifier>{31871bf8-68d6-429f-ab7b-bc44b170f5aa}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Quaternion">
+      <UniqueIdentifier>{5bb0551c-63aa-4f69-b721-149aca503831}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -134,6 +152,12 @@
     </ClCompile>
     <ClCompile Include="ObjectController.cpp">
       <Filter>ソース ファイル\System\Object\Controller</Filter>
+    </ClCompile>
+    <ClCompile Include="Transform.cpp">
+      <Filter>ソース ファイル\System\Transform</Filter>
+    </ClCompile>
+    <ClCompile Include="Math\Quaternion.cpp">
+      <Filter>ソース ファイル\System\Quaternion</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -176,28 +200,40 @@
     <ClInclude Include="ObjectController.h">
       <Filter>ヘッダー ファイル\System\Object\Controller</Filter>
     </ClInclude>
+    <ClInclude Include="Transform.h">
+      <Filter>ヘッダー ファイル\System\Transform</Filter>
+    </ClInclude>
+    <ClInclude Include="Math\Quaternion.h">
+      <Filter>ヘッダー ファイル\System\Quaternion</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="オブジェクト構造想定.txt">
-      <Filter>リソース ファイル</Filter>
+      <Filter>メモ</Filter>
     </Text>
     <Text Include="シーン遷移構造.txt">
-      <Filter>リソース ファイル</Filter>
+      <Filter>メモ</Filter>
     </Text>
     <Text Include="ファクトリーメソッド.txt">
-      <Filter>リソース ファイル</Filter>
+      <Filter>メモ</Filter>
     </Text>
     <Text Include="現状追加一覧.txt">
-      <Filter>リソース ファイル</Filter>
+      <Filter>メモ</Filter>
     </Text>
     <Text Include="手順書.txt">
-      <Filter>リソース ファイル</Filter>
+      <Filter>メモ</Filter>
     </Text>
     <Text Include="生成アルゴリズム.txt">
-      <Filter>リソース ファイル</Filter>
+      <Filter>メモ</Filter>
     </Text>
     <Text Include="生成と再利用(オブジェクト).txt">
-      <Filter>リソース ファイル</Filter>
+      <Filter>メモ</Filter>
+    </Text>
+    <Text Include="現在の実装内容.txt">
+      <Filter>メモ</Filter>
+    </Text>
+    <Text Include="方針.txt">
+      <Filter>メモ</Filter>
     </Text>
   </ItemGroup>
 </Project>

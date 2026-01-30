@@ -1,0 +1,88 @@
+オブジェクト構造（概要）
+- 目的：ゲーム内のあらゆる「存在」を表現する共通基底を用意し、拡張（描画/物理/振る舞い）をコンポーネントで行う。
+- 中心クラス：`GameObjectClass`（以下は `GameObject` と表記）
+
+GameObject の責務（最小限）
+- 一意 ID / 名前 / タグ / レイヤー（検索・フィルタ用）
+- Transform（位置/回転/スケール）と親子関係
+- 有効化フラグ（active）／表示フラグ（visible）
+- ライフサイクル管理：Awake, Start, Update(dt), FixedUpdate(fixedDt), Draw, OnDestroy
+- コンポーネントの所有（std::vector<std::unique_ptr<Component>>）
+- 親子構造の管理（AddChild/RemoveChild/SetParent）
+- シーン（Scene）や SceneManager からの管理を前提（所有は SceneManager が std::unique_ptr で行う）
+
+推奨フィールド（例）
+- uint64_t id_
+- std::string name_
+- std::string tag_
+- int layer_
+- Transform transform_ (Vec3 position, Vec3 rotation, Vec3 scale /  将来的に Quaternion)
+- bool active_ = true, visible_ = true
+- GameObject* parent_ = nullptr
+- std::vector<GameObject*> children_
+- std::vector<std::unique_ptr<Component>> components_
+- inline static std::atomic<uint64_t> nextId_{1};
+
+推奨メソッド（例）
+- GameObject(); ~GameObject();
+- void Awake(); void Start();
+- void Update(); void FixedUpdate(double fixedDt);
+- void Draw();
+- void OnDestroy();
+- template<class T, class... Args> T* AddComponent(Args&&...);
+- template<class T> T* GetComponent();
+- void RemoveComponent(Component*);
+- Transform& GetTransform();
+- void SetParent(GameObject* parent);
+
+コンポーネント設計（推奨）
+- 抽象基底 `Component`（非テンプレート）
+  - virtual void Awake(), Start(), Update(dt), FixedUpdate(fixedDt), OnDestroy()
+  - GameObject* owner_ を持つ（SetOwner/GetOwner）
+- コンポーネントは GameObject が所有し、ライフサイクルは GameObject が委譲する
+- GetComponent<T>(), AddComponent<T>() を用意して簡単に拡張可能にする
+
+更新/描画のルール
+- SceneManager::Update(dt) がトップシーンの Update を呼ぶ
+- Scene の Update 内で GameObject を走査して Update(dt) を呼ぶ
+- Draw は Update 後に呼ぶ（下層→上層 or トップのみ描画は運用次第）
+- FixedUpdate は一定間隔で呼び出す（物理はここで処理）
+
+メモリ管理 / 所有
+- SceneManager が GameObject の所有者（std::unique_ptr）となる
+- GameObject が子を raw pointer で保持しても、削除/移動は親経由で安全に管理する（親が子を削除する実装）
+- 再利用性向上のためオプションでオブジェクトプールを導入
+
+シリアライズ / エディタ対応
+- JSON/バイナリで Transform, name, components のパラメータを保存・復元するメソッドを用意（Serialize/Deserialize）
+- 各 Component はシリアライズインタフェースを実装
+
+イベント/メッセージ
+- 軽量なイベント（メッセージ）システムを用意すると相互依存を減らせる
+- 例：SendMessage("Damage", payload) / OnMessage(const Message&)
+
+スレッド安全性
+- 基本的にゲームロジックはメインスレッドで実行する（レンダ／物理も同様）
+- リソースロード等を別スレッドで行う場合は、メインスレッドへ結果通知するキューを使う
+
+拡張案／実務的注意
+- 回転は最初からクォータニオンを採用すると後で楽（ジンバルロック対策）
+- GetComponent<T> は動的 cast を避けるため type-index またはコンポーネントID方式も検討
+- コンポーネントを数多く使う場合は ECS（Entity-Component-System）導入の検討
+- デバッグやエディタ向けに IsActiveInHierarchy の概念を設ける（親が非アクティブなら子も非アクティブ）
+- パフォーマンス上の瓶頸は Profile してから最適化（コンテナのアロケーション頻度削減、プール、move semantics）
+
+実装ステップ（推奨順）
+1. `Component` 抽象基底と基本的な `Transform` を用意
+2. `GameObject` クラスを実装（上記フィールド・ライフサイクル）
+3. `AddComponent<T>` / `GetComponent<T>` のユーティリティを実装
+4. Scene 内で GameObject の Update/Draw を回す（SceneManager と連携）
+5. 基本的なコンポーネントを用意：MeshRenderer, SpriteRenderer, Collider, RigidBody, ScriptComponent
+6. シリアライズとエディタ表示 API を追加
+
+短い設計意図
+- 継承よりもコンポーネント（合成）を基本にすることで機能の組合せが自在になり、テストや再利用が容易になる。
+- シーン管理（SceneManager）と GameObject の所有を明確に分離して責務を単純化する。
+
+必要なら
+- この設想に基づく `GameObject.h` / `Component.h` の雛形を生成します（あなたの既存コードスタイルに合わせます）。どちらを優先しますか？

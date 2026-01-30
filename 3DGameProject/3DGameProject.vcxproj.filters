@@ -1,0 +1,203 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="ソース ファイル">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="ヘッダー ファイル">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="リソース ファイル">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System">
+      <UniqueIdentifier>{e2e036a5-7653-44c2-8abd-cf0fec4c11ef}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System">
+      <UniqueIdentifier>{f6879f6e-5dc8-41ba-a93b-bb547435ee31}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Assert">
+      <UniqueIdentifier>{3dc798e2-dca2-4c29-bcf1-2e736ed4a0f4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Assert">
+      <UniqueIdentifier>{66a0ceb0-6292-4d04-af4a-00c37e894654}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Info">
+      <UniqueIdentifier>{496f2053-9ac2-455c-b067-fad214550928}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene">
+      <UniqueIdentifier>{7defd913-7c24-488c-b9b8-6956e42e8196}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene">
+      <UniqueIdentifier>{ce37ff07-9a41-4655-89ae-af009e9f6b17}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Scenes">
+      <UniqueIdentifier>{dc1fde72-ed65-4214-a838-0e0977591829}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Scenes">
+      <UniqueIdentifier>{955c40eb-12ad-4735-82bd-b467c5ac1f61}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="メモ">
+      <UniqueIdentifier>{9c4da798-14bd-41de-90de-21d25b15aeb7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Time">
+      <UniqueIdentifier>{c19cf0bb-6eef-4f01-949a-a888d37d598f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Time">
+      <UniqueIdentifier>{a667f429-7e7f-40cf-ab4c-febdfe6d0605}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Manager">
+      <UniqueIdentifier>{ccbd7c0b-4d6f-4e60-965c-f09378c4fed1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Manager">
+      <UniqueIdentifier>{517faf94-7664-4a02-a9f4-85a1f573e85d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\KeyInput">
+      <UniqueIdentifier>{226a9d75-953b-44b0-a0da-4b60b9f3f08e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\KeyInput">
+      <UniqueIdentifier>{87c6688e-9643-42ff-9595-aba79726126b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Object">
+      <UniqueIdentifier>{61fc0bb7-22ca-4374-8874-26654c0ad834}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Object\Factory">
+      <UniqueIdentifier>{2c17b69f-4ab3-40f7-8655-c24c8e02a685}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Object\GameObject">
+      <UniqueIdentifier>{c62afa75-e41f-4e43-878c-756fc66458b7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Object">
+      <UniqueIdentifier>{04098c31-96fa-42a9-bf44-44e9a6494b17}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Object\Factory">
+      <UniqueIdentifier>{ef5cb571-2945-4a2b-8844-190280dba311}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Object\GameObject">
+      <UniqueIdentifier>{dfbceb67-d47a-4003-811e-54d890b73aae}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Object\Manager">
+      <UniqueIdentifier>{445c8664-4574-4771-b68c-c99121d9a38e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Object\Manager">
+      <UniqueIdentifier>{1d71df1f-0751-4089-8007-1457c2d95e8a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Object\ObjectPool">
+      <UniqueIdentifier>{a7542f12-4760-48ab-8659-2f386112fd72}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Object\ObjectPool">
+      <UniqueIdentifier>{13073c25-ee11-4f47-8ba8-01e2d9b409fe}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Object\Controller">
+      <UniqueIdentifier>{3416d27f-9361-4528-ab54-b3c1dfc58b2c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Object\Controller">
+      <UniqueIdentifier>{c7f55215-b9a4-4a4b-87f0-31eea6d754af}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Main.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="Assert.cpp">
+      <Filter>ソース ファイル\System\Assert</Filter>
+    </ClCompile>
+    <ClCompile Include="Time.cpp">
+      <Filter>ソース ファイル\System\Time</Filter>
+    </ClCompile>
+    <ClCompile Include="SceneManager.cpp">
+      <Filter>ソース ファイル\Scene\Manager</Filter>
+    </ClCompile>
+    <ClCompile Include="TitleScene.cpp">
+      <Filter>ソース ファイル\Scene\Scenes</Filter>
+    </ClCompile>
+    <ClCompile Include="MenuScene.cpp">
+      <Filter>ソース ファイル\Scene\Scenes</Filter>
+    </ClCompile>
+    <ClCompile Include="KeyInput.cpp">
+      <Filter>ソース ファイル\System\KeyInput</Filter>
+    </ClCompile>
+    <ClCompile Include="ObjectFactory.cpp">
+      <Filter>ソース ファイル\System\Object\Factory</Filter>
+    </ClCompile>
+    <ClCompile Include="GameObject.cpp">
+      <Filter>ソース ファイル\System\Object\GameObject</Filter>
+    </ClCompile>
+    <ClCompile Include="ObjectManager.cpp">
+      <Filter>ソース ファイル\System\Object\Manager</Filter>
+    </ClCompile>
+    <ClCompile Include="ObjectPool.cpp">
+      <Filter>ソース ファイル\System\Object\ObjectPool</Filter>
+    </ClCompile>
+    <ClCompile Include="ObjectController.cpp">
+      <Filter>ソース ファイル\System\Object\Controller</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Assert.h">
+      <Filter>ヘッダー ファイル\System\Assert</Filter>
+    </ClInclude>
+    <ClInclude Include="Info.h">
+      <Filter>ヘッダー ファイル\Info</Filter>
+    </ClInclude>
+    <ClInclude Include="Time.h">
+      <Filter>ヘッダー ファイル\System\Time</Filter>
+    </ClInclude>
+    <ClInclude Include="SceneManager.h">
+      <Filter>ヘッダー ファイル\Scene\Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="SceneTpl.h">
+      <Filter>ヘッダー ファイル\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="TitleScene.h">
+      <Filter>ヘッダー ファイル\Scene\Scenes</Filter>
+    </ClInclude>
+    <ClInclude Include="MenuScene.h">
+      <Filter>ヘッダー ファイル\Scene\Scenes</Filter>
+    </ClInclude>
+    <ClInclude Include="KeyInput.h">
+      <Filter>ヘッダー ファイル\System\KeyInput</Filter>
+    </ClInclude>
+    <ClInclude Include="ObjectFactory.h">
+      <Filter>ヘッダー ファイル\System\Object\Factory</Filter>
+    </ClInclude>
+    <ClInclude Include="GameObject.h">
+      <Filter>ヘッダー ファイル\System\Object\GameObject</Filter>
+    </ClInclude>
+    <ClInclude Include="ObjectManager.h">
+      <Filter>ヘッダー ファイル\System\Object\Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="ObjectPool.h">
+      <Filter>ヘッダー ファイル\System\Object\ObjectPool</Filter>
+    </ClInclude>
+    <ClInclude Include="ObjectController.h">
+      <Filter>ヘッダー ファイル\System\Object\Controller</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="オブジェクト構造想定.txt">
+      <Filter>リソース ファイル</Filter>
+    </Text>
+    <Text Include="シーン遷移構造.txt">
+      <Filter>リソース ファイル</Filter>
+    </Text>
+    <Text Include="ファクトリーメソッド.txt">
+      <Filter>リソース ファイル</Filter>
+    </Text>
+    <Text Include="現状追加一覧.txt">
+      <Filter>リソース ファイル</Filter>
+    </Text>
+    <Text Include="手順書.txt">
+      <Filter>リソース ファイル</Filter>
+    </Text>
+    <Text Include="生成アルゴリズム.txt">
+      <Filter>リソース ファイル</Filter>
+    </Text>
+    <Text Include="生成と再利用(オブジェクト).txt">
+      <Filter>リソース ファイル</Filter>
+    </Text>
+  </ItemGroup>
+</Project>

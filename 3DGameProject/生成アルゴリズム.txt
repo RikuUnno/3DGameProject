@@ -1,0 +1,199 @@
+生成アルゴリズムまとめ（Factory / Manager / Pool / Prototype）
+================================================
+
+目的（要約）
+- 生成責務を Factory に集中させ、管理／所有／再利用を Manager（ObjectManager）に委譲する。
+- Prototype（プレハブ複製）と ObjectPool（プール再利用）を併用し、性能と柔軟性を両立する。
+- 遅延生成（Deferred/Streaming）を導入してロード負荷を分散する。
+
+主要役割
+- `ObjectFactory`（シングルトン）
+  - 生成のルール（Creator）と Prototype を登録。
+  - `Create(key, params)` で新規インスタンス（unique_ptr）を返す（Factory は長期所有しない）。
+- `ObjectManager`（シングルトン）
+  - 生成済オブジェクトの所有／走査（Update/Draw）／削除／再利用制御を行う。
+  - Pool の管理（RegisterPool / Spawn / Release）を担う。
+- `ObjectPool`
+  - 再利用可能オブジェクトのストックを保持。`Acquire()` / `Release()` を提供。
+  - `Acquire()` はカスタムデリータ付き unique_ptr を返し、返却時にプールへ戻す。
+- `GameObject`（基底）
+  - `OnAcquire(params)`, `OnRelease()`, `Clone()` 等のフックを実装する。
+
+所有権ルール（必須）
+- Factory は生成のみ。Factory::Create は `std::unique_ptr<GameObject>` を返す。
+- Manager は生成・取得したオブジェクトを引き取り（所有） `objects_` に格納する。
+- 再利用時は Manager がプールから取得して所有（内部で unique_ptr のデリータがプール返却を担う）。
+- 呼び出し側（シーン等）は Manager を通じて Spawn/Release を行う（直接 delete 禁止）。
+
+ライフサイクルタイミング（規約推奨）
+- Awake(): Create完了直後 または Add/Spawn 時に呼ぶ（プロジェクトで統一）。
+- Start(): Scene に追加され、次フレームの最初で呼ぶ（一度のみ）。
+- Update/Draw: Scene のループ（Manager::UpdateAll/DrawAll）が呼ぶ。
+- OnAcquire(params): プールから取り出した、または Create 直後にパラメータを適用する。
+- OnRelease(): プールへ返却する前に状態をクリアする。
+- OnDestroy(): 完全破棄時の最終処理。
+
+基本フロー（パターン別）
+------------------------
+
+1) シンプル生成（Factoryのみ）
+- 用途: 低頻度／軽量オブジェクト
+- 流れ:
+  1. auto up = ObjectFactory::Instance().Create(key, params);
+  2. up->OnAcquire(params);
+  3. ObjectManager::Instance().TakeOwnership(std::move(up)); // または Spawn 呼び出しで管理
+- 特徴: 実装が簡単だが生成コストが高い場合はフレーム落ちの原因になる。
+
+2) Factory + Manager（Manager が所有）
+- 用途: 一般的なシーンオブジェクト
+- 流れ:
+  1. GameObject* g = ObjectManager::Instance().Spawn(key, params);
+  2. （Manager 内部で）Pool を確認 → Acquire か Create を実施 → objects_ に格納
+  3. 呼び出し側は g を使い、不要時に ObjectManager::Instance().Release(g) を呼ぶ
+- 特徴: 所有の一元化とライフサイクル管理が容易。
+
+3) Pool（Factory + ObjectPool + Manager）
+- 用途: 弾、エフェクト、小型敵など高頻度生成／破棄
+- 流れ:
+  1. Manager::RegisterPool(key, maxSize)（初期化時）
+  2. Manager::Spawn(key, params) → pool.Acquire()
+  3. obj->OnAcquire(params); objects_.push_back(poolUniquePtr)
+  4. 使用後 Manager::Release(obj) → obj->OnRelease(); objects_.erase -> デリータが pool.Release に渡す
+- 特徴: アロケーションを削減し、パフォーマンス改善。ただし状態リセットの実装が必須。
+
+4) Prototype（プレハブ複製）
+- 用途: 複雑な初期化が必要なオブジェクト（プレハブ）
+- 流れ:
+  1. ObjectFactory::RegisterPrototype(key, prototypePtr)
+  2. Create(key) → prototype->Clone() を返す
+  3. Manager が受け取り OnAcquire を呼ぶ
+- 特徴: プレハブを直接複製するため生成が容易。大量複製時は複製コストに注意（Poolと併用可）。
+
+5) 遅延生成（Deferred / Streaming）
+- 用途: 広大ワールドのスポーン、起動時ロード分散
+- 流れ:
+  1. Spawner 判定で条件成立 -> ObjectFactory::RequestCreate(key, params, callback)
+  2. Worker スレッドで IO/デコード（非 DxLib 部分）を実施
+  3. 結果をメインスレッドのキューに push
+  4. メインループで ProcessPendingCreates() を呼び、Finalize（DxLib呼び出し等）して Manager に登録
+- 特徴: フレームスパイク低減、メモリ効率向上。ただし設計複雑度が上がる。
+
+状況別選定ガイド（簡易）
+-----------------------
+- 生成コスト（重いリソースを初期化）高 + 頻度高 → Pool を検討
+- 生成コスト高 + 頻度低 → Prototype（複製）または Deferred（遅延ロード）
+- 生成コスト低 + 頻度低 → Factory のまま（シンプル）
+- ワールドストリーミング（領域単位で多数生成）→ Deferred + Pool の組合せ推奨
+- 一意性が重要（プレイヤー、宿命のオブジェクト）→ 再利用不可（non-recyclable）
+
+設計上の注意点
+- OnAcquire/OnRelease を確実に実装する：プール再利用で残留状態が致命的バグを生む。
+- Factory.Create は例外 or nullptr のポリシーを統一する（ログ/例外どちらか）。
+- objects_ コンテナはプールの unique_ptr（カスタムデリータ）を保持するか、格納時にデリータを統一してラップする。
+- スレッド: プールや pending queue は mutex 保護。最終リソース初期化はメインスレッドで行う。
+- ヒステリシス（enter/exit radius）を用いるとスポーンの振動を防げる。
+- Pool サイズはヒット率とメモリコストを見て調整する（監視メトリクスを用意する）。
+
+API/擬似コード（代表）
+---------------------
+- Spawn（Manager）
+  - try pool->Acquire(); if got -> OnAcquire -> push to objects_ -> return raw
+  - else -> up = Factory::Create(); up->OnAcquire(); wrap with pool-deleter and push -> return raw
+
+- Release（Manager）
+  - find unique_ptr in objects_; if obj->poolKey not empty -> obj->OnRelease(); erase (deleter returns to pool)
+  - else -> obj->OnDestroy(); erase
+
+- Deferred（Factory）
+  - RequestCreate(key, params, callback) -> worker loads -> enqueue partial -> ProcessPendingCreates() finalizes and invokes callback
+
+運用メトリクス（推奨）
+- Pool hit rate（高いほど効果的）
+- 平均生成回数 / 秒
+- Peak memory usage（プールサイズ調整の指標）
+- Frame time spikes（遅延生成や分散で削減されるか確認）
+
+短い決定フロー（実務）
+1. まず Prototype/Factory で実装（素早く動作させる）  
+2. パフォーマンス問題が出た型を Pool 化（OnAcquire/OnRelease 実装）  
+3. ワールド規模でのロード問題は Deferred 実装で改良
+
+（終）
+
+用語集（追加）
+==============
+
+以下は本ドキュメントで使われる主要用語の日本語定義と短い注釈です。
+
+- key（ファクトリキー）
+  - Factory/Manager/Pool でオブジェクトの型やプレハブを識別する文字列。例: `"EnemyGoblin"`。`RegisterCreator` / `Spawn` で一致させて使用。
+
+- poolKey（プールキー）
+  - オブジェクトインスタンスが属するプールを示す文字列。オブジェクトが `poolKey` を持つと Manager は Release 時にプール返却を試みる。
+
+- Factory（ファクトリ / ObjectFactory）
+  - オブジェクト生成を担当するコンポーネント。`RegisterCreator` や `RegisterPrototype` で生成ルールを登録し、`Create(key, params)` でインスタンスを返す。
+
+- Manager（マネージャ / ObjectManager）
+  - 生成済オブジェクトの所有・管理を行うコンポーネント。`Spawn`（取得） / `Release`（返却） / `UpdateAll` / `DrawAll` などを提供する。
+
+- Pool（オブジェクトプール / ObjectPool）
+  - 再利用可能なオブジェクトを蓄えておく領域。`Acquire()` は再利用可能な `UniquePtr` を返し、`Release()` はプールへ戻す。
+
+- Prototype（プロトタイプ / プレハブ）
+  - 既存インスタンスを複製して新規オブジェクトを作るための雛形。複製は `Clone()` で行う。
+
+- Spawn / Create
+  - `Create`：Factory が新規 `std::unique_ptr<GameObject>` を生成する操作。
+  - `Spawn`：Manager が（プールから取得 or Create）し内部で所有して返す操作。
+
+- Release / Return
+  - Manager によるオブジェクト返却処理。プール対象なら `OnRelease()` を呼び、プールに戻す。非プールは `OnDestroy()` を呼んで破棄。
+
+- OnAcquire(params)
+  - 取得時の初期化フック。Create 後や Acquire 後にパラメータを適用するために呼ばれる。
+
+- OnRelease()
+  - 返却時のクリーンアップフック。状態を初期化してプールへ戻すために呼ぶ。
+
+- Awake / Start / OnDestroy / Update / Draw
+  - オブジェクトの標準ライフサイクルメソッド。呼び出しタイミングをプロジェクトで統一すること。
+
+- VariantMap
+  - 生成パラメータ用の簡易マップ型（`std::unordered_map<std::string,std::string>`）。必要なら Variant 型に拡張する。
+
+- recyclable（再利用可フラグ）
+  - オブジェクトがプールで再利用可能かを示す bool。Factory 登録時に設定する。
+
+- UniquePtr（カスタムデリータ付き）
+  - `ObjectPool::UniquePtr` のように、返却時にプールへ戻すカスタムデリータを持つ `std::unique_ptr<GameObject, Deleter>`。
+
+- Deleter（デリータ）
+  - `unique_ptr` の破棄時に呼ばれる関数。プール用のデリータは `ObjectPool::Release` を呼ぶ。
+
+- Deferred / RequestCreate / ProcessPendingCreates
+  - 非同期遅延生成の仕組み。ワーカーでロード→メインスレッドで最終化して Manager に登録する流れ。
+
+- Spawner（スポーナー）
+  - マップ上の生成トリガ。距離やチャンク読み込み等の条件で Spawn を要求する。
+
+- Prefab（プレハブ）
+  - データ化されたオブジェクト定義（JSON等）。Factory に登録して Prototype として利用する。
+
+- Flyweight（フライウェイト）
+  - 共有可能な不変リソース（メッシュ/テクスチャ）を共有するパターン。メモリ節約に有効。
+
+- Handle / Generation（ハンドル／世代管理）
+  - プール返却後の古い参照を検出するための仕組み。`{index, generation}` を使って安全に検証する。
+
+- Pool hit rate（プールヒット率）
+  - `Acquire` がプールから成功した割合。高いとプール効果が高い指標。
+
+- Hysteresis（ヒステリシス）
+  - スポーンや削除の振動を防ぐ enter/exit の閾値差。スポーン条件の安定化に使う。
+
+参照
+- 該当 API: `ObjectFactory::Create`, `ObjectFactory::RegisterPrototype`, `ObjectManager::Spawn`, `ObjectManager::Release`, `ObjectManager::RegisterPool`, `ObjectPool::Acquire`, `ObjectPool::Release`.
+
+必要なら
+- 各用語に対応する軽いコード参照（関数シグネチャ）やフロー図の注釈を追加しますか？

@@ -1,0 +1,52 @@
+#include "Time.h"
+
+//　シングルトンインスタンスの取得
+Time& Time::Instance() noexcept {
+	static Time instance;
+	return instance;
+}
+
+// コンストラクタ（基準時刻を記録）
+Time::Time() noexcept {
+	start_ = std::chrono::steady_clock::now();
+	last_ = start_;
+	deltaSec_ = 0.0;
+	totalSec_ = 0.0;
+}
+
+// 毎フレーム呼んで時間を更新（スレッド安全）
+void Time::Update() noexcept {
+	std::lock_guard<std::mutex> lock(mtx_);
+	auto now = std::chrono::steady_clock::now();
+	deltaSec_ = std::chrono::duration<double>(now - last_).count();
+	totalSec_ = std::chrono::duration<double>(now - start_).count();
+	last_ = now;
+}
+
+// 前回更新からの経過秒を返す
+double Time::GetDeltaTime() const noexcept {
+	std::lock_guard<std::mutex> lock(mtx_);
+	return deltaSec_;
+}
+
+// プログラム開始からの総経過秒を返す
+double Time::GetTotalTime() const noexcept {
+	std::lock_guard<std::mutex> lock(mtx_);
+	return totalSec_;
+}
+
+// システムの現在時刻を秒で返す
+// OSの壁時計時間を基準とする
+double Time::GetWallTimeSeconds() const noexcept {
+	auto now = std::chrono::system_clock::now();
+	return std::chrono::duration<double>(now.time_since_epoch()).count();
+}
+
+// 時間をリセットする
+void Time::Reset() noexcept {
+	std::lock_guard<std::mutex> lock(mtx_);
+	start_ = std::chrono::steady_clock::now();
+	last_ = start_;
+	deltaSec_ = 0.0;
+	totalSec_ = 0.0;
+}

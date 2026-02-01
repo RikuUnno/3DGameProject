@@ -4,8 +4,9 @@
 #include "Math/Quaternion.h"
 
 // Transform
-// - 見やすさ重視で Euler（ラジアン）を保持
-// - 行列生成には Quaternion を使用（ジンバル問題を緩和しやすくするための足場）
+// - 内部の回転は Quaternion を正とする（補間・合成が安定する）
+// - Euler（ラジアン）は「入力/デバッグ表示用」として提供する
+// ※ Eulerは表現が一意でないため、表示値が跳ぶ可能性がある
 // - 親子関係を見越して local/world を分け、dirtyでキャッシュ
 class Transform {
 public:
@@ -13,11 +14,18 @@ public:
 
 	// ローカル変換成分の取得・設定
 	const VECTOR& LocalPosition() const noexcept { return _localPosition; }
-	const VECTOR& LocalEulerRad() const noexcept { return _localEulerRad; }
+
+	// Euler は入出力用（内部は Quaternion）
+	VECTOR LocalEulerRad() const noexcept; //その時点の回転をEulerで取得（表示用）
+	void SetLocalEulerRad(const VECTOR& eulerRad) noexcept; // Euler入力 -> Quaternionへ反映
+
+	// Quaternion を直接扱う（内部表現）
+	const Quaternion& LocalRotation() const noexcept { return _localRotation; }
+	void SetLocalRotation(const Quaternion& q) noexcept;
+
 	const VECTOR& LocalScale() const noexcept { return _localScale; }
 
 	void SetLocalPosition(const VECTOR& p) noexcept;
-	void SetLocalEulerRad(const VECTOR& eulerRad) noexcept;
 	void SetLocalScale(const VECTOR& s) noexcept;
 
 	// 親子関係
@@ -28,24 +36,25 @@ public:
 	const MATRIX& LocalMatrix() const;
 	const MATRIX& WorldMatrix() const;
 
-	// ワールド変換成分の取得
 	VECTOR WorldPosition() const;
+
+	// --- direction helpers (local axes in world space) ---
+	VECTOR Forward() const noexcept;
+	VECTOR Right() const noexcept;
+	VECTOR Up() const noexcept;
 
 	// 状態を dirty にする
 	void MarkDirty() noexcept;
 
 private:
-	// ローカル変換成分
 	VECTOR _localPosition{};
-	VECTOR _localEulerRad{}; // pitch(x), yaw(y), roll(z)
+	Quaternion _localRotation{}; // 回転（内部表現）
 	VECTOR _localScale{};
 
-	// 親子関係
 	Transform* _parent = nullptr;
 
-	// キャッシュ
-	mutable bool _localDirty = true;	// ローカル行列が最新でない
-	mutable bool _worldDirty = true;	// ワールド行列が最新でない
-	mutable MATRIX _localMatrix{};		// ローカル行列キャッシュ
-	mutable MATRIX _worldMatrix{};		// ワールド行列キャッシュ
+	mutable bool _localDirty = true;
+	mutable bool _worldDirty = true;
+	mutable MATRIX _localMatrix{};
+	mutable MATRIX _worldMatrix{};
 };

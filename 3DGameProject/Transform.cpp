@@ -7,9 +7,9 @@ namespace {
 
 // Transform 実装
 Transform::Transform() {
-	_localPosition = Vec(0, 0, 0);
-	_localEulerRad = Vec(0, 0, 0);
-	_localScale = Vec(1, 1, 1);
+	_localPosition = Vec(0,0,0);
+	_localRotation = Quaternion::Identity();
+	_localScale = Vec(1,1,1);
 	_localMatrix = MGetIdent();
 	_worldMatrix = MGetIdent();
 }
@@ -19,13 +19,24 @@ void Transform::SetLocalPosition(const VECTOR& p) noexcept {
 	MarkDirty();
 }
 
-void Transform::SetLocalEulerRad(const VECTOR& eulerRad) noexcept {
-	_localEulerRad = eulerRad;
+void Transform::SetLocalScale(const VECTOR& s) noexcept {
+	_localScale = s;
 	MarkDirty();
 }
 
-void Transform::SetLocalScale(const VECTOR& s) noexcept {
-	_localScale = s;
+VECTOR Transform::LocalEulerRad() const noexcept {
+	// デバッグ表示・GUI入力用
+	return _localRotation.ToEulerRad();
+}
+
+void Transform::SetLocalEulerRad(const VECTOR& eulerRad) noexcept {
+	// Euler入力を内部回転（Quaternion）へ反映
+	_localRotation = Quaternion::FromEulerRad(eulerRad.x, eulerRad.y, eulerRad.z);
+	MarkDirty();
+}
+
+void Transform::SetLocalRotation(const Quaternion& q) noexcept {
+	_localRotation = q.Normalized();
 	MarkDirty();
 }
 
@@ -39,7 +50,19 @@ void Transform::SetParent(Transform* parent) noexcept {
 void Transform::MarkDirty() noexcept {
 	_localDirty = true;
 	_worldDirty = true;
-	// 子への伝播は、子リストを持つ設計に拡張した時に行う
+}
+
+// 軸ベクトル取得
+VECTOR Transform::Forward() const noexcept {
+	return VNorm(_localRotation.RotateVector(VGet(0,0,1)));
+}
+
+VECTOR Transform::Right() const noexcept {
+	return VNorm(_localRotation.RotateVector(VGet(1,0,0)));
+}
+
+VECTOR Transform::Up() const noexcept {
+	return VNorm(_localRotation.RotateVector(VGet(0,1,0)));
 }
 
 // ローカル行列取得
@@ -49,8 +72,7 @@ const MATRIX& Transform::LocalMatrix() const {
 
 	// DxLib の行列ユーティリティを使用
 	const MATRIX S = MGetScale(_localScale);
-	const Quaternion q = Quaternion::FromEulerRad(_localEulerRad.x, _localEulerRad.y, _localEulerRad.z);
-	const MATRIX R = q.ToRotationMatrix();
+	const MATRIX R = _localRotation.ToRotationMatrix();
 	const MATRIX T = MGetTranslate(_localPosition);
 
 	// 組み立て順はプロジェクト内で統一（必要ならテストして入れ替える）
@@ -66,8 +88,7 @@ const MATRIX& Transform::WorldMatrix() const {
 	const MATRIX L = LocalMatrix();
 	if (_parent) {
 		_worldMatrix = MMult(L, _parent->WorldMatrix());
-	}
-	else {
+	} else {
 		_worldMatrix = L;
 	}
 	return _worldMatrix;

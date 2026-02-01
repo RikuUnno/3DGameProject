@@ -1,0 +1,133 @@
+3DGameProject Object 操作マニュアル & リファレンス
+
+目的
+- 本プロジェクトのオブジェクト基盤（GameObject / ObjectFactory / ObjectPool / ObjectManager / ObjectController
+ + SceneManager連携）の使い方をまとめる。
+-2026-01-30以降、Transformの回転内部表現が Quaternion に統一（大改修）されているため、その扱いも補足する。
+
+-------------------------------------------------------------------------------
+1. 全体設計（要点）
+
+オブジェクト関連は以下の役割分担で構成する。
+
+(1) GameObject（本体・Update/Draw単位）
+- ゲーム内の「個体」を表す基底クラス。
+- Transform を1つ持つ（位置・回転・スケール）。
+- Update/Draw は派生クラスで実装する。
+- プール再利用のためのフック OnAcquire/OnRelease を持つ。
+- シーン終了時の一括回収のため ownerSceneId を持つ。
+
+(2) ObjectFactory（生成責務）
+- "key" と生成関数/プロトタイプ を関連付けて登録する。
+- Create(key, params)で新規オブジェクトを生成する（所有権は呼び出し側）。
+
+(3) ObjectPool（再利用）
+- 特定 key の GameObject を freeList として保持して再利用する。
+
+(4) ObjectManager（所有・寿命管理・Pool/Factoryの統括）
+- Spawnしたオブジェクトの ownerSceneId は CurrentSceneId()で自動設定される。
+- シーン切替時は ReleaseBySceneId(sceneId)で一括回収される。
+
+(5) ObjectController（利用側の“束ね”）
+- 「自分がSpawnしたオブジェクト群」を保持し、UpdateAll/DrawAll/ReleaseAll をまとめて呼べる。
+- SpawnAutoで Factory登録・Pool登録・Spawn を1行でまとめられる。
+
+-------------------------------------------------------------------------------
+2. 所有権ルール（重要）
+
+- Spawnで返る GameObject* は生ポインタだが、所有権は ObjectManager が保持する。
+- 呼び出し側で deleteしない。
+-破棄/返却は ObjectManager::Release(obj) を使う。
+
+-------------------------------------------------------------------------------
+3. Transform（回転Quaternion化：大改修の影響）
+
+3.1 前提
+- GameObject は Transform を持つ。
+- Transform の回転は内部表現が Quaternion（Transform::LocalRotation）に統一されている。
+
+3.2 Eulerの扱い
+- Euler（ラジアン）は「入力/デバッグ表示用」。
+- Transform::SetLocalEulerRad(euler)
+ - Euler入力をQuaternionへ変換して内部回転を更新
+- Transform::LocalEulerRad()
+ - 内部QuaternionをEulerに変換して返す（表示用）
+
+注意
+- Quaternion→Euler変換は一意ではないため、デバッグ表示のEuler値が跳ぶ可能性がある。
+- 精密な回転制御・補間・合成を行う場合は Quaternionで扱うことを推奨。
+
+-------------------------------------------------------------------------------
+4.典型ユースケース
+
+4.1 ObjectControllerでまとめて生成（推奨）
+- 未登録なら Factory/Pool を登録した上で Spawnする。
+
+例（Bulletをプール管理で生成）
+ ObjectController ctrl;
+ ctrl.SpawnAuto(
+	"Bullet",
+	[](const VariantMap& p) { return std::make_unique<Bullet>(p); },
+	128
+ );
+
+4.2 回転の設定
+- Eulerで設定（入力/簡易）：
+
+ obj->transform.SetLocalEulerRad(VGet(pitch, yaw, roll));
+
+
+- Quaternionで設定（回転合成/補間向け）：
+
+ obj->transform.SetLocalRotation(Quaternion::FromEulerRad(pitch, yaw, roll));
+
+
+-------------------------------------------------------------------------------
+5. Scene連携（ownerSceneId）
+
+- ObjectManager は CurrentSceneId を保持し、Spawn時に ownerSceneId を設定する。
+- SceneManager のシーン遷移タイミングで ReleaseBySceneId が呼ばれ、一括回収される。
+
+-------------------------------------------------------------------------------
+6. リファレンス（API一覧）
+
+6.1 GameObject
+- Transform transform
+- virtual void Awake()/Start()/Update()/Draw()/OnDestroy()
+- virtual void OnAcquire(const VariantMap& params)
+- virtual void OnRelease()
+- virtual std::unique_ptr<GameObject> Clone() const
+- std::string poolKey
+- int ownerSceneId
+- int GetId() const / void SetId(int)
+
+6.2 Transform（関連）
+- const VECTOR& LocalPosition() const
+- void SetLocalPosition(const VECTOR&)
+- const Quaternion& LocalRotation() const
+- void SetLocalRotation(const Quaternion&)
+- VECTOR LocalEulerRad() const
+- void SetLocalEulerRad(const VECTOR&)
+
+6.3 ObjectController
+- GameObject* Spawn(const std::string& key, const VariantMap& params = {})
+- GameObject* SpawnAuto(const std::string& key, ObjectFactory::Creator creator, size_t poolSize, const VariantMap& params = {})
+- void Release(GameObject* obj)
+- void ReleaseAll()
+- void UpdateAll()
+- void DrawAll()
+
+6.4 ObjectManager
+- static ObjectManager& Instance()
+- GameObject* Spawn(const std::string& key, const VariantMap& params = {})
+- void RegisterPool(const std::string& key, size_t maxSize =64)
+- void Release(GameObject* obj)
+- void SetCurrentSceneId(int)
+- int CurrentSceneId() const
+- void ReleaseBySceneId(int sceneId)
+- size_t TrimAllPoolsUnused(double maxIdleSeconds)
+
+-------------------------------------------------------------------------------
+更新履歴
+-2026-01-30: 初版作成（Object基盤 + Pool/Factory/Manager/Controller + Scene連携）
+-2026-01-30: Transform回転Quaternion化（大改修）の影響を追記

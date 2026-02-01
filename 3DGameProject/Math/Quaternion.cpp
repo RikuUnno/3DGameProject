@@ -175,3 +175,27 @@ MATRIX Quaternion::ToRotationMatrix() const noexcept {
 	m.m[2][2] = 1.0f - 2.0f * (xx + yy);
 	return m;
 }
+
+VECTOR Quaternion::ToEulerRad() const noexcept {
+	// 回転順序: Z(roll) * Y(yaw) * X(pitch)
+	//参考: 一般的なyaw-pitch-roll抽出（ただし実装系によって符号/軸が異なる）
+	// 本プロジェクトの FromEulerRad と対になるように近い形で返す。
+	const Quaternion q = Normalized();
+
+	// pitch (X)
+	const float sinp =2.0f * (q.w * q.x + q.y * q.z);
+	const float cosp =1.0f -2.0f * (q.x * q.x + q.y * q.y);
+	float pitch = std::atan2(sinp, cosp);
+
+	// yaw (Y)
+	float siny =2.0f * (q.w * q.y - q.z * q.x);
+	siny = std::clamp(siny, -1.0f,1.0f);
+	float yaw = std::asin(siny);
+
+	// roll (Z)
+	const float sinr =2.0f * (q.w * q.z + q.x * q.y);
+	const float cosr =1.0f -2.0f * (q.y * q.y + q.z * q.z);
+	float roll = std::atan2(sinr, cosr);
+
+	return VGet(pitch, yaw, roll);
+}

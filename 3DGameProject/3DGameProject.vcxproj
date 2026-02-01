@@ -140,6 +140,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Assert.cpp" />
+    <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="CameraController.cpp" />
+    <ClCompile Include="CameraManager.cpp" />
     <ClCompile Include="Math\Quaternion.cpp" />
     <ClCompile Include="ObjectController.cpp" />
     <ClCompile Include="ObjectFactory.cpp" />
@@ -156,6 +159,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Assert.h" />
+    <ClInclude Include="Camera.h" />
+    <ClInclude Include="CameraController.h" />
+    <ClInclude Include="CameraManager.h" />
+    <ClInclude Include="CameraTags.h" />
     <ClInclude Include="Math\Quaternion.h" />
     <ClInclude Include="ObjectController.h" />
     <ClInclude Include="ObjectFactory.h" />
@@ -172,6 +179,8 @@
     <ClInclude Include="Transform.h" />
   </ItemGroup>
   <ItemGroup>
+    <Text Include="Camera_Manual_Reference.txt" />
+    <Text Include="Object_Manual_Reference.txt" />
     <Text Include="オブジェクト構造想定.txt" />
     <Text Include="シーン遷移構造.txt" />
     <Text Include="ファクトリーメソッド.txt" />

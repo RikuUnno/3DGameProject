@@ -1,5 +1,6 @@
 #include "SceneManager.h"
 #include "ObjectManager.h"
+#include "CameraManager.h"
 
 // シングルトン取得
 SceneManager& SceneManager::Instance() noexcept {
@@ -23,6 +24,7 @@ void SceneManager::ChangeScene(std::unique_ptr<IScene> scene) {
 	//既存シーンを破棄する前に、そのシーンに紐づくオブジェクトを一括回収
 	if (!_stack.empty()) {
 		ObjectManager::Instance().ReleaseBySceneId(_currentSceneId);
+		CameraManager::Instance().ReleaseBySceneId(_currentSceneId);
 	}
 
 	//既存シーンを破棄
@@ -59,6 +61,7 @@ void SceneManager::PopScene() {
 
 	// Popするシーンに紐づく、現在 sceneId のオブジェクトを一括回収
 	ObjectManager::Instance().ReleaseBySceneId(_currentSceneId);
+	CameraManager::Instance().ReleaseBySceneId(_currentSceneId);
 
 	_stack.back()->OnDestroy();
 	_stack.pop_back();

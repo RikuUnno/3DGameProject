@@ -115,6 +115,36 @@
     <Filter Include="ソース ファイル\System\Quaternion">
       <UniqueIdentifier>{5bb0551c-63aa-4f69-b721-149aca503831}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ソース ファイル\System\Camera\Controller">
+      <UniqueIdentifier>{12cdb610-3281-4e85-b7c4-716441fdddc3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Camera\Manager">
+      <UniqueIdentifier>{661b3e8f-903a-4507-87f0-25c067a3eb39}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Camera\Camera">
+      <UniqueIdentifier>{b0243f3e-820f-44af-a277-eced620cd2e9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Camera\Camera">
+      <UniqueIdentifier>{4d2cca7d-7117-4bc1-b4cf-833dbbf71f6f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Camera\Controller">
+      <UniqueIdentifier>{1111014f-bd32-477d-ade4-fafa990355aa}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Camera\Manager">
+      <UniqueIdentifier>{40d1b744-c14f-43d5-8fd8-da1f0b9102ee}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Camera\Tag">
+      <UniqueIdentifier>{76fb8ea2-6007-4f25-9e64-2f5dfba0b342}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="メモ\リファレンス・マニュアル">
+      <UniqueIdentifier>{87a22cff-be1b-432d-883d-1b6f67a51eaa}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="メモ\リファレンス・マニュアル\Camera">
+      <UniqueIdentifier>{ee82c64d-18b9-4e73-b42b-147f4d76b84f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="メモ\リファレンス・マニュアル\Object">
+      <UniqueIdentifier>{066ada23-47e9-473e-be26-538c61f6cc39}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -158,6 +188,15 @@
     </ClCompile>
     <ClCompile Include="Math\Quaternion.cpp">
       <Filter>ソース ファイル\System\Quaternion</Filter>
+    </ClCompile>
+    <ClCompile Include="CameraController.cpp">
+      <Filter>ソース ファイル\System\Camera\Controller</Filter>
+    </ClCompile>
+    <ClCompile Include="CameraManager.cpp">
+      <Filter>ソース ファイル\System\Camera\Manager</Filter>
+    </ClCompile>
+    <ClCompile Include="Camera.cpp">
+      <Filter>ソース ファイル\System\Camera\Camera</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -206,6 +245,18 @@
     <ClInclude Include="Math\Quaternion.h">
       <Filter>ヘッダー ファイル\System\Quaternion</Filter>
     </ClInclude>
+    <ClInclude Include="Camera.h">
+      <Filter>ヘッダー ファイル\System\Camera\Camera</Filter>
+    </ClInclude>
+    <ClInclude Include="CameraController.h">
+      <Filter>ヘッダー ファイル\System\Camera\Controller</Filter>
+    </ClInclude>
+    <ClInclude Include="CameraManager.h">
+      <Filter>ヘッダー ファイル\System\Camera\Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="CameraTags.h">
+      <Filter>ヘッダー ファイル\System\Camera\Tag</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="オブジェクト構造想定.txt">
@@ -234,6 +285,12 @@
     </Text>
     <Text Include="方針.txt">
       <Filter>メモ</Filter>
+    </Text>
+    <Text Include="Camera_Manual_Reference.txt">
+      <Filter>メモ\リファレンス・マニュアル\Camera</Filter>
+    </Text>
+    <Text Include="Object_Manual_Reference.txt">
+      <Filter>メモ\リファレンス・マニュアル\Object</Filter>
     </Text>
   </ItemGroup>
 </Project>

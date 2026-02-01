@@ -54,4 +54,9 @@ public:
 	// --- utility ---
 	// ベクトルを回転させる（q * v * q^-1）
 	VECTOR RotateVector(const VECTOR& v) const noexcept;
+
+	//代表的な用途（デバッグ表示・Euler入力との橋渡し）
+	// - FromEulerRad と同じ回転順序（Z*Y*X）でEulerを返す
+	// - Euler表現は一意でないため、値が跳ぶ可能性がある
+	VECTOR ToEulerRad() const noexcept;
 };

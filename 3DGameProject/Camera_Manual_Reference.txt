@@ -1,0 +1,122 @@
+3DGameProject Camera 操作マニュアル & リファレンス
+
+目的
+- 本プロジェクトのカメラ基盤（Camera / CameraManager / CameraController）の使い方をまとめる。
+- 複数カメラ・切替・ブレンド（補間）・タグ分類を含む。
+-2026-01-30以降、Transformの回転内部表現を Quaternion に統一（大改修）した。
+
+-------------------------------------------------------------------------------
+1. 全体設計（要点）
+
+カメラ関連は3層で構成する。
+
+(1) Camera（本体・状態）
+- Transform と、投影パラメータ（fov/near/far）を保持する。
+- ownerSceneId を持ち、シーン終了時一括回収できる。
+- tag（Game/Debug/Cinematic）で用途分類ができる。
+- LookAt(eye,target,up) を呼ぶと、target/up を内部キャッシュし、DxLib適用時に使用する。
+ ※ TransformのEulerへ無理に戻さない最小設計。
+
+(2) CameraManager（所有・切替・レンダリング適用）
+- 複数 Camera を所有し、IDで参照する。
+- A/B 設計：
+ A: Active（論理的に選択しているカメラ）
+ B: Render（描画に使うカメラ）
+- Render の切替は即時 or ブレンド（補間）を選べる。
+- ブレンド時の回転は Quaternion::Slerp を使用（大回り問題の回避）。
+
+(3) CameraController（操作）
+- ObjectController と同じ思想で、操作対象（CameraId）を保持し Updateで動かす。
+- SpawnAutoで「未作成なら作成＋初期化」をまとめて行える。
+
+-------------------------------------------------------------------------------
+2. Transform（大改修のポイント）
+
+2.1 回転はQuaternionを正とする
+- Transform内部は Quaternion を保持する。
+- Euler（ラジアン）は入力/デバッグ表示用。
+
+利点
+- 回転補間（Slerp）が自然。
+- 親子合成やローカル軸（Forward/Right/Up）が安定。
+
+注意
+- Quaternion→Euler変換は一意ではないため、デバッグ表示のEuler値が「跳ぶ」可能性がある。
+
+2.2主要API
+- Transform::SetLocalEulerRad(euler)
+ - Euler入力をQuaternionへ変換して内部回転を更新
+- Transform::LocalEulerRad()
+ - 内部QuaternionをEulerに変換して返す（表示用）
+- Transform::SetLocalRotation(q)
+ - Quaternionを直接設定
+- Transform::LocalRotation()
+ - 内部Quaternionを取得
+
+-------------------------------------------------------------------------------
+3. カメラの基本手順（最短）
+
+3.1 初期カメラ1台（最小）
+- Mainなどで、シーンIDに紐づけて1台作る。
+ CameraManager::Instance().CreateCamera(sceneId);
+
+3.2 ブレンド更新（毎フレーム）
+ CameraManager::Instance().Update(dt);
+
+3.3 Draw直前にレンダーカメラを適用
+ CameraManager::Instance().ApplyRenderCameraToDxLib(screenW, screenH);
+
+-------------------------------------------------------------------------------
+4. CameraController：操作マニュアル
+
+4.1 UpdateFreeMove（フリー操作）
+- 回転：矢印キー
+ - 入力はEulerで行うが、Transform内部はQuaternionへ変換される
+- 移動：WASD + QE
+ - Transform::Forward/Right/Up によるローカル軸移動
+
+-------------------------------------------------------------------------------
+5. CameraManager：Renderブレンド
+
+- BlendRenderTo(targetId, durationSec)
+ - Render(B) を targetへ duration 秒で補間して切替
+
+内部仕様
+-位置：線形補間（Lerp）
+- 回転：Quaternion::Slerp
+- fov/near/far：線形補間（Lerp）
+
+-------------------------------------------------------------------------------
+6. LookAt 運用
+
+- Camera::LookAt(eye,target,up) を呼ぶと、Camera は target/up をキャッシュする。
+- ApplyRenderCameraToDxLib は HasLookAt==true の場合、キャッシュした target/up を優先して使う。
+
+-------------------------------------------------------------------------------
+7. リファレンス（API一覧）
+
+7.1 Transform
+- const VECTOR& LocalPosition() const
+- void SetLocalPosition(const VECTOR&)
+- const Quaternion& LocalRotation() const
+- void SetLocalRotation(const Quaternion&)
+- VECTOR LocalEulerRad() const
+- void SetLocalEulerRad(const VECTOR&)
+- VECTOR Forward() const
+- VECTOR Right() const
+- VECTOR Up() const
+
+7.2 Quaternion
+- static Quaternion FromEulerRad(pitch,yaw,roll)
+- static Quaternion Slerp(a,b,t)
+- VECTOR ToEulerRad() const
+
+7.3 CameraManager
+- bool BlendRenderTo(CameraId targetId, float durationSec)
+- void Update(float dtSec)
+- void ApplyRenderCameraToDxLib(int screenW, int screenH)
+
+-------------------------------------------------------------------------------
+更新履歴
+-2026-01-30: 初版作成（Camera/Manager/Controller + A/B + Blend + Tag）
+-2026-01-30: Transform回転Quaternion化（大改修）に対応、回転補間をSlerpに変更

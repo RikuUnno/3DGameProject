@@ -6,9 +6,9 @@
 #include "Time.h"
 #include "KeyInput.h"
 #include "ObjectManager.h"
+#include "CameraManager.h"
 
 void LightingInit() {
-	// 3D描画を有効にする
 	SetUseZBuffer3D(TRUE);
 	SetWriteZBuffer3D(TRUE);
 }
@@ -45,10 +45,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	// ObjectManager 側に現在シーンIDを反映（初期シーンに紐づけて Spawnできるようにする）
 	ObjectManager::Instance().SetCurrentSceneId(SceneManager::Instance().CurrentSceneId());
 
+	// デフォルトのカメラを1台作成（シーンIDに紐づける）
+	CameraManager::Instance().CreateCamera(SceneManager::Instance().CurrentSceneId());
+
 	// ---- Pool auto-trim settings ----
 	constexpr double kPoolTrimIntervalSec = 1.0; // 何秒ごとに掃除するか
-	constexpr double kPoolMaxIdleSec = 10.0;    // 何秒未使用なら削除するか
-	double poolTrimAccumSec = 0.0;
+	constexpr double kPoolMaxIdleSec = 10.0;     // 何秒未使用なら削除するか
+	double poolTrimAccumSec = 0.0;				 // 経過時間蓄積用
 
 	// メインループ
 	while (ProcessMessage() == 0 && CheckHitKey(KEY_INPUT_ESCAPE) == 0)
@@ -62,6 +65,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		// シーン更新
 		SceneManager::Instance().Update();
 
+		// カメラ補間更新（Renderのブレンドなど）
+		CameraManager::Instance().Update((float)Time::Instance().GetDeltaTime());
+
 		// ---- Pool auto-trim ----
 		poolTrimAccumSec += Time::Instance().GetDeltaTime();
 		if (poolTrimAccumSec >= kPoolTrimIntervalSec) {
@@ -70,6 +76,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		}
 		// 描画
 		ClearDrawScreen();					// 画面クリア
+
+		// レンダーカメラを適用（A/BのB: Render Camera）
+		{
+			int w = 0, h = 0;
+			GetDrawScreenSize(&w, &h);
+			CameraManager::Instance().ApplyRenderCameraToDxLib(w, h);
+		}
 
 		// シーン描画
 		SceneManager::Instance().Draw();
@@ -95,5 +108,5 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	KeyInput::Instance().EndKeyInput();
 	// DXライブラリの終了処理
 	DxLib_End();
-	return 0; // 正常終了
+	return 0;
 }

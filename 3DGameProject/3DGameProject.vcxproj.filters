@@ -145,6 +145,51 @@
     <Filter Include="メモ\リファレンス・マニュアル\Object">
       <UniqueIdentifier>{066ada23-47e9-473e-be26-538c61f6cc39}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ヘッダー ファイル\System\Collision">
+      <UniqueIdentifier>{60d523c9-aefc-467a-b69d-6adea39ddeb3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Collision">
+      <UniqueIdentifier>{07724d06-2961-425b-9f26-2bb6aac86e55}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Collision\Collider">
+      <UniqueIdentifier>{5bf1752e-a790-4410-a3d6-17134f73db1b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Collision\Collider">
+      <UniqueIdentifier>{49ceb8a8-dc8f-4a52-a238-3e8626c054d9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Collision\Manager">
+      <UniqueIdentifier>{536523ad-a61a-4f1d-9899-1e6021cf346a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Collision\Manager">
+      <UniqueIdentifier>{e2ab13b0-4002-4b9d-91ef-6467754a61fd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Collision\Primitive">
+      <UniqueIdentifier>{b3c04b48-e64e-4e65-b078-b7b3584ce05e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Collision\Primitive">
+      <UniqueIdentifier>{3eefa4c5-8d86-42f4-9941-a76d08db037d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Collision\Type">
+      <UniqueIdentifier>{af383554-9ce3-4ce0-80e9-d7a3df1a98f9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Collision\Primitive\Capsule">
+      <UniqueIdentifier>{945484a2-55ba-46c9-ab31-2ac7cf78edb8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Collision\Primitive\Box">
+      <UniqueIdentifier>{49d635d7-0d00-4d49-94be-0fb0471d8238}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Collision\Primitive\Sphere">
+      <UniqueIdentifier>{f36bc550-c13f-404c-9c98-948e72febbd0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Collision\Primitive\Sphere">
+      <UniqueIdentifier>{5cd5656c-96f4-47be-9c35-779cbeea21b7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Collision\Primitive\Box">
+      <UniqueIdentifier>{9e9be629-f1e0-4ee5-9b64-cad1a281da7e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Collision\Primitive\Capsule">
+      <UniqueIdentifier>{d5c0e587-ceff-47fa-8cb8-a32c3547af83}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -197,6 +242,21 @@
     </ClCompile>
     <ClCompile Include="Camera.cpp">
       <Filter>ソース ファイル\System\Camera\Camera</Filter>
+    </ClCompile>
+    <ClCompile Include="ColliderManager.cpp">
+      <Filter>ソース ファイル\System\Collision\Manager</Filter>
+    </ClCompile>
+    <ClCompile Include="Collider.cpp">
+      <Filter>ソース ファイル\System\Collision\Collider</Filter>
+    </ClCompile>
+    <ClCompile Include="BoxCollider.cpp">
+      <Filter>ソース ファイル\System\Collision\Primitive\Box</Filter>
+    </ClCompile>
+    <ClCompile Include="CapsuleCollider.cpp">
+      <Filter>ソース ファイル\System\Collision\Primitive\Capsule</Filter>
+    </ClCompile>
+    <ClCompile Include="SphereCollider.cpp">
+      <Filter>ソース ファイル\System\Collision\Primitive\Sphere</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -256,6 +316,24 @@
     </ClInclude>
     <ClInclude Include="CameraTags.h">
       <Filter>ヘッダー ファイル\System\Camera\Tag</Filter>
+    </ClInclude>
+    <ClInclude Include="Collider.h">
+      <Filter>ヘッダー ファイル\System\Collision\Collider</Filter>
+    </ClInclude>
+    <ClInclude Include="ColliderManager.h">
+      <Filter>ヘッダー ファイル\System\Collision\Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="ColliderType.h">
+      <Filter>ヘッダー ファイル\System\Collision\Type</Filter>
+    </ClInclude>
+    <ClInclude Include="BoxCollider.h">
+      <Filter>ヘッダー ファイル\System\Collision\Primitive\Box</Filter>
+    </ClInclude>
+    <ClInclude Include="CapsuleCollider.h">
+      <Filter>ヘッダー ファイル\System\Collision\Primitive\Capsule</Filter>
+    </ClInclude>
+    <ClInclude Include="SphereCollider.h">
+      <Filter>ヘッダー ファイル\System\Collision\Primitive\Sphere</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

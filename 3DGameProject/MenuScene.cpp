@@ -83,28 +83,33 @@ void MenuScene::Start() {
 		{ {"label", "DemoObject生成（シーン開始）"} }
 	);
 
-	// デバッグ用カメラ（操作する方）
-	if (g_debugCamId ==0) {
+	auto& camMgr = CameraManager::Instance();
+	const int sceneId = SceneManager::Instance().CurrentSceneId();
+
+	// Debug camera
+	if (g_debugCamId == 0 || camMgr.Get(g_debugCamId) == nullptr) {
 		g_debugCamId = g_camCtrl.SpawnAuto(
-			SceneManager::Instance().CurrentSceneId(),
+			sceneId,
 			CameraTag::Debug,
-			VGet(0.0f,2.0f, -8.0f),
-			VGet(0.0f,0.0f,0.0f)
+			VGet(0.0f, 2.0f, -8.0f),
+			VGet(0.0f, 0.0f, 0.0f)
 		);
 	}
-	// 固定のゲーム用カメラ（切替先の目印）
-	if (g_gameCamId ==0) {
-		CameraController tmp;
-		g_gameCamId = tmp.SpawnAuto(
-			SceneManager::Instance().CurrentSceneId(),
+
+	// Game camera（tmp をやめる）
+	if (g_gameCamId == 0 || camMgr.Get(g_gameCamId) == nullptr) {
+		// いったん操作対象を Game に切り替えて Spawn
+		g_camCtrl.SetCamera(0);
+		g_gameCamId = g_camCtrl.SpawnAuto(
+			sceneId,
 			CameraTag::Game,
-			VGet(6.0f,3.0f, -6.0f),
-			VGet(0.0f,0.8f,0.0f)
+			VGet(6.0f, 3.0f, -6.0f),
+			VGet(0.0f, 0.8f, 0.0f)
 		);
 	}
 
 	g_currentCamId = g_debugCamId;
-	CameraManager::Instance().SetRender(g_currentCamId);
+	camMgr.SetRender(g_currentCamId);
 }
 
 void MenuScene::Update() {

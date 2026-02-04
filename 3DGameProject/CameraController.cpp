@@ -13,13 +13,22 @@ CameraController::CameraId CameraController::SpawnAuto(
 	float nearZ,
 	float farZ
 ) {
-	//既に登録済みならそのまま
-	if (_cameraId !=0 && _registeredIds.contains(_cameraId)) {
-		return _cameraId;
+	auto& mgr = CameraManager::Instance();
+
+	// 以前のIDを「再利用」する前に、CameraManager に実体があるか確認する
+	if (_cameraId != 0) {
+		if (mgr.Get(_cameraId) != nullptr) {
+			_registeredIds.insert(_cameraId);
+			return _cameraId;
+		}
+
+		// ここに来たら「IDは保持しているが実体がない」= scene切替等で破棄済み
+		_registeredIds.erase(_cameraId);
+		_cameraId = 0;
 	}
 
-	const CameraId id = CameraManager::Instance().CreateCamera(ownerSceneId);
-	auto* cam = CameraManager::Instance().Get(id);
+	const CameraId id = mgr.CreateCamera(ownerSceneId);
+	auto* cam = mgr.Get(id);
 	if (cam) {
 		cam->tag = tag;
 		cam->transform.SetLocalPosition(pos);

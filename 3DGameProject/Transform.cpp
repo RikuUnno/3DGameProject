@@ -57,10 +57,12 @@ VECTOR Transform::Forward() const noexcept {
 	return VNorm(_localRotation.RotateVector(VGet(0,0,1)));
 }
 
+// 右方向ベクトル取得
 VECTOR Transform::Right() const noexcept {
 	return VNorm(_localRotation.RotateVector(VGet(1,0,0)));
 }
 
+// 上方向ベクトル取得
 VECTOR Transform::Up() const noexcept {
 	return VNorm(_localRotation.RotateVector(VGet(0,1,0)));
 }

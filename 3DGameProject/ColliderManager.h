@@ -35,7 +35,8 @@ public: // “o˜^/‰ğœ
 	void UnregisterCollider(Collider* collider);
 
 public: // “–‚½‚è”»’è
-	// Broad Phase
+
+	// Broad Phase 
 	// ‹óŠÔ•ªŠ„
 	void SpatialPartitioning();
 	// Layer/Mask‚É‚æ‚é“–‚½‚è”»’è

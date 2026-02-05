@@ -1,9 +1,11 @@
 #pragma once
 #include "Collider.h"
+#include "ColliderType.h"
 
 class BoxCollider : public Collider
 {
 public:
+	// コンストラクタ/デストラクタ
 	BoxCollider();
 	virtual ~BoxCollider();
 
@@ -16,4 +18,6 @@ public:
 	virtual void DrawDebug() override;		// 本体デバッグ描画
 	virtual void DrawDebugAABB() override; // AABBデバッグ描画
 
+private:
+	Box box; // ボックス情報
 };

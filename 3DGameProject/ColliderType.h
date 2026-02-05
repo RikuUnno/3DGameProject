@@ -4,7 +4,7 @@
 #include "DXLib.h"
 
 // 回転軸アリのBoxCollider
-struct BoxCollider {
+struct Box {
     VECTOR center;       // 中心点(ワールド)
     VECTOR halfExtents;  // 各軸の半径(ローカルサイズの半分)
     VECTOR axisX;        // 向きX
@@ -13,14 +13,14 @@ struct BoxCollider {
 };
 
 // 回転軸ありのSphereCollider
-struct SphereCollider
+struct Sphere
 {
 	VECTOR center; // 中心点(ワールド)
 	float radius;  // 半径
 };
 
 // 回転軸アリのCapsuleCollider
-struct CapsuleCollider
+struct Capsule
 {
 	VECTOR center; // 中心点(ワールド)
 	VECTOR bottom; // カプセルの端点A

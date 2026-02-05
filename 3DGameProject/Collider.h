@@ -12,15 +12,15 @@ public:// コンストラクタ/デストラクタ
 	virtual ~Collider() = default;
 protected: 
 	// AABB設定
-	virtual void SetAABB() {} // AABB設定
+	virtual void SetAABB();	// AABB設定
 
 protected:
 	// 中心点を求める(ワールド)
-	virtual VECTOR GetCenter() const { return VECTOR(); }
+	// virtual VECTOR GetCenter() const { return VECTOR(); }
 
 public:
 	// デバッグ描画
-	virtual void DrawDebug() {}		// 本体デバッグ描画
-	virtual void DrawDebugAABB() {} // AABBデバッグ描画
+	virtual void DrawDebug();		// 本体デバッグ描画
+	virtual void DrawDebugAABB();	// AABBデバッグ描画
 
 };

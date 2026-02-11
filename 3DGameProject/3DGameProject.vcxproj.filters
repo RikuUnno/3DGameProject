@@ -193,6 +193,9 @@
     <Filter Include="ヘッダー ファイル\System\Collision\LayerMask">
       <UniqueIdentifier>{27abaee4-1480-4c68-82f9-84490a01a395}</UniqueIdentifier>
     </Filter>
+    <Filter Include="メモ\リファレンス・マニュアル\Collider">
+      <UniqueIdentifier>{be4725aa-40d3-494e-add0-6c66d1b95206}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">

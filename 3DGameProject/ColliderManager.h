@@ -90,6 +90,14 @@ private:
 	void CheckSphereCapsule(Collider* a, Collider* b);	// Sphere-Capsule 当たり判定
 	void CheckBoxCapsule(Collider* a, Collider* b);		// Box(OBB)-Capsule 当たり判定
 
+	// 各種押し戻し処理
+	void PushOutSphereSphere(Collider* a, Collider* b);		// Sphere-Sphere 押し戻し
+	void PushOutSphereBox(Collider* a, Collider* b);		// Sphere-Box 押し戻し
+	void PushOutBoxBox(Collider* a, Collider* b);			// Box-Box 押し戻し
+	void PushOutCapsuleCapsule(Collider* a, Collider* b);	// Capsule-Capsule 押し戻し
+	void PushOutSphereCapsule(Collider* a, Collider* b);	// Sphere-Capsule 押し戻し
+	void PushOutBoxCapsule(Collider* a, Collider* b);		// Box-Capsule 押し戻し
+
 private:
 
 	std::vector<Collider*> colliders_{};	// 登録コライダー群

@@ -39,41 +39,41 @@ namespace {
 		}
 
 		void Draw() override {
-			DrawString(10,40, label_.c_str(), GetColor(200,255,200));
+			DrawString(10, 40, label_.c_str(), GetColor(200, 255, 200));
 		}
 
 	private:
 		std::string label_;
 	};
 
-	ObjectController g_controller;
-	int g_demoCreateCount =0;
+	ObjectController g_controller;					// デモ用オブジェクトコントローラ
+	int g_demoCreateCount = 0;						// デモ用生成カウンタ
 
 	// カメラデバッグ用
-	CameraController g_camCtrl;
-	CameraController::CameraId g_debugCamId =0;
-	CameraController::CameraId g_gameCamId =0;
+	CameraController g_camCtrl;						// カメラコントローラ
+	CameraController::CameraId g_debugCamId = 0;	// デバッグカメラID
+	CameraController::CameraId g_gameCamId = 0;		// ゲームカメラID
 
 	// 切替デモ用のフラグ
-	bool g_useBlend = true;
-	float g_blendSec =0.4f;
-	CameraController::CameraId g_currentCamId =0;
+	bool g_useBlend = true;							// ブレンド切替を使うかどうか
+	float g_blendSec = 0.4f;						// ブレンド時間
+	CameraController::CameraId g_currentCamId = 0;	// 現在レンダー中のカメラID
 
 	//3Dデバッグ用の簡易描画
 	void DrawSimple3DDebug() {
-		const int half =10;
-		const float step =1.0f;
-		const unsigned int colGrid = GetColor(60,60,60);
+		const int half = 10;
+		const float step = 1.0f;
+		const unsigned int colGrid = GetColor(60, 60, 60);
 		for (int i = -half; i <= half; ++i) {
 			const float x = i * step;
-			DrawLine3D(VGet(x,0.0f, -half * step), VGet(x,0.0f, half * step), colGrid);
+			DrawLine3D(VGet(x, 0.0f, -half * step), VGet(x, 0.0f, half * step), colGrid);
 			const float z = i * step;
-			DrawLine3D(VGet(-half * step,0.0f, z), VGet(half * step,0.0f, z), colGrid);
+			DrawLine3D(VGet(-half * step, 0.0f, z), VGet(half * step, 0.0f, z), colGrid);
 		}
 
-		DrawLine3D(VGet(0,0,0), VGet(2,0,0), GetColor(255,80,80));
-		DrawLine3D(VGet(0,0,0), VGet(0,2,0), GetColor(80,255,80));
-		DrawLine3D(VGet(0,0,0), VGet(0,0,2), GetColor(80,80,255));
+		DrawLine3D(VGet(0, 0, 0), VGet(2, 0, 0), GetColor(255, 80, 80));
+		DrawLine3D(VGet(0, 0, 0), VGet(0, 2, 0), GetColor(80, 255, 80));
+		DrawLine3D(VGet(0, 0, 0), VGet(0, 0, 2), GetColor(80, 80, 255));
 	}
 }
 
@@ -93,39 +93,42 @@ void MenuScene::Start() {
 	g_colDbgObjs.state.enabled = true;
 
 	// レイヤー確認用：PLAYERがENEMYに当たる設定
-	g_colDbgObjs.sphereA = std::make_unique<DebugSphereObject>(0.5f, layerMask::PLAYER, mask::PLAYER);
-	g_colDbgObjs.sphereB = std::make_unique<DebugSphereObject>(0.5f, layerMask::ENEMY, mask::ENEMY);
-	g_colDbgObjs.box = std::make_unique<DebugBoxObject>(VGet(0.8f,0.8f,0.8f), layerMask::ENVIRONMENT, mask::ENVIRONMENT);
+	g_colDbgObjs.sphereA = std::make_unique<DebugSphereObject>(0.5f, layerMask::PLAYER, mask::PLAYER);						// プレイヤーレイヤー
+	g_colDbgObjs.sphereB = std::make_unique<DebugSphereObject>(0.5f, layerMask::ENEMY, mask::ENEMY);						// エネミーレイヤーレイヤー
+	g_colDbgObjs.box = std::make_unique<DebugBoxObject>(VGet(0.8f, 0.8f, 0.8f), layerMask::ENVIRONMENT, mask::ENVIRONMENT);	// 環境レイヤー
+
+	// トリガー確認用
 	if (g_colDbgObjs.box && g_colDbgObjs.box->GetCollider()) {
 		g_colDbgObjs.box->GetCollider()->isTrigger = true;
 	}
 
-	g_colDbgObjs.sphereA->transform.SetLocalPosition(VGet(-1.5f,0.5f,2.5f));
-	g_colDbgObjs.sphereB->transform.SetLocalPosition(VGet(1.5f,0.5f,2.5f));
-	g_colDbgObjs.box->transform.SetLocalPosition(VGet(0.0f,0.8f,4.5f));
-	g_colDbgObjs.box->transform.SetLocalEulerRad(VGet(0.0f,0.7f,0.0f));
+	// 位置調整
+	g_colDbgObjs.sphereA->transform.SetLocalPosition(VGet(-1.5f, 0.5f, 2.5f));	// 動かすやつ
+	g_colDbgObjs.sphereB->transform.SetLocalPosition(VGet(1.5f, 0.5f, 2.5f));	// 動かさないやつ
+	g_colDbgObjs.box->transform.SetLocalPosition(VGet(0.0f, 0.8f, 4.5f));		// 動かさないやつ
+	g_colDbgObjs.box->transform.SetLocalEulerRad(VGet(0.0f, 0.7f, 0.0f));		// 回転
 
-	auto& camMgr = CameraManager::Instance();
-	const int sceneId = SceneManager::Instance().CurrentSceneId();
+	auto& camMgr = CameraManager::Instance();						// カメラマネージャ取得
+	const int sceneId = SceneManager::Instance().CurrentSceneId();	// シーンID取得
 
 	// Debug camera
-	if (g_debugCamId ==0 || camMgr.Get(g_debugCamId) == nullptr) {
+	if (g_debugCamId == 0 || camMgr.Get(g_debugCamId) == nullptr) {
 		g_debugCamId = g_camCtrl.SpawnAuto(
 			sceneId,
 			CameraTag::Debug,
-			VGet(0.0f,2.0f, -8.0f),
-			VGet(0.0f,0.0f,0.0f)
+			VGet(0.0f, 2.0f, -8.0f),
+			VGet(0.0f, 0.0f, 0.0f)
 		);
 	}
 
 	// Game camera（tmp をやめる）
-	if (g_gameCamId ==0 || camMgr.Get(g_gameCamId) == nullptr) {
+	if (g_gameCamId == 0 || camMgr.Get(g_gameCamId) == nullptr) {
 		g_camCtrl.SetCamera(0);
 		g_gameCamId = g_camCtrl.SpawnAuto(
 			sceneId,
 			CameraTag::Game,
-			VGet(6.0f,3.0f, -6.0f),
-			VGet(0.0f,0.8f,0.0f)
+			VGet(6.0f, 3.0f, -6.0f),
+			VGet(0.0f, 0.8f, 0.0f)
 		);
 	}
 
@@ -138,12 +141,12 @@ void MenuScene::Update() {
 
 	// カメラ操作（デバッグカメラのみ動かす）
 	g_camCtrl.SetCamera(g_debugCamId);
-	g_camCtrl.UpdateFreeMoveQuat(6.0f,1.6f);
+	g_camCtrl.UpdateFreeMoveQuat(6.0f, 1.6f);
 
 	// Collision debug object move
 	if (g_colDbgObjs.state.enabled && g_colDbgObjs.sphereA) {
 		VECTOR p = g_colDbgObjs.sphereA->transform.LocalPosition();
-		const float spd =0.08f;
+		const float spd = 0.08f;
 		if (CheckHitKey(KEY_INPUT_J)) p.x -= spd;
 		if (CheckHitKey(KEY_INPUT_L)) p.x += spd;
 		if (CheckHitKey(KEY_INPUT_I)) p.z += spd;
@@ -190,32 +193,32 @@ void MenuScene::Draw() {
 	if (g_colDbgObjs.sphereB) g_colDbgObjs.sphereB->Draw();
 	if (g_colDbgObjs.box) g_colDbgObjs.box->Draw();
 
-	DrawString(10,10, "メニューシーン - Spaceで戻る", GetColor(255,255,255));
-	DrawString(10,25, "[デモ] ObjectController: Spawn/Update/Draw/ReleaseAll", GetColor(180,255,180));
-	DrawString(10,70, "[カメラ]1:Debug2:Game B:Blend ON/OFF", GetColor(180,180,255));
-	DrawFormatString(10,90, GetColor(180,180,255), "[カメラ] Blend: %s sec=%.2f", g_useBlend?"ON":"OFF", g_blendSec);
-	DrawString(10,110, "[操作] 矢印:回転 / WASD+QE:移動（Debugカメラのみ）", GetColor(180,180,255));
-	DrawFormatString(10,130, GetColor(180,180,255), "[Render] current=%d blending=%s", (int)g_currentCamId, CameraManager::Instance().IsBlending()?"YES":"NO");
+	DrawString(10, 10, "メニューシーン - Spaceで戻る", GetColor(255, 255, 255));
+	DrawString(10, 25, "[デモ] ObjectController: Spawn/Update/Draw/ReleaseAll", GetColor(180, 255, 180));
+	DrawString(10, 70, "[カメラ]1:Debug2:Game B:Blend ON/OFF", GetColor(180, 180, 255));
+	DrawFormatString(10, 90, GetColor(180, 180, 255), "[カメラ] Blend: %s sec=%.2f", g_useBlend ? "ON" : "OFF", g_blendSec);
+	DrawString(10, 110, "[操作] 矢印:回転 / WASD+QE:移動（Debugカメラのみ）", GetColor(180, 180, 255));
+	DrawFormatString(10, 130, GetColor(180, 180, 255), "[Render] current=%d blending=%s", (int)g_currentCamId, CameraManager::Instance().IsBlending() ? "YES" : "NO");
 
 	// collision debug HUD
-	DrawString(10,160, "[CollisionDebug] J/L:I/K:U/O move sphereA", GetColor(255,255,120));
+	DrawString(10, 160, "[CollisionDebug] J/L:I/K:U/O move sphereA", GetColor(255, 255, 120));
 	if (g_colDbgObjs.sphereA) {
 		const VECTOR p = g_colDbgObjs.sphereA->transform.WorldPosition();
-		DrawFormatString(10,180, GetColor(255,255,120), "sphereA pos=(%.2f,%.2f,%.2f) hit=%s trig=%s", p.x,p.y,p.z,
-			g_colDbgObjs.sphereA->IsColliding()?"YES":"NO",
-			g_colDbgObjs.sphereA->IsTriggering()?"YES":"NO");
+		DrawFormatString(10, 180, GetColor(255, 255, 120), "sphereA pos=(%.2f,%.2f,%.2f) hit=%s trig=%s", p.x, p.y, p.z,
+			g_colDbgObjs.sphereA->IsColliding() ? "YES" : "NO",
+			g_colDbgObjs.sphereA->IsTriggering() ? "YES" : "NO");
 	}
 	if (g_colDbgObjs.sphereB) {
 		const VECTOR p = g_colDbgObjs.sphereB->transform.WorldPosition();
-		DrawFormatString(10,200, GetColor(255,255,120), "sphereB pos=(%.2f,%.2f,%.2f) hit=%s trig=%s", p.x,p.y,p.z,
-			g_colDbgObjs.sphereB->IsColliding()?"YES":"NO",
-			g_colDbgObjs.sphereB->IsTriggering()?"YES":"NO");
+		DrawFormatString(10, 200, GetColor(255, 255, 120), "sphereB pos=(%.2f,%.2f,%.2f) hit=%s trig=%s", p.x, p.y, p.z,
+			g_colDbgObjs.sphereB->IsColliding() ? "YES" : "NO",
+			g_colDbgObjs.sphereB->IsTriggering() ? "YES" : "NO");
 	}
 	if (g_colDbgObjs.box) {
 		const VECTOR p = g_colDbgObjs.box->transform.WorldPosition();
-		DrawFormatString(10,220, GetColor(255,255,120), "box pos=(%.2f,%.2f,%.2f) hit=%s trig=%s", p.x,p.y,p.z,
-			g_colDbgObjs.box->IsColliding()?"YES":"NO",
-			g_colDbgObjs.box->IsTriggering()?"YES":"NO");
+		DrawFormatString(10, 220, GetColor(255, 255, 120), "box pos=(%.2f,%.2f,%.2f) hit=%s trig=%s", p.x, p.y, p.z,
+			g_colDbgObjs.box->IsColliding() ? "YES" : "NO",
+			g_colDbgObjs.box->IsTriggering() ? "YES" : "NO");
 	}
 
 	g_controller.DrawAll();

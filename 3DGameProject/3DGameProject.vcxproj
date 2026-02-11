@@ -147,6 +147,7 @@
     <ClCompile Include="CapsuleCollider.cpp" />
     <ClCompile Include="Collider.cpp" />
     <ClCompile Include="ColliderManager.cpp" />
+    <ClCompile Include="Debug Class.cpp" />
     <ClCompile Include="Math\Quaternion.cpp" />
     <ClCompile Include="ObjectController.cpp" />
     <ClCompile Include="ObjectFactory.cpp" />
@@ -173,6 +174,8 @@
     <ClInclude Include="Collider.h" />
     <ClInclude Include="ColliderManager.h" />
     <ClInclude Include="ColliderType.h" />
+    <ClInclude Include="Debug Class.h" />
+    <ClInclude Include="LayerMask.h" />
     <ClInclude Include="Math\Quaternion.h" />
     <ClInclude Include="ObjectController.h" />
     <ClInclude Include="ObjectFactory.h" />

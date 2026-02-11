@@ -13,6 +13,10 @@ public:
 	GameObject() = default;
 	virtual ~GameObject() = default;
 
+	// Active フラグ（無効化中は Update/Draw/Collision 等の対象外にする想定）
+	bool IsActive() const noexcept { return isActive_; }
+	void SetActive(bool active) noexcept { isActive_ = active; }
+
 	// Transform（位置・回転・スケール）
 	// - 見やすさ重視で Euler(rad) を保持
 	// - 行列生成は Quaternion を使用
@@ -45,4 +49,5 @@ public:
 
 private:
 	int id_ = -1;
+	bool isActive_ = true;
 };

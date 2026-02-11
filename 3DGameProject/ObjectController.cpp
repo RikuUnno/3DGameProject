@@ -44,6 +44,10 @@ void ObjectController::UpdateAll() {
 			it = _objects.erase(it);
 			continue;
 		}
+		if (!obj->IsActive()) {
+			++it;
+			continue;
+		}
 		obj->Update();
 		++it;
 	}
@@ -54,6 +58,10 @@ void ObjectController::DrawAll() {
 		GameObject* obj = *it;
 		if (!obj) {
 			it = _objects.erase(it);
+			continue;
+		}
+		if (!obj->IsActive()) {
+			++it;
 			continue;
 		}
 		obj->Draw();

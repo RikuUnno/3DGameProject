@@ -1,23 +1,25 @@
 #pragma once
 #include "Collider.h"
-#include "ColliderType.h"
 
-class BoxCollider : public Collider
-{
+class BoxCollider : public Collider {
 public:
-	// コンストラクタ/デストラクタ
 	BoxCollider();
 	virtual ~BoxCollider();
 
-private:
-	// AABB設定
-	virtual void SetAABB() override;
+public:
+	Kind GetKind() const override { return Kind::Box; }
+	const AABB& GetAABB() const override { return aabb_; }
+	VECTOR GetCenter() const override { return box_.center; }
+	void UpdateShape() override;
 
 public:
-	// デバッグ描画
-	virtual void DrawDebug() override;		// 本体デバッグ描画
-	virtual void DrawDebugAABB() override; // AABBデバッグ描画
+	// 設定値（ワールド）
+	Box box_{};
+
+public:
+	void DrawDebug() override;
+	void DrawDebugAABB() override;
 
 private:
-	Box box; // ボックス情報
+	AABB aabb_{};
 };

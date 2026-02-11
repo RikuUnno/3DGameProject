@@ -21,13 +21,18 @@ void SceneManager::Draw() {
 }
 
 void SceneManager::ChangeScene(std::unique_ptr<IScene> scene) {
-	//既存シーンを破棄する前に、そのシーンに紐づくオブジェクトを一括回収
+	//現在のシーンを終了（Endはシーン遷移時に1度だけ）
+	if (!_stack.empty()) {
+		_stack.back()->End();
+	}
+
+	//現在のシーンに紐づくオブジェクト/Camを解放
 	if (!_stack.empty()) {
 		ObjectManager::Instance().ReleaseBySceneId(_currentSceneId);
 		CameraManager::Instance().ReleaseBySceneId(_currentSceneId);
 	}
 
-	//既存シーンを破棄
+	//現在のシーンを破棄
 	if (!_stack.empty()) {
 		_stack.back()->OnDestroy();
 		_stack.clear();
@@ -59,7 +64,10 @@ void SceneManager::PushScene(std::unique_ptr<IScene> scene) {
 void SceneManager::PopScene() {
 	if (_stack.empty()) return;
 
-	// Popするシーンに紐づく、現在 sceneId のオブジェクトを一括回収
+	// Popするシーンを終了（Endはシーン遷移時に1度だけ）
+	_stack.back()->End();
+
+	// Popするシーンに紐づくオブジェクト/Camを解放
 	ObjectManager::Instance().ReleaseBySceneId(_currentSceneId);
 	CameraManager::Instance().ReleaseBySceneId(_currentSceneId);
 

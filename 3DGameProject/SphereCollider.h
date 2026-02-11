@@ -1,24 +1,25 @@
 #pragma once
 #include "Collider.h"
-#include "ColliderType.h"
 
-class SphereCollider : public Collider
-{
+class SphereCollider : public Collider {
 public:
-	// コンストラクタ/デストラクタ	
 	SphereCollider();
 	virtual ~SphereCollider();
 
 public:
-	// AABB設定
-	virtual void SetAABB() override;
+	Kind GetKind() const override { return Kind::Sphere; }
+	const AABB& GetAABB() const override { return aabb_; }
+	VECTOR GetCenter() const override { return sphere_.center; }
+	void UpdateShape() override;
 
 public:
-	// デバッグ描画
-	virtual void DrawDebug() override;		// 本体デバッグ描画
-	virtual void DrawDebugAABB() override; // AABBデバッグ描画
+	// 設定値（ワールド）
+	Sphere sphere_{};
+
+public:
+	void DrawDebug() override;
+	void DrawDebugAABB() override;
 
 private:
-	Capsule cap; // カプセル情報
-
+	AABB aabb_{};
 };

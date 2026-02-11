@@ -190,6 +190,9 @@
     <Filter Include="ソース ファイル\System\Collision\Primitive\Capsule">
       <UniqueIdentifier>{d5c0e587-ceff-47fa-8cb8-a32c3547af83}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ヘッダー ファイル\System\Collision\LayerMask">
+      <UniqueIdentifier>{27abaee4-1480-4c68-82f9-84490a01a395}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -257,6 +260,9 @@
     </ClCompile>
     <ClCompile Include="SphereCollider.cpp">
       <Filter>ソース ファイル\System\Collision\Primitive\Sphere</Filter>
+    </ClCompile>
+    <ClCompile Include="Debug Class.cpp">
+      <Filter>ソース ファイル</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -334,6 +340,12 @@
     </ClInclude>
     <ClInclude Include="SphereCollider.h">
       <Filter>ヘッダー ファイル\System\Collision\Primitive\Sphere</Filter>
+    </ClInclude>
+    <ClInclude Include="LayerMask.h">
+      <Filter>ヘッダー ファイル\System\Collision\LayerMask</Filter>
+    </ClInclude>
+    <ClInclude Include="Debug Class.h">
+      <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

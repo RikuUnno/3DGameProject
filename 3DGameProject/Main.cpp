@@ -7,18 +7,19 @@
 #include "KeyInput.h"
 #include "ObjectManager.h"
 #include "CameraManager.h"
+#include "ColliderManager.h"
 
 void LightingInit() {
 	SetUseZBuffer3D(TRUE);
 	SetWriteZBuffer3D(TRUE);
 }
 
-// プログラムは WinMain から始まります
+// プログラムは WinMainから始まります
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
 	ChangeWindowMode(TRUE); // ウインドウモードで起動
 
-	SetGraphMode(WINDOW_WIDTH, WINDOW_HEIGHT, 32); // 画面サイズのセット
+	SetGraphMode(WINDOW_WIDTH, WINDOW_HEIGHT,32); //画面サイズのセット
 
 	SetWindowText("3D_GAME_Project"); // ウィンドウの名前（現在は仮）
 
@@ -36,8 +37,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	// KeyInput を有効化
 	KeyInput::Instance().BeginKeyInput();
-	// Enter のリピート間隔を 0.2 秒に設定
-	KeyInput::Instance().SetInputRepeatedTime(KEY_INPUT_RETURN, 0.2);
+	// Enter のリピート間隔を0.2 秒に設定
+	KeyInput::Instance().SetInputRepeatedTime(KEY_INPUT_RETURN,0.2);
 
 	// 最初のシーンをセット
 	SceneManager::Instance().ChangeScene(std::make_unique<TitleScene>());
@@ -49,12 +50,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	CameraManager::Instance().CreateCamera(SceneManager::Instance().CurrentSceneId());
 
 	// ---- Pool auto-trim settings ----
-	constexpr double kPoolTrimIntervalSec = 1.0; // 何秒ごとに掃除するか
-	constexpr double kPoolMaxIdleSec = 10.0;     // 何秒未使用なら削除するか
-	double poolTrimAccumSec = 0.0;				 // 経過時間蓄積用
+	constexpr double kPoolTrimIntervalSec =1.0; //何秒ごとに掃除するか
+	constexpr double kPoolMaxIdleSec =10.0; //何秒未使用なら削除するか
+	double poolTrimAccumSec =0.0;				 // 経過時間蓄積用
 
 	// メインループ
-	while (ProcessMessage() == 0 && CheckHitKey(KEY_INPUT_ESCAPE) == 0)
+	while (ProcessMessage() ==0 && CheckHitKey(KEY_INPUT_ESCAPE) ==0)
 	{
 		// 時間更新（必ず最初）
 		Time::Instance().Update();
@@ -72,14 +73,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		poolTrimAccumSec += Time::Instance().GetDeltaTime();
 		if (poolTrimAccumSec >= kPoolTrimIntervalSec) {
 			ObjectManager::Instance().TrimAllPoolsUnused(kPoolMaxIdleSec);
-			poolTrimAccumSec = 0.0;
+			poolTrimAccumSec =0.0;
 		}
 		// 描画
-		ClearDrawScreen();					// 画面クリア
+		ClearDrawScreen();					//画面クリア
 
 		// レンダーカメラを適用（A/BのB: Render Camera）
 		{
-			int w = 0, h = 0;
+			int w =0, h =0;
 			GetDrawScreenSize(&w, &h);
 			CameraManager::Instance().ApplyRenderCameraToDxLib(w, h);
 		}
@@ -90,10 +91,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		// デバッグ表示
 #ifdef _DEBUG
 		{
-			int w = 0, h = 0;
+			int w =0, h =0;
 			GetDrawScreenSize(&w, &h);
-			const int x = 10;
-			const int y = h - 140; //だいたい左下（行数が増えたら調整）
+			const int x =10;
+			const int y = h -140; //だいたい左下（行数が増えたら調整）
 			ObjectManager::Instance().DebugDraw(x, y);
 		}
 #endif
@@ -105,6 +106,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	}
 
 	// 終了処理
+	// 終了時の静的デストラクタ（atexit）から ColliderManager に触られても落ちないように
+	//先に Shutdownしてコンテナを安全化する。
+	ColliderManager::GetInstance().Shutdown();
+
 	KeyInput::Instance().EndKeyInput();
 	// DXライブラリの終了処理
 	DxLib_End();

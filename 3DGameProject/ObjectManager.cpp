@@ -61,16 +61,17 @@ void ObjectManager::ReleaseBySceneId(int sceneId) {
 			continue;
 		}
 
-		// Release(GameObject*) と同じルールで処理するが、再ロックを避けてここで完結させる
 		if (!obj->poolKey.empty()) {
 			obj->OnRelease();
-			it = _objects.erase(it); // deleter がプールへ返す
+			obj->SetActive(false);
+			it = _objects.erase(it);
 			continue;
 		}
 		obj->OnDestroy();
 #ifdef _DEBUG
 		++_debugTotalDeleted;
 #endif
+		obj->SetActive(false);
 		it = _objects.erase(it);
 	}
 }
@@ -92,12 +93,13 @@ GameObject* ObjectManager::Spawn(const std::string& key, const VariantMap& param
 			auto u = pit->second->Acquire();
 			if (u) {
 				GameObject* raw = u.get();
+				raw->SetActive(true);
 				raw->poolKey = key;
 				raw->ownerSceneId = _currentSceneId;
 				raw->OnAcquire(params);
 				_objects.push_back(std::move(u));
 #ifdef _DEBUG
-				++_debugTotalSpawn; //取得成功（プール経由）
+				++_debugTotalSpawn;
 #endif
 				return raw;
 			}
@@ -108,6 +110,7 @@ GameObject* ObjectManager::Spawn(const std::string& key, const VariantMap& param
 	up = ObjectFactory::Instance().Create(key, params);
 	if (!up) return nullptr;
 
+	up->SetActive(true);
 	up->poolKey.clear();
 	up->ownerSceneId = CurrentSceneId();
 	up->OnAcquire(params);
@@ -121,7 +124,7 @@ GameObject* ObjectManager::Spawn(const std::string& key, const VariantMap& param
 			)
 		);
 #ifdef _DEBUG
-		++_debugTotalSpawn; //取得成功（Factory new 経由）
+		++_debugTotalSpawn;
 #endif
 	}
 	return raw;
@@ -137,6 +140,7 @@ void ObjectManager::Release(GameObject* obj) {
 	std::string key = obj->poolKey;
 	if (!key.empty()) {
 		obj->OnRelease();
+		obj->SetActive(false);
 		_objects.erase(it);
 		return;
 	}
@@ -144,6 +148,7 @@ void ObjectManager::Release(GameObject* obj) {
 #ifdef _DEBUG
 	++_debugTotalDeleted;
 #endif
+	(*it)->SetActive(false);
 	_objects.erase(it);
 }
 

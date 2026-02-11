@@ -2,54 +2,96 @@
 #include "Collider.h"
 #include "DxLib.h"
 #include <vector>
-#include <memory>
+#include <unordered_set>
+#include <cstdint>
+#include <cstddef>
+#include <atomic>
 
 class ColliderManager {
-private: // コンストラクタ/デストラクタ
-	// シングルトンパターンにするのでコンストラクタをprivateにする
-	ColliderManager() = default;
-	~ColliderManager() = default;
+private: // ペア状態管理（※unordered_set のメンバより先に定義が必要）
+	// PairKey と PairHash の定義
+	struct PairKey {
+		Collider* a{};
+		Collider* b{};
+		bool operator==(const PairKey& o) const noexcept { return a == o.a && b == o.b; }
+	};
+	// ハッシュ関数
+	struct PairHash {
+		std::size_t operator()(const PairKey& k) const noexcept {
+			return (reinterpret_cast<std::uintptr_t>(k.a) >> 4) ^ (reinterpret_cast<std::uintptr_t>(k.b) << 1);
+		}
+	};
+	// ペアキー作成
+	PairKey MakeKey(Collider* a, Collider* b) const noexcept {
+		return (a < b) ? PairKey{ a,b } : PairKey{ b,a };
+	}
 
-public: // インスタンス取得
-	// シングルトンインスタンス取得
+	// イベントディスパッチ
+	void DispatchEnter(Collider* a, Collider* b);
+	void DispatchStay(Collider* a, Collider* b);
+	void DispatchExit(Collider* a, Collider* b);
+
+	// ペア管理
+	std::unordered_set<PairKey, PairHash> prevPairs_{}; // 前フレームのペア
+	std::unordered_set<PairKey, PairHash> currPairs_{}; // 今フレームのペア
+
+	// 終了処理ガード：終了中は Update/Register/Unregister を no-op にする
+	std::atomic_bool shuttingDown_{ false };
+
+private:
+	ColliderManager() = default;
+	virtual ~ColliderManager() {};
+
+public:
 	static ColliderManager& GetInstance() {
 		static ColliderManager instance;
 		return instance;
 	}
 
-public: // 更新
+	// 明示的終了（main/WinMainから呼び、静的デストラクタより前に安全化する）
+	void Shutdown() noexcept; // 終了処理(Mainの最後で呼ぶ)
+	bool IsShuttingDown() const noexcept { return shuttingDown_.load(std::memory_order_relaxed); }
+
+public:
+	// 更新
 	void Update();
 
-
-public: // デバッグ描画
-	// 本体デバッグ描画
+public:
+	// デバッグ描画
 	void DrawDebugAll();
-	// AABBデバッグ描画
 	void DrawDebugAABBAll();
-	// 上下とも生成されているObjectのみ描画
 
-public: // 登録/解除
-	// Colliderの登録
+public:
+	// Colliderの登録/解除	
 	void RegisterCollider(Collider* collider);
-	// Colliderの登録解除
 	void UnregisterCollider(Collider* collider);
 
-public: // 当たり判定
+public:
+	// Broad Phase（現状は BuildCurrentPairs 内で使用）
+	bool SpatialPartitioning();
+	bool CheckLayerMaskCollisions(Collider* a, Collider* b);
+	bool CheckAABBCollisions(Collider* a, Collider* b);
 
-	// Broad Phase 
-	// 空間分割
-	void SpatialPartitioning();
-	// Layer/Maskによる当たり判定
-	void CheckLayerMaskCollisions();
-	// AABB同士の当たり判定
-	void CheckAABBCollisions();
+	void CheckDetailedCollisions(); // 詳細判定
 
-	// Narrow Phase
-	// 詳細な当たり判定
-	void CheckDetailedCollisions();
+private:
+	// 判定ヘルパー
+	void UpdateAllShapes();						// 形状更新
+	void BuildCurrentPairs();					// ペア構築
+	void ProcessPairEvents();					// イベント処理
+	void ResolvePushOut(Collider* a, Collider* b);	// 押し戻し
 
-private: // 変数
-	// 登録されているColliderのリスト
-	std::vector<Collider*> colliders_; // すべてのコライダーを保持
+private:
+	// 各種詳細判定
+	void CheckSphereSphere(Collider* a, Collider* b);	// Sphere-Sphere 当たり判定
+	void CheckSphereBox(Collider* a, Collider* b);		// Sphere-Box(OBB) 当たり判定
+	void CheckBoxBox(Collider* a, Collider* b);			// Box-Box(OBB) 当たり判定
+	void CheckCapsuleCapsule(Collider* a, Collider* b);	// Capsule-Capsule 当たり判定
+	void CheckSphereCapsule(Collider* a, Collider* b);	// Sphere-Capsule 当たり判定
+	void CheckBoxCapsule(Collider* a, Collider* b);		// Box(OBB)-Capsule 当たり判定
 
+private:
+
+	std::vector<Collider*> colliders_{};	// 登録コライダー群
+	bool narrowHit_ = false;				// 詳細判定結果
 };

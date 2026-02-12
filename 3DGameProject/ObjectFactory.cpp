@@ -12,23 +12,23 @@ ObjectFactory& ObjectFactory::Instance() noexcept {
 // 登録 API
 void ObjectFactory::RegisterCreator(const std::string& key, Creator c) {
 	if (!c) return;
-	creators_[key] = std::move(c);
+	_creators[key] = std::move(c);
 }
 
 // プロトタイプ登録
 void ObjectFactory::RegisterPrototype(const std::string& key, std::unique_ptr<GameObject> prototype) {
 	if (!prototype) return;
-	prototypes_[key] = std::move(prototype);
+	_prototypes[key] = std::move(prototype);
 }
 
 // 生成 API
 std::unique_ptr<GameObject> ObjectFactory::Create(const std::string& key, const VariantMap& params) const {
-	auto it = creators_.find(key);
-	if (it != creators_.end()) {
+	auto it = _creators.find(key);
+	if (it != _creators.end()) {
 		return it->second(params);
 	}
-	auto pit = prototypes_.find(key);
-	if (pit != prototypes_.end() && pit->second) {
+	auto pit = _prototypes.find(key);
+	if (pit != _prototypes.end() && pit->second) {
 		auto clone = pit->second->Clone();
 		// params は clone->OnAcquire で適用できる（呼び出し側で呼ぶ）
 		return clone;
@@ -40,5 +40,5 @@ std::unique_ptr<GameObject> ObjectFactory::Create(const std::string& key, const 
 
 // 利用確認
 bool ObjectFactory::IsRegistered(const std::string& key) const {
-	return creators_.find(key) != creators_.end() || prototypes_.find(key) != prototypes_.end(); // key が登録されているか
+	return _creators.find(key) != _creators.end() || _prototypes.find(key) != _prototypes.end(); // key が登録されているか
 }

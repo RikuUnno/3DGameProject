@@ -3,6 +3,7 @@
 #include <cmath>
 
 #include "GameObject.h"
+#include "DxLib.h"
 
 namespace { // ユーティリティ関数群
 	// ベクトルの各要素絶対値
@@ -71,7 +72,7 @@ void BoxCollider::UpdateShape() {
 
 // 本体デバッグ描画の実装
 void BoxCollider::DrawDebug() {
-	// OBB ワイヤーフレーム描画
+	// OBB ワイヤーフレーム描画（線のみなので陰影は発生しない）
 	const unsigned int col = isTrigger ? GetColor(255,220,80) : GetColor(80,200,200);
 
 	auto Corner = [&](float sx, float sy, float sz) {

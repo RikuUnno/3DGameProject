@@ -196,6 +196,30 @@
     <Filter Include="メモ\リファレンス・マニュアル\Collider">
       <UniqueIdentifier>{be4725aa-40d3-494e-add0-6c66d1b95206}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ヘッダー ファイル\System\Template">
+      <UniqueIdentifier>{ab715ec8-fb88-4389-a1c2-bc02c0584aa4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Template\ManagerTpl">
+      <UniqueIdentifier>{e24bc90b-3186-4a5a-bde6-49670e893727}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Template">
+      <UniqueIdentifier>{8d8e9891-fd9d-479d-8cd2-f1f190c79beb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Template\ManagerTpl">
+      <UniqueIdentifier>{fd1e606e-1d5c-4919-9e98-da7a596d42e8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Debug">
+      <UniqueIdentifier>{9c8679e1-4659-4062-addd-b501f77e220a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Debug">
+      <UniqueIdentifier>{7e78d1c6-15fc-4bf0-9ff6-dadeff31049c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Template\PoolTpl">
+      <UniqueIdentifier>{03d060b5-2e18-438c-9c0f-e17fe952aa30}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Template\PoolTpl">
+      <UniqueIdentifier>{d01f3a63-9af3-4390-9b42-ffe3a46a1194}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -252,9 +276,6 @@
     <ClCompile Include="ColliderManager.cpp">
       <Filter>ソース ファイル\System\Collision\Manager</Filter>
     </ClCompile>
-    <ClCompile Include="Collider.cpp">
-      <Filter>ソース ファイル\System\Collision\Collider</Filter>
-    </ClCompile>
     <ClCompile Include="BoxCollider.cpp">
       <Filter>ソース ファイル\System\Collision\Primitive\Box</Filter>
     </ClCompile>
@@ -264,8 +285,14 @@
     <ClCompile Include="SphereCollider.cpp">
       <Filter>ソース ファイル\System\Collision\Primitive\Sphere</Filter>
     </ClCompile>
+    <ClCompile Include="ManagerTpl.cpp">
+      <Filter>ソース ファイル\System\Template\ManagerTpl</Filter>
+    </ClCompile>
     <ClCompile Include="Debug Class.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>ソース ファイル\Debug</Filter>
+    </ClCompile>
+    <ClCompile Include="PoolTpl.cpp">
+      <Filter>ソース ファイル\System\Template\PoolTpl</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -347,8 +374,14 @@
     <ClInclude Include="LayerMask.h">
       <Filter>ヘッダー ファイル\System\Collision\LayerMask</Filter>
     </ClInclude>
+    <ClInclude Include="ManagerTpl.h">
+      <Filter>ヘッダー ファイル\System\Template\ManagerTpl</Filter>
+    </ClInclude>
     <ClInclude Include="Debug Class.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>ヘッダー ファイル\Debug</Filter>
+    </ClInclude>
+    <ClInclude Include="PoolTpl.h">
+      <Filter>ヘッダー ファイル\System\Template\PoolTpl</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

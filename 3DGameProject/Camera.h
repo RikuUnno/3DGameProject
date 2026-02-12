@@ -8,19 +8,18 @@ class Camera {
 public:
 	Transform transform;
 
-	// 確定値（Render時に反映）
-	float fovYRad =60.0f * DX_PI_F /180.0f;
-	float nearZ =0.1f;
-	float farZ =1000.0f;
+	// 固定値（Renderに反映）
+	float _fovYRad =60.0f * DX_PI_F /180.0f;
+	float _nearZ =0.1f;
+	float _farZ =1000.0f;
 
-	// tag/layer 的な分類（最小）
-	CameraTag tag = CameraTag::Game;
-	int ownerSceneId = -1;
+	// tag/layer 的な属性
+	CameraTag _tag = CameraTag::Game;
+	int _ownerSceneId = -1;
 
 	const MATRIX& ViewMatrix() const;
 	void MarkDirty() noexcept;
 
-	// LookAt を要求する（当面はDxLib適用時に position/target/up を使う）
 	void LookAt(const VECTOR& eye, const VECTOR& target, const VECTOR& up = VGet(0,1,0));
 	bool HasLookAt() const noexcept { return _hasLookAt; }
 	VECTOR LookAtTarget() const noexcept { return _lookAtTarget; }

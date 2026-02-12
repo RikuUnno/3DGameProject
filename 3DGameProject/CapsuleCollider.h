@@ -13,6 +13,7 @@ public:
 	void UpdateShape() override;
 
 public:
+	// 設定値（ワールド）
 	Capsule cap_{};
 
 public:

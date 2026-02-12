@@ -44,13 +44,13 @@ public:
 	void EndKeyInput();   // 入力無効化
 
 private:
-	// DxLib の GetHitKeyStateAll は char[256] を期待するので char 型を使う
-	char m_currntKey[KEY_COUNT];
-	char m_previousKey[KEY_COUNT];
+	// DxLib の GetHitKeyStateAll は char[256] を要求
+	char _currentKey[KEY_COUNT];
+	char _previousKey[KEY_COUNT];
 
-	// 繰り返し間隔（秒）と経過タイマー（秒）
-	double m_repeatedTime[KEY_COUNT];
-	double m_repeatedTimer[KEY_COUNT];
+	// リピート設定（秒）とタイマー（秒）
+	double _repeatedTime[KEY_COUNT];
+	double _repeatedTimer[KEY_COUNT];
 
-	bool IsKeyInputON;
+	bool _isKeyInputOn{};
 };

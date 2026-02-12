@@ -26,6 +26,6 @@ public:
 	bool IsRegistered(const std::string& key) const;
 
 private:
-	std::unordered_map<std::string, Creator> creators_;                         // key -> Creator
-	std::unordered_map<std::string, std::unique_ptr<GameObject>> prototypes_;   // key -> Prototype
+	std::unordered_map<std::string, Creator> _creators; // key -> Creator
+	std::unordered_map<std::string, std::unique_ptr<GameObject>> _prototypes; // key -> Prototype
 };

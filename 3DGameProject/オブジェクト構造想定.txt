@@ -16,7 +16,8 @@ GameObject の責務（最小限）
 - std::string name_
 - std::string tag_
 - int layer_
-- Transform transform_ (Vec3 position, Vec3 rotation, Vec3 scale /  将来的に Quaternion)
+- Transform transfor
+(Vec3 position, Vec3 rotation, Vec3 scale /  将来的に Quaternion)
 - bool active_ = true, visible_ = true
 - GameObject* parent_ = nullptr
 - std::vector<GameObject*> children_

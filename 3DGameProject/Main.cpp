@@ -111,6 +111,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	ColliderManager::GetInstance().Shutdown();
 
 	KeyInput::Instance().EndKeyInput();
+
 	// DXƒ‰ƒCƒuƒ‰ƒŠ‚ÌI—¹ˆ—
 	DxLib_End();
 	return 0;

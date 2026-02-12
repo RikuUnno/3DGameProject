@@ -1,5 +1,6 @@
 #include "SphereCollider.h"
 #include "GameObject.h"
+#include "DxLib.h"
 
 SphereCollider::SphereCollider() {
 	// デフォルト値

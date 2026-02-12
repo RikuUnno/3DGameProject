@@ -18,7 +18,7 @@ public:
 	GameObject* Spawn(const std::string& key, const VariantMap& params = {});   // オブジェクト取得
 	void RegisterPool(const std::string& key, size_t maxSize = 64);             // プール登録
 	void Release(GameObject* obj);                                              // オブジェクト返却
-	void UpdateAll();                                                  // 全オブジェクト更新
+	void UpdateAll();															// 全オブジェクト更新
 	void DrawAll();                                                             // 全オブジェクト描画
 	GameObject* FindById(int id) const;                                         // ID で検索
 	bool RemoveById(int id);                                                    // ID で削除

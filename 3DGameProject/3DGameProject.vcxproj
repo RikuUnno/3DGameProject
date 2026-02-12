@@ -145,9 +145,9 @@
     <ClCompile Include="CameraController.cpp" />
     <ClCompile Include="CameraManager.cpp" />
     <ClCompile Include="CapsuleCollider.cpp" />
-    <ClCompile Include="Collider.cpp" />
     <ClCompile Include="ColliderManager.cpp" />
     <ClCompile Include="Debug Class.cpp" />
+    <ClCompile Include="ManagerTpl.cpp" />
     <ClCompile Include="Math\Quaternion.cpp" />
     <ClCompile Include="ObjectController.cpp" />
     <ClCompile Include="ObjectFactory.cpp" />
@@ -157,6 +157,7 @@
     <ClCompile Include="MenuScene.cpp" />
     <ClCompile Include="ObjectManager.cpp" />
     <ClCompile Include="ObjectPool.cpp" />
+    <ClCompile Include="PoolTpl.cpp" />
     <ClCompile Include="SceneManager.cpp" />
     <ClCompile Include="SphereCollider.cpp" />
     <ClCompile Include="Time.cpp" />
@@ -176,6 +177,7 @@
     <ClInclude Include="ColliderType.h" />
     <ClInclude Include="Debug Class.h" />
     <ClInclude Include="LayerMask.h" />
+    <ClInclude Include="ManagerTpl.h" />
     <ClInclude Include="Math\Quaternion.h" />
     <ClInclude Include="ObjectController.h" />
     <ClInclude Include="ObjectFactory.h" />
@@ -185,6 +187,7 @@
     <ClInclude Include="MenuScene.h" />
     <ClInclude Include="ObjectManager.h" />
     <ClInclude Include="ObjectPool.h" />
+    <ClInclude Include="PoolTpl.h" />
     <ClInclude Include="SceneManager.h" />
     <ClInclude Include="SceneTpl.h" />
     <ClInclude Include="SphereCollider.h" />

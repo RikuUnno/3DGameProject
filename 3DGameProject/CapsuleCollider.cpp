@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "GameObject.h"
+#include "DxLib.h"
 
 CapsuleCollider::CapsuleCollider() {
 	cap_.radius =0.3f;
@@ -51,11 +52,33 @@ void CapsuleCollider::DrawDebug() {
 	// 軸（中心線）
 	DrawLine3D(cap_.bottom, cap_.top, col);
 
-	//端の球
+	//端の球（面）
 	DrawSphere3D(cap_.bottom, cap_.radius,16, col, col, FALSE);
 	DrawSphere3D(cap_.top, cap_.radius,16, col, col, FALSE);
 
-	// 中心点
+	// --- 外枠（球と球をつなぐ線：円筒部の母線） ---
+	VECTOR axis = VSub(cap_.top, cap_.bottom);
+	axis = VNorm(axis);
+
+	VECTOR ref = (std::fabs(axis.y) <0.99f) ? VGet(0,1,0) : VGet(1,0,0);
+	VECTOR right = VCross(axis, ref);
+	right = VNorm(right);
+	VECTOR forward = VCross(right, axis);
+	forward = VNorm(forward);
+
+	const float r = cap_.radius;
+	const VECTOR p = cap_.bottom;
+	const VECTOR q = cap_.top;
+
+	constexpr int kSideLines =16;
+	const float pi = DX_PI_F;
+	for (int i=0; i<kSideLines; ++i) {
+		const float theta = (2.0f*pi) * (float)i / (float)kSideLines;
+		const VECTOR dir = VAdd(VScale(right, std::cos(theta)), VScale(forward, std::sin(theta)));
+		const VECTOR off = VScale(dir, r);
+		DrawLine3D(VAdd(p, off), VAdd(q, off), col);
+	}
+
 	DrawSphere3D(cap_.center,0.05f,8, col, col, TRUE);
 }
 

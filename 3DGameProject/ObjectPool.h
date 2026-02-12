@@ -39,8 +39,8 @@ private:
 		double lastReleasedSec{}; // freeList に戻った時刻（秒）
 	};
 
-	Creator creator_;                   // オブジェクト生成関数
-	std::vector<FreeEntry> freeList_;  // プール内の利用可能オブジェクトリスト
-	size_t maxSize_ = 64;               // プールの最大サイズ
-	mutable std::mutex mtx_;			// スレッド安全用ミューテックス
+	Creator _creator; // オブジェクト生成関数
+	std::vector<FreeEntry> _freeList; // プール内の利用可能オブジェクトリスト
+	size_t _maxSize =64; // プールの最大サイズ
+	mutable std::mutex _mtx; // スレッド安全用ミューテックス
 };

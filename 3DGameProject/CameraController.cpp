@@ -30,12 +30,9 @@ CameraController::CameraId CameraController::SpawnAuto(
 	const CameraId id = mgr.CreateCamera(ownerSceneId);
 	auto* cam = mgr.Get(id);
 	if (cam) {
-		cam->tag = tag;
+		cam->_tag = tag;
 		cam->transform.SetLocalPosition(pos);
 		cam->transform.SetLocalEulerRad(eulerRad);
-		cam->fovYRad = fovYRad;
-		cam->nearZ = nearZ;
-		cam->farZ = farZ;
 		cam->MarkDirty();
 	}
 

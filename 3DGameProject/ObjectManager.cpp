@@ -52,16 +52,19 @@ int ObjectManager::CurrentSceneId() const {
 }
 
 void ObjectManager::ReleaseBySceneId(int sceneId) {
-	// 注意: Release は objects_ を eraseするので、イテレータを使ったループでまとめて処理する
+	// 注意: Release は objects_ を eraseするので、イテレータを使うループでまとめて処理する
 	std::lock_guard lk(_mtx);
 	for (auto it = _objects.begin(); it != _objects.end(); ) {
 		GameObject* obj = it->get();
-		if (!obj || obj->ownerSceneId != sceneId) {
+		if (!obj || obj->_ownerSceneId != sceneId) {
 			++it;
 			continue;
 		}
 
-		if (!obj->poolKey.empty()) {
+		// シーン終了時フック（コメント通り：終了時に一度だけ）
+		obj->End();
+
+		if (!obj->_poolKey.empty()) {
 			obj->OnRelease();
 			obj->SetActive(false);
 			it = _objects.erase(it);
@@ -94,8 +97,8 @@ GameObject* ObjectManager::Spawn(const std::string& key, const VariantMap& param
 			if (u) {
 				GameObject* raw = u.get();
 				raw->SetActive(true);
-				raw->poolKey = key;
-				raw->ownerSceneId = _currentSceneId;
+				raw->_poolKey = key;
+				raw->_ownerSceneId = _currentSceneId;
 				raw->OnAcquire(params);
 				_objects.push_back(std::move(u));
 #ifdef _DEBUG
@@ -111,8 +114,8 @@ GameObject* ObjectManager::Spawn(const std::string& key, const VariantMap& param
 	if (!up) return nullptr;
 
 	up->SetActive(true);
-	up->poolKey.clear();
-	up->ownerSceneId = CurrentSceneId();
+	up->_poolKey.clear();
+	up->_ownerSceneId = CurrentSceneId();
 	up->OnAcquire(params);
 	GameObject* raw = up.get();
 	{
@@ -137,7 +140,7 @@ void ObjectManager::Release(GameObject* obj) {
 		[obj](const ObjectPool::UniquePtr& up) { return up.get() == obj; });
 	if (it == _objects.end()) return;
 
-	std::string key = obj->poolKey;
+	std::string key = obj->_poolKey;
 	if (!key.empty()) {
 		obj->OnRelease();
 		obj->SetActive(false);
@@ -207,7 +210,7 @@ size_t ObjectManager::TrimAllPoolsUnused(double maxIdleSeconds) {
 bool ObjectManager::UnregisterPool(const std::string& key) {
 	std::lock_guard lk(_mtx);
 	for (const auto& up : _objects) {
-		if (up && up->poolKey == key) return false;
+		if (up && up->_poolKey == key) return false;
 	}
 	auto it = _pools.find(key);
 	if (it == _pools.end()) return false;
@@ -217,6 +220,33 @@ bool ObjectManager::UnregisterPool(const std::string& key) {
 	if (it->second) it->second->Clear();
 	_pools.erase(it);
 	return true;
+}
+
+void ObjectManager::UpdateAll() {
+	std::lock_guard lk(_mtx);
+	for (auto& up : _objects) {
+		GameObject* obj = up.get();
+		if (!obj) continue;
+		if (!obj->IsActive()) continue;
+		obj->Update();
+	}
+}
+
+void ObjectManager::DrawAll() {
+	std::lock_guard lk(_mtx);
+	for (auto& up : _objects) {
+		GameObject* obj = up.get();
+		if (!obj) continue;
+		if (!obj->IsActive()) continue;
+		obj->Draw();
+	}
+}
+
+GameObject* ObjectManager::FindById(int id) const {
+	std::lock_guard lk(_mtx);
+	auto it = std::find_if(_objects.begin(), _objects.end(),
+		[id](const ObjectPool::UniquePtr& up) { return up && up->GetId() == id; });
+	return (it == _objects.end()) ? nullptr : it->get();
 }
 
 #ifdef _DEBUG

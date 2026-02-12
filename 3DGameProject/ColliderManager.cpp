@@ -104,7 +104,7 @@ void ColliderManager::BuildCurrentPairs() {
 		Collider* a = colliders_[i];
 		if (!a) continue; // aが無効ならスキップ
 		if (!a->owner) { if (a->useSceneFilter) continue; }
-		else { if (a->useSceneFilter && a->owner->ownerSceneId != currentSceneId) continue; }
+		else { if (a->useSceneFilter && a->owner->_ownerSceneId != currentSceneId) continue; }
 
 		// Active / Sleep 判定（最序盤）
 		if (!a->IsEnabled()) continue;
@@ -114,7 +114,7 @@ void ColliderManager::BuildCurrentPairs() {
 			Collider* b = colliders_[j];
 			if (!b) continue; // bが無効ならスキップ
 			if (!b->owner) { if (b->useSceneFilter) continue; }
-			else { if (b->useSceneFilter && b->owner->ownerSceneId != currentSceneId) continue; }
+			else { if (b->useSceneFilter && b->owner->_ownerSceneId != currentSceneId) continue; }
 
 			// Active / Sleep 判定（最序盤）
 			if (!b->IsEnabled()) continue;
@@ -1023,7 +1023,7 @@ void ColliderManager::UnregisterCollider(Collider* collider) {
 
 // 空間分割
 bool ColliderManager::SpatialPartitioning() {
-	// TODO: SpatialHash等
+	// SpatialHash等
 	return true;
 }
 // Layer/Maskで判定

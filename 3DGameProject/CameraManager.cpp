@@ -27,7 +27,7 @@ CameraManager& CameraManager::Instance() noexcept {
 CameraManager::CameraId CameraManager::CreateCamera(int ownerSceneId) {
 	const CameraId id = _nextId++;
 	auto cam = std::make_unique<Camera>();
-	cam->ownerSceneId = ownerSceneId;
+	cam->_ownerSceneId = ownerSceneId;
 	_cameras.emplace(id, std::move(cam));
 
 	if (_activeId ==0) _activeId = id;
@@ -52,7 +52,7 @@ bool CameraManager::DestroyCamera(CameraId id) {
 
 void CameraManager::ReleaseBySceneId(int sceneId) {
 	for (auto it = _cameras.begin(); it != _cameras.end();) {
-		if (it->second && it->second->ownerSceneId == sceneId) {
+		if (it->second && it->second->_ownerSceneId == sceneId) {
 			const auto removedId = it->first;
 			it = _cameras.erase(it);
 			if (_activeId == removedId) _activeId =0;
@@ -109,7 +109,7 @@ bool CameraManager::BlendRenderTo(CameraId targetId, float durationSec) {
 	_blend.t =0.0f;
 	_blend.scratch = std::make_unique<Camera>();
 	// scratchは描画専用なのでシーン紐付けは不要
-	_blend.scratch->ownerSceneId = -1;
+	_blend.scratch->_ownerSceneId = -1;
 	return true;
 }
 
@@ -135,9 +135,9 @@ void CameraManager::Update(float dtSec) {
 	_blend.scratch->transform.SetLocalRotation(rq);
 
 	// 射影パラメータ
-	_blend.scratch->fovYRad = LerpF(from->fovYRad, to->fovYRad, a);
-	_blend.scratch->nearZ = LerpF(from->nearZ, to->nearZ, a);
-	_blend.scratch->farZ = LerpF(from->farZ, to->farZ, a);
+	_blend.scratch->_fovYRad = LerpF(from->_fovYRad, to->_fovYRad, a);
+	_blend.scratch->_nearZ = LerpF(from->_nearZ, to->_nearZ, a);
+	_blend.scratch->_farZ = LerpF(from->_farZ, to->_farZ, a);
 
 	_blend.scratch->MarkDirty();
 
@@ -155,8 +155,8 @@ void CameraManager::ApplyRenderCameraToDxLib(int screenW, int screenH) {
 	Camera* cam = _blend.active ? _blend.scratch.get() : Render();
 	if (!cam) return;
 
-	SetupCamera_Perspective(cam->fovYRad);
-	SetCameraNearFar(cam->nearZ, cam->farZ);
+	SetupCamera_Perspective(cam->_fovYRad);
+	SetCameraNearFar(cam->_nearZ, cam->_farZ);
 
 	const VECTOR eye = cam->transform.LocalPosition();
 	VECTOR target{};

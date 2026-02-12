@@ -24,15 +24,15 @@ private:
 	// コンストラクタ
 	Time() noexcept;
 
-	// 開始時間と前回更新時間
-	std::chrono::steady_clock::time_point start_;
-	std::chrono::steady_clock::time_point last_;
+	// 開始時刻と前回更新時刻
+	std::chrono::steady_clock::time_point _start;
+	std::chrono::steady_clock::time_point _last;
 
-	// ミューテックスによる排他制御
-	mutable std::mutex mtx_;
+	// mutex
+	mutable std::mutex _mtx;
 
 	// 経過時間
-	double deltaSec_;
+	double _deltaSec;
 	// 総経過時間
-	double totalSec_;
+	double _totalSec;
 };

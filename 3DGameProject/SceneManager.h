@@ -62,10 +62,10 @@ private:
 	// スタック（トップが現在アクティブなシーン）
 	std::vector<std::unique_ptr<IScene>> _stack;
 
-	// 保留中のシーン遷移
+	// 保留中のシーン変更
 	std::unique_ptr<IScene> _pendingChange;
 	std::unique_ptr<IScene> _pendingPush;
 	bool _pendingPop = false;
 
-	int _currentSceneId = 0;
+	int _currentSceneId =0;
 };

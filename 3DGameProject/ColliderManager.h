@@ -21,6 +21,7 @@ private: // ペア状態管理（※unordered_set のメンバより先に定義が必要）
 			return (reinterpret_cast<std::uintptr_t>(k.a) >> 4) ^ (reinterpret_cast<std::uintptr_t>(k.b) << 1);
 		}
 	};
+
 	// ペアキー作成
 	PairKey MakeKey(Collider* a, Collider* b) const noexcept {
 		return (a < b) ? PairKey{ a,b } : PairKey{ b,a };

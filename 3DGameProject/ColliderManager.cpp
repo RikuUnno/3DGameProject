@@ -45,10 +45,15 @@ void ColliderManager::Shutdown() noexcept {
 void ColliderManager::DispatchEnter(Collider* a, Collider* b) {
 	if (!a || !b) return;
 	if (a->isTrigger || b->isTrigger) {
+		if (a->owner) a->owner->OnTriggerEnter(a, b);
+		if (b->owner) b->owner->OnTriggerEnter(b, a);
+		//Šù‘¶ŒÝŠ·
 		a->OnTriggerEnter(b);
 		b->OnTriggerEnter(a);
 	}
 	else {
+		if (a->owner) a->owner->OnCollisionEnter(a, b);
+		if (b->owner) b->owner->OnCollisionEnter(b, a);
 		a->OnCollisionEnter(b);
 		b->OnCollisionEnter(a);
 	}
@@ -57,11 +62,15 @@ void ColliderManager::DispatchEnter(Collider* a, Collider* b) {
 void ColliderManager::DispatchStay(Collider* a, Collider* b) {
 	if (!a || !b) return;
 	if (a->isTrigger || b->isTrigger) {
+		if (a->owner) a->owner->OnTriggerStay(a, b);
+		if (b->owner) b->owner->OnTriggerStay(b, a);
 		a->OnTriggerStay(b);
 		b->OnTriggerStay(a);
 	}
 	else {
-		a->OnCollisionStay(b); 
+		if (a->owner) a->owner->OnCollisionStay(a, b);
+		if (b->owner) b->owner->OnCollisionStay(b, a);
+		a->OnCollisionStay(b);
 		b->OnCollisionStay(a);
 	}
 }
@@ -69,10 +78,14 @@ void ColliderManager::DispatchStay(Collider* a, Collider* b) {
 void ColliderManager::DispatchExit(Collider* a, Collider* b) {
 	if (!a || !b) return;
 	if (a->isTrigger || b->isTrigger) {
+		if (a->owner) a->owner->OnTriggerExit(a, b);
+		if (b->owner) b->owner->OnTriggerExit(b, a);
 		a->OnTriggerExit(b);
 		b->OnTriggerExit(a);
 	}
 	else {
+		if (a->owner) a->owner->OnCollisionExit(a, b);
+		if (b->owner) b->owner->OnCollisionExit(b, a);
 		a->OnCollisionExit(b);
 		b->OnCollisionExit(a);
 	}

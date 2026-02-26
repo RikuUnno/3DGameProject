@@ -74,6 +74,12 @@ public:
 	virtual void DrawDebug() {}
 	virtual void DrawDebugAABB() {}
 
+	// デバッグ描画色（0 の場合は各Colliderのデフォルト色）
+	void SetDebugColor(unsigned int color) noexcept { debugColor_ = color; }
+	unsigned int DebugColor() const noexcept { return debugColor_; }
+	void ClearDebugColor() noexcept { debugColor_ =0; }
+
 private:
 	bool enabled_ = true;
+	unsigned int debugColor_ =0;
 };

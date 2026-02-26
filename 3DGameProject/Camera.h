@@ -25,6 +25,9 @@ public:
 	VECTOR LookAtTarget() const noexcept { return _lookAtTarget; }
 	VECTOR LookAtUp() const noexcept { return _lookAtUp; }
 
+	// Pooling support: ‰Šúó‘Ô‚Ö–ß‚·iCameraManager/Pool‚ªÄ—˜—p‚·‚é‚½‚ßj
+	void Reset() noexcept;
+
 private:
 	mutable bool _dirty = true;
 	mutable MATRIX _view{};

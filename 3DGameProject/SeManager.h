@@ -1,0 +1,75 @@
+#pragma once
+
+#include <string>
+#include <unordered_map>
+#include <vector>
+#include <memory>
+#include <functional>
+
+#include "Manager.h"
+#include "SePool.h"
+
+// 前方宣言
+class Transform;
+
+// SeManager
+// - 効果音(SE)の管理
+// - 要件:
+// - 再利用想定（SePool）
+// -追加時に再生
+// -追加のたびに再利用（同じSEを複数同時再生するためインスタンスを都度確保）
+class SeManager : public Manager {
+public:
+	static SeManager& Instance() noexcept;
+
+	//2D
+	// SEを再生（必要ならプールインスタンスを確保して再利用）
+	// - filePath: wav/ogg等（DxLibが扱える形式）
+	// - top: TRUE相当（同一SEを途中から鳴らし直すか）
+	void Play(const std::string& filePath, bool top = true);
+
+	// パン・ポジション指定再生
+	void PlayPan(const std::string& filePath, float pan, bool top = true);
+	void PlayAt(const std::string& filePath, const Transform& t, bool top = true);
+
+	//3D
+	// - radius:そのSEが聞こえる距離（ゲーム側のスケールに合わせる）
+	void Play3DAt(const std::string& filePath, const Transform& emitter, float radius, bool top = true);
+
+	// listener（聴取者）
+	// - 通常は RenderCamera の Transform を渡す
+	void SetListener(const Transform* listener) noexcept { _listener = listener; }
+	const Transform* Listener() const noexcept { return _listener; }
+
+	// 再生が終わったインスタンスをプールへ戻す
+	void Update() override;
+
+	// 全停止（再生中をすべて止め、プールへ戻す）
+	void StopAll();
+
+	// キャッシュ（sound handle）の使い回しをしたい場合の拡張ポイント
+	// 現状は Se が個別に LoadSoundMemする（最小実装）
+
+	void SetPoolMaxSize(size_t n) { _pool.SetMaxSize(n); }
+	size_t PoolFreeSize() const { return _pool.Size(); }
+
+private:
+	SeManager() = default;
+	~SeManager() = default;
+	SeManager(const SeManager&) = delete;
+	SeManager& operator=(const SeManager&) = delete;
+
+	void PlayInternal_(
+		const std::string& filePath,
+		bool want3D,
+		const std::function<void(class Se*)>& playFn
+	);
+
+	void ApplyListener_();
+
+	// 再生中インスタンス
+	std::vector<SePool::TypedUniquePtr> _playing;
+	SePool _pool{64};
+
+	const Transform* _listener = nullptr;
+};

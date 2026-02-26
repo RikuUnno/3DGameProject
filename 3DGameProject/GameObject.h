@@ -8,6 +8,8 @@
 
 using VariantMap = std::unordered_map<std::string, std::string>; // パラメータマップ定義
 
+class Collider;
+
 class GameObject {
 public:
 	GameObject() = default;
@@ -22,6 +24,16 @@ public:
 	// - 行列生成は Quaternion を使用
 	// - 親子関係を見越した local/world キャッシュ
 	Transform transform;
+
+	// --- Unity風: GameObjectが直接受け取るコールバック ---
+	// self/other を渡す（複数Collider対応）
+	virtual void OnCollisionEnter(Collider* self, Collider* other) {}
+	virtual void OnCollisionStay(Collider* self, Collider* other) {}
+	virtual void OnCollisionExit(Collider* self, Collider* other) {}
+
+	virtual void OnTriggerEnter(Collider* self, Collider* other) {}
+	virtual void OnTriggerStay(Collider* self, Collider* other) {}
+	virtual void OnTriggerExit(Collider* self, Collider* other) {}
 
 	// ライフサイクル
 	virtual void Awake() {}			// 生成直後一度だけ呼ばれる

@@ -64,6 +64,31 @@ CapsuleCollider* DebugPlayer::GetCollider() const noexcept {
 }
 
 
+void DebugPlayer::OnCollisionEnter(Collider* /*self*/, Collider* /*other*/) {
+	_isColliding = true;
+}
+
+void DebugPlayer::OnCollisionStay(Collider* self, Collider* /*other*/) {
+	_isColliding = true;
+	if (!self) return;
+	self->SetDebugColor(GetColor(255,80,80));
+}
+
+void DebugPlayer::OnCollisionExit(Collider* self, Collider* /*other*/) {
+	_isColliding = false;
+	if (!self) return;
+	self->ClearDebugColor();
+}
+
+void DebugPlayer::OnTriggerStay(Collider* self, Collider* /*other*/) {
+	if (!self) return;
+	self->SetDebugColor(GetColor(80, 80, 255));
+}
+
+void DebugPlayer::OnTriggerExit(Collider* self, Collider* /*other*/) {
+	if (!self) return;
+	self->ClearDebugColor();
+}
 
 // ---------------- DebugEnemy ----------------
 
@@ -73,6 +98,7 @@ DebugEnemy::DebugEnemy() {
 	collider_->owner = this;
 	collider_->layer = layerMask::ENEMY;
 	collider_->mask = mask::ALL;
+	collider_->isTrigger = true; // プレイヤーと当たるが物理的な反応はしないトリガーにする例
 }
 
 DebugEnemy::~DebugEnemy() {
@@ -121,4 +147,30 @@ void DebugEnemy::OnRelease() {
 
 CapsuleCollider* DebugEnemy::GetCollider() const noexcept {
 	return collider_.get();
+}
+
+void DebugEnemy::OnCollisionEnter(Collider* /*self*/, Collider* /*other*/) {
+	_isColliding = true;
+}
+
+void DebugEnemy::OnCollisionStay(Collider* self, Collider* /*other*/) {
+	_isColliding = true;
+	if (!self) return;
+	self->SetDebugColor(GetColor(255, 80, 80));
+}
+
+void DebugEnemy::OnCollisionExit(Collider* self, Collider* /*other*/) {
+	_isColliding = false;
+	if (!self) return;
+	self->ClearDebugColor();
+}
+
+void DebugEnemy::OnTriggerStay(Collider* self, Collider* /*other*/) {
+	if (!self) return;
+	self->SetDebugColor(GetColor(80, 80, 255));
+}
+
+void DebugEnemy::OnTriggerExit(Collider* self, Collider* /*other*/) {
+	if (!self) return;
+	self->ClearDebugColor();
 }

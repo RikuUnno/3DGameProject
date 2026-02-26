@@ -1,6 +1,7 @@
 #include "TitleScene.h"
 #include "MenuScene.h"
 #include "SceneManager.h"
+#include "SceneTransition.h"
 #include "Time.h"
 #include "KeyInput.h"
 #include "DxLib.h"
@@ -13,9 +14,15 @@ void TitleScene::Start() {
 }
 
 void TitleScene::Update() {
-	// Enter 押下でメニューへ遷移（独立して判定）
+	// Enter 押下でメニューへ遷移
 	if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_RETURN)) {
-		SceneManager::Instance().RequestChange(std::make_unique<MenuScene>());
+		SceneTransition::Params p;
+		p.mode = SceneTransition::Mode::MaskImage;
+		p.durationSec = 0.6;
+		p.maskGraphPath = "Data/Transition/mask.png";
+		p.pixelShaderPath = "Data/Transition/mask_transition.pso";
+
+		SceneTransition::Instance().Start(std::make_unique<MenuScene>(), p, 0.5f);
 	}
 }
 

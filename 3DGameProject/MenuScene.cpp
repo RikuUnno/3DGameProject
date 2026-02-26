@@ -3,6 +3,7 @@
 #include "DxLib.h"
 #include "KeyInput.h"
 #include "SceneManager.h"
+#include "SceneTransition.h"
 
 #include "ObjectFactory.h"
 #include "ObjectManager.h"
@@ -81,11 +82,11 @@ void MenuScene::Start() {
 
 void MenuScene::Update() {
 	// ObjectManager 配下の更新
-	ObjectManager::Instance().UpdateAll();	// 全オブジェクト更新
+	ObjectManager::Instance().UpdateAll();
 
 	// カメラ操作（デバッグカメラのみ動かす）
-	g_camCtrl.SetCamera(g_debugCamId);			// デバッグカメラを操作対象に
-	g_camCtrl.UpdateFreeMoveQuat(6.0f, 1.6f);	// 移動速度6.0f、回転速度1.6rad/sec
+	g_camCtrl.SetCamera(g_debugCamId);
+	g_camCtrl.UpdateFreeMoveMouse(8.0f,0.4f,10.0f);
 
 	// DebugPlayer 移動入力
 	if (g_debugPlayer) {
@@ -119,10 +120,17 @@ void MenuScene::Update() {
 	}
 
 	// シーン切替入力
-	if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_SPACE)) {	// タイトルへ戻る
+	if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_SPACE)) {
 		if (g_debugPlayer) { ObjectManager::Instance().Release(g_debugPlayer); g_debugPlayer = nullptr; }
 		if (g_debugEnemy) { ObjectManager::Instance().Release(g_debugEnemy); g_debugEnemy = nullptr; }
-		SceneManager::Instance().ChangeScene(std::make_unique<TitleScene>());
+
+		SceneTransition::Params p;
+		p.mode = SceneTransition::Mode::MaskImage;
+		p.durationSec =0.6;
+		p.maskGraphPath = "Data/Transition/mask.png";
+		p.pixelShaderPath = "Data/Transition/mask_transition.pso";
+
+		SceneTransition::Instance().Start(std::make_unique<TitleScene>(), p,0.5f);
 	}
 }
 

@@ -8,6 +8,9 @@
 #include "ObjectManager.h"
 #include "CameraManager.h"
 #include "ColliderManager.h"
+#include "SeManager.h"
+#include "BgmManager.h"
+#include "SceneTransition.h"
 
 void LightingInit() {
 	SetUseZBuffer3D(TRUE);
@@ -19,7 +22,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 {
 	ChangeWindowMode(TRUE); // ウインドウモードで起動
 
-	SetGraphMode(WINDOW_WIDTH, WINDOW_HEIGHT,32); //画面サイズのセット
+	SetGraphMode(WINDOW_WIDTH, WINDOW_HEIGHT, 32); //画面サイズのセット
 
 	SetWindowText("3D_GAME_Project"); // ウィンドウの名前（現在は仮）
 
@@ -38,7 +41,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	// KeyInput を有効化
 	KeyInput::Instance().BeginKeyInput();
 	// Enter のリピート間隔を0.2 秒に設定
-	KeyInput::Instance().SetInputRepeatedTime(KEY_INPUT_RETURN,0.2);
+	KeyInput::Instance().SetInputRepeatedTime(KEY_INPUT_RETURN, 0.2);
 
 	// 最初のシーンをセット
 	SceneManager::Instance().ChangeScene(std::make_unique<TitleScene>());
@@ -50,12 +53,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	CameraManager::Instance().CreateCamera(SceneManager::Instance().CurrentSceneId());
 
 	// ---- Pool auto-trim settings ----
-	constexpr double kPoolTrimIntervalSec =1.0; //何秒ごとに掃除するか
-	constexpr double kPoolMaxIdleSec =10.0; //何秒未使用なら削除するか
-	double poolTrimAccumSec =0.0;				 // 経過時間蓄積用
+	constexpr double kPoolTrimIntervalSec = 1.0; //何秒ごとに掃除するか
+	constexpr double kPoolMaxIdleSec = 10.0; //何秒未使用なら削除するか
+	double poolTrimAccumSec = 0.0;				 // 経過時間蓄積用
 
 	// メインループ
-	while (ProcessMessage() ==0 && CheckHitKey(KEY_INPUT_ESCAPE) ==0)
+	while (ProcessMessage() == 0 && CheckHitKey(KEY_INPUT_ESCAPE) == 0)
 	{
 		// 時間更新（必ず最初）
 		Time::Instance().Update();
@@ -66,40 +69,51 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		// シーン更新
 		SceneManager::Instance().Update();
 
+		// シーントランジション更新
+		SceneTransition::Instance().Update(Time::Instance().GetDeltaTime());
+
 		// カメラ補間更新（Renderのブレンドなど）
 		CameraManager::Instance().Update((float)Time::Instance().GetDeltaTime());
 
-		// ---- Pool auto-trim ----
+		// SE listener を Render カメラに追従させる
+		if (auto* cam = CameraManager::Instance().Render()) {
+			SeManager::Instance().SetListener(&cam->transform);
+		}
+
+		// SE 更新（再生終了したインスタンスをプールへ返却）
+		SeManager::Instance().Update();
+
+		// プールの定期掃除
 		poolTrimAccumSec += Time::Instance().GetDeltaTime();
 		if (poolTrimAccumSec >= kPoolTrimIntervalSec) {
 			ObjectManager::Instance().TrimAllPoolsUnused(kPoolMaxIdleSec);
-			poolTrimAccumSec =0.0;
+			poolTrimAccumSec = 0.0;
 		}
 		// 描画
-		ClearDrawScreen();					//画面クリア
+		ClearDrawScreen();
 
 		// レンダーカメラを適用（A/BのB: Render Camera）
 		{
-			int w =0, h =0;
+			int w = 0, h = 0;
 			GetDrawScreenSize(&w, &h);
 			CameraManager::Instance().ApplyRenderCameraToDxLib(w, h);
 		}
 
-		// シーン描画
-		SceneManager::Instance().Draw();
+		// シーン描画（トランジションがあればそちら経由）
+		SceneTransition::Instance().Draw();
 
 		// デバッグ表示
 #ifdef _DEBUG
 		{
-			int w =0, h =0;
+			int w = 0, h = 0;
 			GetDrawScreenSize(&w, &h);
-			const int x =10;
-			const int y = h -140; //だいたい左下（行数が増えたら調整）
+			const int x = 10;
+			const int y = h - 140; //だいたい左下（行数が増えたら調整）
 			ObjectManager::Instance().DebugDraw(x, y);
 		}
 #endif
 
-		ScreenFlip();						// 入れ替え
+		ScreenFlip();
 
 		// フレーム末に保留中の遷移を処理
 		SceneManager::Instance().ProcessPendingChanges();

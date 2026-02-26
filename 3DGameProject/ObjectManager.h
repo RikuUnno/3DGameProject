@@ -5,11 +5,12 @@
 #include <mutex>
 #include <string>
 #include "ObjectPool.h"
+#include "Manager.h"
 
 class GameObject;
 using VariantMap = std::unordered_map<std::string, std::string>;
 
-class ObjectManager {
+class ObjectManager : public Manager {
 public:
 	// シングルトンインスタンス取得
 	static ObjectManager& Instance() noexcept;
@@ -39,6 +40,9 @@ public:
 	size_t TrimAllPoolsUnused(double maxIdleSeconds);
 	// プール登録を解除する（freeList は破棄）。使用中が残っている場合は false.
 	bool UnregisterPool(const std::string& key);
+
+	// Manager
+	void Update() override { UpdateAll(); }
 
 #ifdef _DEBUG
 	// デバッグ表示（Releaseではコンパイルされない）

@@ -13,10 +13,6 @@ namespace {
 	}
 
 	inline float LerpF(float a, float b, float t) noexcept { return a + (b - a) * t; }
-
-	inline VECTOR LerpEuler(const VECTOR& a, const VECTOR& b, float t) noexcept {
-		return LerpVec(a, b, t);
-	}
 }
 
 CameraManager& CameraManager::Instance() noexcept {
@@ -26,8 +22,14 @@ CameraManager& CameraManager::Instance() noexcept {
 
 CameraManager::CameraId CameraManager::CreateCamera(int ownerSceneId) {
 	const CameraId id = _nextId++;
-	auto cam = std::make_unique<Camera>();
-	cam->_ownerSceneId = ownerSceneId;
+	auto cam = _pool.Acquire();
+	if (!cam) {
+		// fallback（想定外だが安全側）
+		Pool::Deleter del = [](void* p) { delete static_cast<Camera*>(p); };
+		cam = Pool::UniquePtr(new Camera(), del);
+	}
+	// ownerSceneId をセット
+	static_cast<Camera*>(cam.get())->_ownerSceneId = ownerSceneId;
 	_cameras.emplace(id, std::move(cam));
 
 	if (_activeId ==0) _activeId = id;
@@ -52,7 +54,8 @@ bool CameraManager::DestroyCamera(CameraId id) {
 
 void CameraManager::ReleaseBySceneId(int sceneId) {
 	for (auto it = _cameras.begin(); it != _cameras.end();) {
-		if (it->second && it->second->_ownerSceneId == sceneId) {
+		Camera* cam = static_cast<Camera*>(it->second.get());
+		if (cam && cam->_ownerSceneId == sceneId) {
 			const auto removedId = it->first;
 			it = _cameras.erase(it);
 			if (_activeId == removedId) _activeId =0;
@@ -69,12 +72,12 @@ void CameraManager::ReleaseBySceneId(int sceneId) {
 
 Camera* CameraManager::Get(CameraId id) {
 	auto it = _cameras.find(id);
-	return it == _cameras.end() ? nullptr : it->second.get();
+	return it == _cameras.end() ? nullptr : static_cast<Camera*>(it->second.get());
 }
 
 const Camera* CameraManager::Get(CameraId id) const {
 	auto it = _cameras.find(id);
-	return it == _cameras.end() ? nullptr : it->second.get();
+	return it == _cameras.end() ? nullptr : static_cast<const Camera*>(it->second.get());
 }
 
 bool CameraManager::SetActive(CameraId id) {
@@ -108,7 +111,6 @@ bool CameraManager::BlendRenderTo(CameraId targetId, float durationSec) {
 	_blend.duration = (durationSec >0.0001f) ? durationSec :0.0001f;
 	_blend.t =0.0f;
 	_blend.scratch = std::make_unique<Camera>();
-	// scratchは描画専用なのでシーン紐付けは不要
 	_blend.scratch->_ownerSceneId = -1;
 	return true;
 }
@@ -127,14 +129,10 @@ void CameraManager::Update(float dtSec) {
 	_blend.t += dtSec;
 	const float a = Clamp01(_blend.t / _blend.duration);
 
-	//位置
 	_blend.scratch->transform.SetLocalPosition(LerpVec(from->transform.LocalPosition(), to->transform.LocalPosition(), a));
-
-	// 回転（Quaternion）
 	const Quaternion rq = Quaternion::Slerp(from->transform.LocalRotation(), to->transform.LocalRotation(), a);
 	_blend.scratch->transform.SetLocalRotation(rq);
 
-	// 射影パラメータ
 	_blend.scratch->_fovYRad = LerpF(from->_fovYRad, to->_fovYRad, a);
 	_blend.scratch->_nearZ = LerpF(from->_nearZ, to->_nearZ, a);
 	_blend.scratch->_farZ = LerpF(from->_farZ, to->_farZ, a);

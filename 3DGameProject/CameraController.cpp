@@ -187,3 +187,70 @@ void CameraController::UpdateFreeMoveQuatClamped(float moveSpeed, float rotSpeed
 	cam->transform.SetLocalPosition(p);
 	cam->MarkDirty();
 }
+
+void CameraController::UpdateFreeMoveMouse(float moveSpeed, float rotSpeed, float wheelMoveSpeed) {
+	auto* cam = CameraManager::Instance().Get(_cameraId);
+	if (!cam) return;
+
+	const float dt = (float)Time::Instance().GetDeltaTime();
+
+	static int s_prevX =0;
+	static int s_prevY =0;
+	static bool s_prevInit = false;
+
+	int mx =0, my =0;
+	GetMousePoint(&mx, &my);
+	if (!s_prevInit) {
+		s_prevX = mx;
+		s_prevY = my;
+		s_prevInit = true;
+	}
+
+	const int mdx = mx - s_prevX;
+	const int mdy = my - s_prevY;
+	// 次フレーム用
+	s_prevX = mx;
+	s_prevY = my;
+
+	Quaternion q = cam->transform.LocalRotation();
+
+	//右ボタン押下中のみ回転
+	const int mbtn = GetMouseInput();
+	const bool rotating = (mbtn & MOUSE_INPUT_RIGHT) !=0;
+	if (rotating) {
+		// yaw: ワールド上方向
+		const float yaw = -mdx * rotSpeed * dt;
+		q = Quaternion::FromAxisAngleRad(VGet(0,1,0), yaw) * q;
+
+		// pitch: 現在の右方向
+		const VECTOR right = VNorm(q.RotateVector(VGet(1,0,0)));
+		const float pitch = -mdy * rotSpeed * dt;
+		q = Quaternion::FromAxisAngleRad(right, pitch) * q;
+
+		cam->transform.SetLocalRotation(q);
+	}
+
+	// 移動
+	VECTOR p = cam->transform.LocalPosition();
+	const VECTOR f = cam->transform.Forward();
+	const VECTOR r = cam->transform.Right();
+	const VECTOR u = cam->transform.Up();
+
+	if (KeyInput::Instance().IsKeyInputHeld(KEY_INPUT_W)) p = VAdd(p, VScale(f, moveSpeed * dt));
+	if (KeyInput::Instance().IsKeyInputHeld(KEY_INPUT_S)) p = VAdd(p, VScale(f, -moveSpeed * dt));
+	if (KeyInput::Instance().IsKeyInputHeld(KEY_INPUT_D)) p = VAdd(p, VScale(r, moveSpeed * dt));
+	if (KeyInput::Instance().IsKeyInputHeld(KEY_INPUT_A)) p = VAdd(p, VScale(r, -moveSpeed * dt));
+	if (KeyInput::Instance().IsKeyInputHeld(KEY_INPUT_E)) p = VAdd(p, VScale(u, moveSpeed * dt));
+	if (KeyInput::Instance().IsKeyInputHeld(KEY_INPUT_Q)) p = VAdd(p, VScale(u, -moveSpeed * dt));
+
+	// ホイール前後
+	const int wheel = GetMouseWheelRotVol();
+	if (wheel !=0) {
+		// wheelは多くの環境で1 notch =120
+		const float w = (float)wheel /120.0f;
+		p = VAdd(p, VScale(f, w * wheelMoveSpeed));
+	}
+
+	cam->transform.SetLocalPosition(p);
+	cam->MarkDirty();
+}

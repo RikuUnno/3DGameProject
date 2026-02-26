@@ -151,9 +151,6 @@
     <Filter Include="ソース ファイル\System\Collision">
       <UniqueIdentifier>{07724d06-2961-425b-9f26-2bb6aac86e55}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ソース ファイル\System\Collision\Collider">
-      <UniqueIdentifier>{5bf1752e-a790-4410-a3d6-17134f73db1b}</UniqueIdentifier>
-    </Filter>
     <Filter Include="ヘッダー ファイル\System\Collision\Collider">
       <UniqueIdentifier>{49ceb8a8-dc8f-4a52-a238-3e8626c054d9}</UniqueIdentifier>
     </Filter>
@@ -205,20 +202,65 @@
     <Filter Include="ソース ファイル\System\Template">
       <UniqueIdentifier>{8d8e9891-fd9d-479d-8cd2-f1f190c79beb}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ソース ファイル\System\Template\ManagerTpl">
-      <UniqueIdentifier>{fd1e606e-1d5c-4919-9e98-da7a596d42e8}</UniqueIdentifier>
-    </Filter>
     <Filter Include="ソース ファイル\Debug">
       <UniqueIdentifier>{9c8679e1-4659-4062-addd-b501f77e220a}</UniqueIdentifier>
     </Filter>
     <Filter Include="ヘッダー ファイル\Debug">
       <UniqueIdentifier>{7e78d1c6-15fc-4bf0-9ff6-dadeff31049c}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ソース ファイル\System\Template\PoolTpl">
-      <UniqueIdentifier>{03d060b5-2e18-438c-9c0f-e17fe952aa30}</UniqueIdentifier>
-    </Filter>
     <Filter Include="ヘッダー ファイル\System\Template\PoolTpl">
       <UniqueIdentifier>{d01f3a63-9af3-4390-9b42-ffe3a46a1194}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Camera\CameraPool">
+      <UniqueIdentifier>{c24724de-12ca-4dd4-9d3c-b3e5e23e29a6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Bgm">
+      <UniqueIdentifier>{fb960d30-34a2-4734-83d6-25e4232c3029}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Se">
+      <UniqueIdentifier>{b131ad30-ccab-418c-aadd-c4143f829383}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Bgm\Manager">
+      <UniqueIdentifier>{a0df9a24-3882-43b5-ad8a-94c825d4ea2f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Se\Manager">
+      <UniqueIdentifier>{9ea4a29e-0db1-4054-8ad3-6e05e2e11526}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Bgm\Pool">
+      <UniqueIdentifier>{e36784a9-bc7c-4e55-889e-3102c708cfa9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Se\Pool">
+      <UniqueIdentifier>{2a0a1cbb-96dc-433c-b859-156e79fa5934}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Se\Se">
+      <UniqueIdentifier>{a6443e68-9348-4ecd-a9a7-4f7e9485c0a0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Bgm\Bgm">
+      <UniqueIdentifier>{1382b8b2-2c65-4912-ba89-a8505d35b921}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Se">
+      <UniqueIdentifier>{778b58a0-6755-4110-9193-154811e3dcf2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Se\Se">
+      <UniqueIdentifier>{c7a83ec6-a9a4-4d85-992c-3d4ce060f62c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Se\Manager">
+      <UniqueIdentifier>{7a8e9729-c5bc-461f-b832-652a53d845bd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Bgm">
+      <UniqueIdentifier>{eef0a3b3-783f-4f55-b7ae-82d615b94bf8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Bgm\Bgm">
+      <UniqueIdentifier>{a61d733a-ef8f-40fe-b35d-7441653957d3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Bgm\Manager">
+      <UniqueIdentifier>{5500c550-125a-474b-b6c5-67aa68467093}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Transition">
+      <UniqueIdentifier>{1321e9dc-b635-402a-8da3-b54aea79c080}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Transition">
+      <UniqueIdentifier>{5b832177-3ea6-4181-bd18-ce7eefa94ce3}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -285,14 +327,23 @@
     <ClCompile Include="SphereCollider.cpp">
       <Filter>ソース ファイル\System\Collision\Primitive\Sphere</Filter>
     </ClCompile>
-    <ClCompile Include="ManagerTpl.cpp">
-      <Filter>ソース ファイル\System\Template\ManagerTpl</Filter>
-    </ClCompile>
     <ClCompile Include="Debug Class.cpp">
       <Filter>ソース ファイル\Debug</Filter>
     </ClCompile>
-    <ClCompile Include="PoolTpl.cpp">
-      <Filter>ソース ファイル\System\Template\PoolTpl</Filter>
+    <ClCompile Include="SeManager.cpp">
+      <Filter>ソース ファイル\System\Se\Manager</Filter>
+    </ClCompile>
+    <ClCompile Include="Se.cpp">
+      <Filter>ソース ファイル\System\Se\Se</Filter>
+    </ClCompile>
+    <ClCompile Include="Bgm.cpp">
+      <Filter>ソース ファイル\System\Bgm\Bgm</Filter>
+    </ClCompile>
+    <ClCompile Include="BgmManager.cpp">
+      <Filter>ソース ファイル\System\Bgm\Manager</Filter>
+    </ClCompile>
+    <ClCompile Include="SceneTransition.cpp">
+      <Filter>ソース ファイル\Scene\Transition</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -374,14 +425,38 @@
     <ClInclude Include="LayerMask.h">
       <Filter>ヘッダー ファイル\System\Collision\LayerMask</Filter>
     </ClInclude>
-    <ClInclude Include="ManagerTpl.h">
-      <Filter>ヘッダー ファイル\System\Template\ManagerTpl</Filter>
-    </ClInclude>
     <ClInclude Include="Debug Class.h">
       <Filter>ヘッダー ファイル\Debug</Filter>
     </ClInclude>
-    <ClInclude Include="PoolTpl.h">
+    <ClInclude Include="CameraPool.h">
+      <Filter>ヘッダー ファイル\System\Camera\CameraPool</Filter>
+    </ClInclude>
+    <ClInclude Include="Pool.h">
       <Filter>ヘッダー ファイル\System\Template\PoolTpl</Filter>
+    </ClInclude>
+    <ClInclude Include="Manager.h">
+      <Filter>ヘッダー ファイル\System\Template\ManagerTpl</Filter>
+    </ClInclude>
+    <ClInclude Include="SePool.h">
+      <Filter>ヘッダー ファイル\System\Se\Pool</Filter>
+    </ClInclude>
+    <ClInclude Include="SeManager.h">
+      <Filter>ヘッダー ファイル\System\Se\Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="Se.h">
+      <Filter>ヘッダー ファイル\System\Se\Se</Filter>
+    </ClInclude>
+    <ClInclude Include="Bgm.h">
+      <Filter>ヘッダー ファイル\System\Bgm\Bgm</Filter>
+    </ClInclude>
+    <ClInclude Include="BgmManager.h">
+      <Filter>ヘッダー ファイル\System\Bgm\Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="BgmPool.h">
+      <Filter>ヘッダー ファイル\System\Bgm\Pool</Filter>
+    </ClInclude>
+    <ClInclude Include="SceneTransition.h">
+      <Filter>ヘッダー ファイル\Scene\Transition</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -47,7 +47,10 @@ void CapsuleCollider::UpdateShape() {
 }
 
 void CapsuleCollider::DrawDebug() {
-	const unsigned int col = isTrigger ? GetColor(255,220,80) : GetColor(80,200,200);
+	unsigned int col = isTrigger ? GetColor(255,220,80) : GetColor(80,200,200);
+	if (DebugColor() !=0) {
+		col = DebugColor();
+	}
 
 	// ²i’†Süj
 	DrawLine3D(cap_.bottom, cap_.top, col);

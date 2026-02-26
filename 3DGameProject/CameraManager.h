@@ -5,12 +5,11 @@
 #include <cstdint>
 
 #include "Camera.h"
+#include "CameraPool.h"
+#include "Pool.h"
+#include "Manager.h"
 
-// CameraManager
-// - 複数カメラを所有
-// - A: active（論理） / B: render（描画に使用） を分離
-// - Scene 終了時に ownerSceneIdで一括回収できる
-class CameraManager {
+class CameraManager : public Manager {
 public:
 	using CameraId = std::uint32_t;
 
@@ -32,13 +31,13 @@ public:
 	Camera* Active();
 	Camera* Render();
 
-	// --- blend (Render camera transition) ---
-	// 現在の Renderから targetへ duration 秒で補間して切替
 	bool BlendRenderTo(CameraId targetId, float durationSec);
 	bool IsBlending() const noexcept { return _blend.active; }
 	void Update(float dtSec);
 
-	// レンダーカメラをDxLibに適用（Draw直前で呼ぶ想定）
+	// Manager
+	void Update() override { /* no-op: CameraManager の更新は dt付き版を使用 */ }
+
 	void ApplyRenderCameraToDxLib(int screenW, int screenH);
 
 private:
@@ -51,7 +50,8 @@ private:
 	CameraId _activeId =0;
 	CameraId _renderId =0;
 
-	std::unordered_map<CameraId, std::unique_ptr<Camera>> _cameras;
+	CameraPool _pool{32 };
+	std::unordered_map<CameraId, Pool::UniquePtr> _cameras;
 
 	struct BlendState {
 		bool active = false;
@@ -60,7 +60,6 @@ private:
 		float duration =0.0f;
 		float t =0.0f;
 
-		//補間結果を保持するための作業カメラ（Renderとして使う）
 		std::unique_ptr<Camera> scratch;
 	} _blend;
 };

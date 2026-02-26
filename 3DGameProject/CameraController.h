@@ -42,6 +42,12 @@ public:
 	// - pitchMin/pitchMax: ラジアン（例: -DX_PI_F/2+0.1 ～ +DX_PI_F/2-0.1）
 	void UpdateFreeMoveQuatClamped(float moveSpeed, float rotSpeed, float pitchMinRad, float pitchMaxRad);
 
+	// マウス対応フリームーブ（デバッグカメラ向け）
+	// -右ボタン押下中に視点回転
+	// - ホイールで前後移動
+	// - WASD/EQで移動
+	void UpdateFreeMoveMouse(float moveSpeed, float rotSpeed, float wheelMoveSpeed =4.0f);
+
 	// Renderカメラを targetへ補間しながら切替
 	bool BlendRenderTo(CameraId targetId, float durationSec) {
 		return CameraManager::Instance().BlendRenderTo(targetId, durationSec);

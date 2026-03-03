@@ -15,6 +15,10 @@ public:
 	GameObject() = default;
 	virtual ~GameObject() = default;
 
+	// 押し戻し等で動かない固定物フラグ（ワールド固定/壁扱い）
+	// true の場合、衝突解決で位置を変更しない
+	bool isStatic = false;
+
 	// Active フラグ（無効化中は Update/Draw/Collision 等の対象外にする想定）
 	bool IsActive() const noexcept { return _isActive; }
 	void SetActive(bool active) noexcept { _isActive = active; }

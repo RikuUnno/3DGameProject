@@ -13,6 +13,9 @@ DebugPlayer::DebugPlayer() {
 	collider_->owner = this;
 	collider_->layer = layerMask::PLAYER;
 	collider_->mask = mask::ALL;
+
+	// 押し戻しで動かない（固定）
+	isStatic = true;
 }
 
 DebugPlayer::~DebugPlayer() {
@@ -90,6 +93,11 @@ void DebugPlayer::OnTriggerExit(Collider* self, Collider* /*other*/) {
 	self->ClearDebugColor();
 }
 
+
+
+
+
+
 // ---------------- DebugEnemy ----------------
 
 DebugEnemy::DebugEnemy() {
@@ -98,7 +106,9 @@ DebugEnemy::DebugEnemy() {
 	collider_->owner = this;
 	collider_->layer = layerMask::ENEMY;
 	collider_->mask = mask::ALL;
-	collider_->isTrigger = true; // プレイヤーと当たるが物理的な反応はしないトリガーにする例
+
+	// 押し戻しで動かない（固定）
+	isStatic = true;
 }
 
 DebugEnemy::~DebugEnemy() {

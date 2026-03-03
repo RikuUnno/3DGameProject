@@ -69,7 +69,7 @@ public:
 
 public:
 	// Broad Phase（現状は BuildCurrentPairs 内で使用）
-	bool SpatialPartitioning();
+	void SpatialPartitioning();
 	bool CheckLayerMaskCollisions(Collider* a, Collider* b);
 	bool CheckAABBCollisions(Collider* a, Collider* b);
 
@@ -99,7 +99,14 @@ private:
 	void PushOutSphereCapsule(Collider* a, Collider* b);	// Sphere-Capsule 押し戻し
 	void PushOutBoxCapsule(Collider* a, Collider* b);		// Box-Capsule 押し戻し
 
+public:
+	// 空間分割セルサイズ（ワールド単位）。デフォルト:50
+	float GetCellSize() const noexcept { return _cellSize; }
+	void SetCellSize(float cellSize) noexcept { _cellSize = (cellSize >0.01f) ? cellSize :0.01f; }
+
 private:
+	// 空間分割（Spatial Hash）セルサイズ
+	float _cellSize =50.0f;
 
 	std::vector<Collider*> colliders_{};	// 登録コライダー群
 	bool narrowHit_ = false;				// 詳細判定結果

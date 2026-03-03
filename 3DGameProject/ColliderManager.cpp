@@ -97,6 +97,7 @@ void ColliderManager::DispatchExit(Collider* a, Collider* b) {
 static bool IsPair(Collider::Kind a, Collider::Kind b, Collider::Kind x, Collider::Kind y) {
 	return (a == x && b == y) || (a == y && b == x);
 }
+
 //形状更新
 void ColliderManager::UpdateAllShapes() {
 	for (auto* c : colliders_) {
@@ -104,71 +105,118 @@ void ColliderManager::UpdateAllShapes() {
 		c->UpdateShape();
 	}
 }
+
 // ペア構築
 void ColliderManager::BuildCurrentPairs() {
 	currPairs_.clear();
+	SpatialPartitioning();
+}
 
-	// --- scene filtering (default ON) ---
+// 空間分割（Broad-phase）
+void ColliderManager::SpatialPartitioning() {
+	// シーンフィルタ用に現在のシーンIDを取得
 	const int currentSceneId = SceneManager::Instance().CurrentSceneId();
 
-	// owner が無いColliderはデフォルト除外（=どのシーンにも属さない）
-	// グローバルに使いたい場合は useSceneFilter=false を設定する
-	for (size_t i =0; i < colliders_.size(); ++i) {
-		Collider* a = colliders_[i];
-		if (!a) continue; // aが無効ならスキップ
-		if (!a->owner) { if (a->useSceneFilter) continue; }
-		else { if (a->useSceneFilter && a->owner->_ownerSceneId != currentSceneId) continue; }
+	// Broad-phase: 空間ハッシュ（AABBが跨ぐセルすべてに登録する改良版）
+	struct CellKey {
+		int x{};
+		int y{};
+		int z{};
+		bool operator==(const CellKey& o) const noexcept { return x == o.x && y == o.y && z == o.z; }
+	};
+	struct CellHash {
+		size_t operator()(const CellKey& k) const noexcept {
+			size_t h =1469598103934665603ull;
+			h ^= static_cast<size_t>(k.x) +0x9e3779b97f4a7c15ull + (h <<6) + (h >>2);
+			h ^= static_cast<size_t>(k.y) +0x9e3779b97f4a7c15ull + (h <<6) + (h >>2);
+			h ^= static_cast<size_t>(k.z) +0x9e3779b97f4a7c15ull + (h <<6) + (h >>2);
+			return h;
+		}
+	};
 
-		// Active / Sleep 判定（最序盤）
-		if (!a->IsEnabled()) continue;
-		if (a->owner && !a->owner->IsActive()) continue;
+	const float cellSize = (_cellSize >0.01f) ? _cellSize :0.01f;
+	auto ToCell = [&](float v) {
+		return static_cast<int>(std::floor(v / cellSize));
+	};
 
-		for (size_t j = i +1; j < colliders_.size(); ++j) {
-			Collider* b = colliders_[j];
-			if (!b) continue; // bが無効ならスキップ
-			if (!b->owner) { if (b->useSceneFilter) continue; }
-			else { if (b->useSceneFilter && b->owner->_ownerSceneId != currentSceneId) continue; }
+	std::unordered_map<CellKey, std::vector<Collider*>, CellHash> grid;
+	grid.reserve(colliders_.size());
 
-			// Active / Sleep 判定（最序盤）
-			if (!b->IsEnabled()) continue;
-			if (b->owner && !b->owner->IsActive()) continue;
+	auto PassCommonFilters = [&](Collider* c) -> bool {
+		if (!c) return false;
+		if (!c->owner) { if (c->useSceneFilter) return false; }
+		else { if (c->useSceneFilter && c->owner->_ownerSceneId != currentSceneId) return false; }
+		if (!c->IsEnabled()) return false;
+		if (c->owner && !c->owner->IsActive()) return false;
+		return true;
+	};
 
-			// 空間分割判定
-			//if (!SpatialPartitioning()) continue; // 空間分割判定で外れている
+	//1) AABBが跨るセルすべてに登録
+	for (auto* c : colliders_) {
+		if (!PassCommonFilters(c)) continue;
 
-			// Layer/Mask判定
-			if (CheckLayerMaskCollisions(a, b)) continue; // Layer/Mask判定で外れている
+		const AABB& aabb = c->GetAABB();
+		const int minX = ToCell(aabb.min.x);
+		const int minY = ToCell(aabb.min.y);
+		const int minZ = ToCell(aabb.min.z);
+		const int maxX = ToCell(aabb.max.x);
+		const int maxY = ToCell(aabb.max.y);
+		const int maxZ = ToCell(aabb.max.z);
 
-			// AABB判定
-			if (CheckAABBCollisions(a, b)) continue; // AABB判定で外れている
-
-			// 詳細判定
-			narrowHit_ = false; // 詳細判定結果初期化
-			const auto ka = a->GetKind(); // aの種別判定
-			const auto kb = b->GetKind(); // bの種別判定
-			if (IsPair(ka, kb, Collider::Kind::Sphere, Collider::Kind::Sphere)) CheckSphereSphere(a, b);				// Sphere-Sphere
-			else if (IsPair(ka, kb, Collider::Kind::Sphere, Collider::Kind::Box)) CheckSphereBox(a, b);					// Sphere-Box
-			else if (IsPair(ka, kb, Collider::Kind::Box, Collider::Kind::Box)) CheckBoxBox(a, b);						// Box-Box
-			else if (IsPair(ka, kb, Collider::Kind::Capsule, Collider::Kind::Capsule)) CheckCapsuleCapsule(a, b);		// Capsule-Capsule
-			else if (IsPair(ka, kb, Collider::Kind::Sphere, Collider::Kind::Capsule)) CheckSphereCapsule(a, b);			// Sphere-Capsule
-			else if (IsPair(ka, kb, Collider::Kind::Box, Collider::Kind::Capsule)) CheckBoxCapsule(a, b);				// Box-Capsule
-			else {
-				//ここでは実行時アサート（Debug時のみ停止）に置き換える。
-				ASSERT_MSG(false, "未定義のコライダー組み合わせ: kindA=%d kindB=%d", static_cast<int>(ka), static_cast<int>(kb));
-				narrowHit_ = false; // 安全側（衝突なし扱い）
+		for (int z = minZ; z <= maxZ; ++z) {
+			for (int y = minY; y <= maxY; ++y) {
+				for (int x = minX; x <= maxX; ++x) {
+					grid[CellKey{ x,y,z }].push_back(c);
+				}
 			}
+		}
+	}
 
-			if (!narrowHit_) continue; // 詳細判定で外れている
+	//2) セル毎に候補を作り、同一ペアの重複評価を避ける（currPairs_でガード）
+	for (auto& [cell, cellCols] : grid) {
+		const size_t n = cellCols.size();
+		for (size_t i =0; i < n; ++i) {
+			Collider* a = cellCols[i];
+			for (size_t j = i +1; j < n; ++j) {
+				Collider* b = cellCols[j];
 
-			currPairs_.insert(MakeKey(a, b)); // ペア登録
+				const auto key = MakeKey(a, b);
+				if (currPairs_.contains(key)) continue; //既に別セルでヒット扱いにしたペア
 
-			// 押し戻し（Triggerは除外）
-			if (!(a->isTrigger || b->isTrigger)) {
-				ResolvePushOut(a, b); // 押し戻し処理
+				// Layer/Mask判定
+				if (CheckLayerMaskCollisions(a, b)) continue;
+
+				// AABB判定
+				if (CheckAABBCollisions(a, b)) continue;
+
+				// 詳細判定
+				narrowHit_ = false;
+				const auto ka = a->GetKind();
+				const auto kb = b->GetKind();
+				if (IsPair(ka, kb, Collider::Kind::Sphere, Collider::Kind::Sphere)) CheckSphereSphere(a, b);
+				else if (IsPair(ka, kb, Collider::Kind::Sphere, Collider::Kind::Box)) CheckSphereBox(a, b);
+				else if (IsPair(ka, kb, Collider::Kind::Box, Collider::Kind::Box)) CheckBoxBox(a, b);
+				else if (IsPair(ka, kb, Collider::Kind::Capsule, Collider::Kind::Capsule)) CheckCapsuleCapsule(a, b);
+				else if (IsPair(ka, kb, Collider::Kind::Sphere, Collider::Kind::Capsule)) CheckSphereCapsule(a, b);
+				else if (IsPair(ka, kb, Collider::Kind::Box, Collider::Kind::Capsule)) CheckBoxCapsule(a, b);
+				else {
+					ASSERT_MSG(false, "未定義のコライダー組み合わせ: kindA=%d kindB=%d", static_cast<int>(ka), static_cast<int>(kb));
+					narrowHit_ = false;
+				}
+
+				if (!narrowHit_) continue;
+
+				currPairs_.insert(key);
+
+				// 押し戻し（Triggerは除外）
+				if (!(a->isTrigger || b->isTrigger)) {
+					ResolvePushOut(a, b);
+				}
 			}
 		}
 	}
 }
+
 // イベント処理
 void ColliderManager::ProcessPairEvents() {
 	// Enter/Stay
@@ -190,36 +238,131 @@ void ColliderManager::ProcessPairEvents() {
 
 	prevPairs_ = currPairs_;
 }
+
 // 詳細判定
 void ColliderManager::CheckDetailedCollisions() {
 	BuildCurrentPairs(); // ペア構築
 	ProcessPairEvents(); // イベント処理
 }
+
 // 押し戻し
 void ColliderManager::ResolvePushOut(Collider* a, Collider* b) {
 	if (!a || !b) return;
 	if (a->isTrigger || b->isTrigger) return;
 
+	GameObject* oa = a->owner;
+	GameObject* ob = b->owner;
+
+	//どちらも owner 無しなら何もしない
+	if (!oa && !ob) return;
+
+	// --- Extensible fixed rule ---
+	// 基本方針:
+	//1) owner が無いColliderは固定（ワールドジオメトリ扱い）
+	//2) owner が isStatic の GameObject は固定
+	//3)それ以外は可動
+	const bool aFixed = (!oa) || (oa && oa->isStatic);
+	const bool bFixed = (!ob) || (ob && ob->isStatic);
+
+	// fixed が重なった場合は両方固定で押し戻しなし
+	if (aFixed && bFixed) {
+		// isStatic 同士でも通常の衝突解決を走らせたい（デバッグ/従来互換）
+		// ※これにより isStatic の位置が動く可能性がある点に注意
+		//望ましい挙動に応じて、ここを "押し戻し無し" に戻すか、別の処理（拘束）を実装する
+		const auto ka2 = a->GetKind();
+		const auto kb2 = b->GetKind();
+		if (IsPair(ka2, kb2, Collider::Kind::Sphere, Collider::Kind::Sphere)) {
+			PushOutSphereSphere(a, b);
+		}
+		else if (IsPair(ka2, kb2, Collider::Kind::Sphere, Collider::Kind::Box)) {
+			PushOutSphereBox(a, b);
+		}
+		else if (IsPair(ka2, kb2, Collider::Kind::Box, Collider::Kind::Box)) {
+			PushOutBoxBox(a, b);
+		}
+		else if (IsPair(ka2, kb2, Collider::Kind::Capsule, Collider::Kind::Capsule)) {
+			PushOutCapsuleCapsule(a, b);
+		}
+		else if (IsPair(ka2, kb2, Collider::Kind::Sphere, Collider::Kind::Capsule)) {
+			PushOutSphereCapsule(a, b);
+		}
+		else if (IsPair(ka2, kb2, Collider::Kind::Box, Collider::Kind::Capsule)) {
+			PushOutBoxCapsule(a, b);
+		}
+		else {
+			ASSERT_MSG(false, "未定義のコライダー組み合わせ: kindA=%d kindB=%d", static_cast<int>(ka2), static_cast<int>(kb2));
+		}
+		return;
+	}
+
+	//ここから先は、"動かす側"を一つに決めて、押し戻しを片側に集中させる
+	GameObject* movable = nullptr;
+	Collider* movableCol = nullptr;
+	Collider* fixedCol = nullptr;
+
+	if (aFixed) {
+		movable = ob;
+		movableCol = b;
+		fixedCol = a;
+	}
+	else if (bFixed) {
+		movable = oa;
+		movableCol = a;
+		fixedCol = b;
+	}
+
 	const auto ka = a->GetKind();
 	const auto kb = b->GetKind();
 
-	if (IsPair(ka, kb, Collider::Kind::Sphere, Collider::Kind::Sphere)) {
-		PushOutSphereSphere(a, b);														// Sphere-Sphere 押し戻し
-	}  else if (IsPair(ka, kb, Collider::Kind::Sphere, Collider::Kind::Box)) {
-		PushOutSphereBox(a, b);															// Sphere-Box 押し戻し
-	}  else if (IsPair(ka, kb, Collider::Kind::Box, Collider::Kind::Box)) {
-		PushOutBoxBox(a, b);															// Box-Box 押し戻し
-	}  else if (IsPair(ka, kb, Collider::Kind::Capsule, Collider::Kind::Capsule)) {
-		PushOutCapsuleCapsule(a, b);													// Capsule-Capsule 押し戻し
-	}  else if (IsPair(ka, kb, Collider::Kind::Sphere, Collider::Kind::Capsule)) {
-		PushOutSphereCapsule(a, b);														// Sphere-Capsule 押し戻し
-	}  else if (IsPair(ka, kb, Collider::Kind::Box, Collider::Kind::Capsule)) {
-		PushOutBoxCapsule(a, b);														// Box-Capsule 押し戻し
-	} else
-	{
-		// アサ―ト
-		ASSERT_MSG(false, "未定義のコライダー組み合わせ: kindA=%d kindB=%d", static_cast<int>(ka), static_cast<int>(kb));
+	// 両方可動なら従来（重み付きで両方動かす）
+	if (!aFixed && !bFixed) {
+		if (IsPair(ka, kb, Collider::Kind::Sphere, Collider::Kind::Sphere)) {
+			PushOutSphereSphere(a, b);
+		}
+		else if (IsPair(ka, kb, Collider::Kind::Sphere, Collider::Kind::Box)) {
+			PushOutSphereBox(a, b);
+		}
+		else if (IsPair(ka, kb, Collider::Kind::Box, Collider::Kind::Box)) {
+			PushOutBoxBox(a, b);
+		}
+		else if (IsPair(ka, kb, Collider::Kind::Capsule, Collider::Kind::Capsule)) {
+			PushOutCapsuleCapsule(a, b);
+		}
+		else if (IsPair(ka, kb, Collider::Kind::Sphere, Collider::Kind::Capsule)) {
+			PushOutSphereCapsule(a, b);
+		}
+		else if (IsPair(ka, kb, Collider::Kind::Box, Collider::Kind::Capsule)) {
+			PushOutBoxCapsule(a, b);
+		}
+		else {
+			ASSERT_MSG(false, "未定義のコライダー組み合わせ: kindA=%d kindB=%d", static_cast<int>(ka), static_cast<int>(kb));
+		}
+		return;
 	}
+
+	//片側固定: 可動側だけ動かす（簡易MTV:中心差分 + AABB重なり）
+	if (!movable || !movableCol || !fixedCol) return;
+
+	const VECTOR cM = movableCol->GetCenter();
+	const VECTOR cF = fixedCol->GetCenter();
+	VECTOR dir = VSub(cM, cF);
+	float len = std::sqrt((std::max)(LenSq(dir),1e-8f));
+	VECTOR n = VScale(dir,1.0f / len);
+
+	const AABB& A = movableCol->GetAABB();
+	const AABB& B = fixedCol->GetAABB();
+	const float ox = (std::min)(A.max.x, B.max.x) - (std::max)(A.min.x, B.min.x);
+	const float oy = (std::min)(A.max.y, B.max.y) - (std::max)(A.min.y, B.min.y);
+	const float oz = (std::min)(A.max.z, B.max.z) - (std::max)(A.min.z, B.min.z);
+	float pen = (std::min)({ ox, oy, oz });
+	if (pen <=0.0f) return;
+
+	VECTOR p = movable->transform.LocalPosition();
+	p = VAdd(p, VScale(n, pen));
+	movable->transform.SetLocalPosition(p);
+
+	movableCol->UpdateShape();
+	fixedCol->UpdateShape();
 }
 
 // 各種押し戻し処理関数群
@@ -237,17 +380,17 @@ void ColliderManager::PushOutSphereSphere(Collider* a, Collider* b) {
 	const VECTOR ca = sa->GetCenter();
 	const VECTOR cb = sb->GetCenter();
 	const VECTOR d = VSub(cb, ca);
-	const float dist = std::sqrt((std::max)(LenSq(d),1e-8f));
+	const float dist = std::sqrt((std::max)(LenSq(d), 1e-8f));
 	const float r = sa->sphere_.radius + sb->sphere_.radius;
 	const float pen = r - dist;
-	if (pen <=0.0f) return;
+	if (pen <= 0.0f) return;
 
-	const VECTOR n = VScale(d,1.0f / dist);
+	const VECTOR n = VScale(d, 1.0f / dist);
 
-	const float wA = oa ?1.0f :0.0f;
-	const float wB = ob ?1.0f :0.0f;
+	const float wA = oa ? 1.0f : 0.0f;
+	const float wB = ob ? 1.0f : 0.0f;
 	const float wSum = wA + wB;
-	if (wSum <=0.0f) return;
+	if (wSum <= 0.0f) return;
 
 	const float moveA = (wA / wSum) * pen;
 	const float moveB = (wB / wSum) * pen;
@@ -265,7 +408,7 @@ void ColliderManager::PushOutSphereSphere(Collider* a, Collider* b) {
 
 	sa->UpdateShape();
 	sb->UpdateShape();
-}   
+}
 // Sphere-Box 押し戻し
 void ColliderManager::PushOutSphereBox(Collider* a, Collider* b) {
 	SphereCollider* s = dynamic_cast<SphereCollider*>(a);
@@ -294,11 +437,11 @@ void ColliderManager::PushOutSphereBox(Collider* a, Collider* b) {
 	closest = VAdd(closest, VScale(box->box_.axisZ, z));
 
 	VECTOR diff = VSub(c, closest);
-	float dist = std::sqrt((std::max)(LenSq(diff),1e-8f));
+	float dist = std::sqrt((std::max)(LenSq(diff), 1e-8f));
 	float pen = s->sphere_.radius - dist;
-	if (pen <=0.0f) return;
+	if (pen <= 0.0f) return;
 
-	VECTOR n = VScale(diff,1.0f / dist);
+	VECTOR n = VScale(diff, 1.0f / dist);
 
 	VECTOR p = os->transform.LocalPosition();
 	p = VAdd(p, VScale(n, pen));
@@ -323,25 +466,25 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 	const float overlapX = (std::min)(A.max.x, B.max.x) - (std::max)(A.min.x, B.min.x);
 	const float overlapY = (std::min)(A.max.y, B.max.y) - (std::max)(A.min.y, B.min.y);
 	const float overlapZ = (std::min)(A.max.z, B.max.z) - (std::max)(A.min.z, B.min.z);
-	if (overlapX <=0.0f || overlapY <=0.0f || overlapZ <=0.0f) return;
+	if (overlapX <= 0.0f || overlapY <= 0.0f || overlapZ <= 0.0f) return;
 
-	VECTOR n = VGet(0,0,0);
+	VECTOR n = VGet(0, 0, 0);
 	float pen = overlapX;
-	n = VGet((bb->GetCenter().x >= ba->GetCenter().x) ? -1.0f :1.0f,0,0);
+	n = VGet((bb->GetCenter().x >= ba->GetCenter().x) ? -1.0f : 1.0f, 0, 0);
 
 	if (overlapY < pen) {
 		pen = overlapY;
-		n = VGet(0, (bb->GetCenter().y >= ba->GetCenter().y) ? -1.0f :1.0f,0);
+		n = VGet(0, (bb->GetCenter().y >= ba->GetCenter().y) ? -1.0f : 1.0f, 0);
 	}
 	if (overlapZ < pen) {
 		pen = overlapZ;
-		n = VGet(0,0, (bb->GetCenter().z >= ba->GetCenter().z) ? -1.0f :1.0f);
+		n = VGet(0, 0, (bb->GetCenter().z >= ba->GetCenter().z) ? -1.0f : 1.0f);
 	}
 
-	const float wA = oa ?1.0f :0.0f;
-	const float wB = ob ?1.0f :0.0f;
+	const float wA = oa ? 1.0f : 0.0f;
+	const float wB = ob ? 1.0f : 0.0f;
 	const float wSum = wA + wB;
-	if (wSum <=0.0f) return;
+	if (wSum <= 0.0f) return;
 
 	const float moveA = (wA / wSum) * pen;
 	const float moveB = (wB / wSum) * pen;
@@ -385,46 +528,49 @@ void ColliderManager::PushOutCapsuleCapsule(Collider* a, Collider* b) {
 	const float b1 = Dot3(d1, r0);
 	const float b2 = Dot3(d2, r0);
 
-	float s =0.0f;
-	float t =0.0f;
+	float s = 0.0f;
+	float t = 0.0f;
 	const float denom = a11 * a22 - a12 * a12;
-	if (denom >1e-6f) {
+	if (denom > 1e-6f) {
 		s = (a12 * b2 - a22 * b1) / denom;
-		s = std::clamp(s,0.0f,1.0f);
-	} else {
-		s =0.0f;
+		s = std::clamp(s, 0.0f, 1.0f);
+	}
+	else {
+		s = 0.0f;
 	}
 
 	const float tNom = a12 * s + b2;
-	if (a22 >1e-6f) {
+	if (a22 > 1e-6f) {
 		t = tNom / a22;
-		t = std::clamp(t,0.0f,1.0f);
-	} else {
-		t =0.0f;
+		t = std::clamp(t, 0.0f, 1.0f);
+	}
+	else {
+		t = 0.0f;
 	}
 
 	const float sNom = a12 * t - b1;
-	if (a11 >1e-6f) {
+	if (a11 > 1e-6f) {
 		s = sNom / a11;
-		s = std::clamp(s,0.0f,1.0f);
-	} else {
-		s =0.0f;
+		s = std::clamp(s, 0.0f, 1.0f);
+	}
+	else {
+		s = 0.0f;
 	}
 
 	const VECTOR c1 = VAdd(p1, VScale(d1, s));
 	const VECTOR c2 = VAdd(p2, VScale(d2, t));
 	VECTOR diff = VSub(c1, c2);
-	const float dist = std::sqrt((std::max)(LenSq(diff),1e-8f));
+	const float dist = std::sqrt((std::max)(LenSq(diff), 1e-8f));
 	const float r = ca->cap_.radius + cb->cap_.radius;
 	const float pen = r - dist;
-	if (pen <=0.0f) return;
+	if (pen <= 0.0f) return;
 
-	const VECTOR n = VScale(diff,1.0f / dist);
+	const VECTOR n = VScale(diff, 1.0f / dist);
 
-	const float wA = oa ?1.0f :0.0f;
-	const float wB = ob ?1.0f :0.0f;
+	const float wA = oa ? 1.0f : 0.0f;
+	const float wB = ob ? 1.0f : 0.0f;
 	const float wSum = wA + wB;
-	if (wSum <=0.0f) return;
+	if (wSum <= 0.0f) return;
 
 	const float moveA = (wA / wSum) * pen;
 	const float moveB = (wB / wSum) * pen;
@@ -464,26 +610,26 @@ void ColliderManager::PushOutSphereCapsule(Collider* a, Collider* b) {
 	const VECTOR q = c->cap_.top;
 	const VECTOR seg = VSub(q, p);
 	const float segLenSq = Dot3(seg, seg);
-	float tt =0.0f;
-	if (segLenSq >1e-6f) {
+	float tt = 0.0f;
+	if (segLenSq > 1e-6f) {
 		tt = Dot3(VSub(s->sphere_.center, p), seg) / segLenSq;
-		tt = std::clamp(tt,0.0f,1.0f);
+		tt = std::clamp(tt, 0.0f, 1.0f);
 	}
 	const VECTOR closest = VAdd(p, VScale(seg, tt));
 
 	VECTOR diff = VSub(s->sphere_.center, closest);
-	const float dist = std::sqrt((std::max)(LenSq(diff),1e-8f));
+	const float dist = std::sqrt((std::max)(LenSq(diff), 1e-8f));
 	const float r = s->sphere_.radius + c->cap_.radius;
 	const float pen = r - dist;
-	if (pen <=0.0f) return;
+	if (pen <= 0.0f) return;
 
-	VECTOR n = VScale(diff,1.0f / dist); // capsule -> sphere
+	VECTOR n = VScale(diff, 1.0f / dist); // capsule -> sphere
 
 	// ownerあり: 両方動かす/片方だけ動かす
-	const float wS = os ?1.0f :0.0f;
-	const float wC = oc ?1.0f :0.0f;
+	const float wS = os ? 1.0f : 0.0f;
+	const float wC = oc ? 1.0f : 0.0f;
 	const float wSum = wS + wC;
-	if (wSum <=0.0f) return;
+	if (wSum <= 0.0f) return;
 
 	const float moveS = (wS / wSum) * pen;
 	const float moveC = (wC / wSum) * pen;
@@ -522,14 +668,14 @@ void ColliderManager::PushOutBoxCapsule(Collider* a, Collider* b) {
 	auto ToLocal = [&](const VECTOR& w) {
 		const VECTOR d = VSub(w, box->box_.center);
 		return VGet(Dot3(d, box->box_.axisX), Dot3(d, box->box_.axisY), Dot3(d, box->box_.axisZ));
-	};
+		};
 	auto ToWorld = [&](const VECTOR& l) {
 		VECTOR w = box->box_.center;
 		w = VAdd(w, VScale(box->box_.axisX, l.x));
 		w = VAdd(w, VScale(box->box_.axisY, l.y));
 		w = VAdd(w, VScale(box->box_.axisZ, l.z));
 		return w;
-	};
+		};
 
 	const VECTOR pL = ToLocal(cap->cap_.bottom);
 	const VECTOR qL = ToLocal(cap->cap_.top);
@@ -546,7 +692,7 @@ void ColliderManager::PushOutBoxCapsule(Collider* a, Collider* b) {
 			std::clamp(p.y, -hy, hy),
 			std::clamp(p.z, -hz, hz)
 		);
-	};
+		};
 
 	// 候補点（端点 + スラブ境界）から、最近点ペアを得る
 	float best = FLT_MAX;
@@ -554,7 +700,7 @@ void ColliderManager::PushOutBoxCapsule(Collider* a, Collider* b) {
 	VECTOR bestBoxPointL = ClampPointToAABB(pL);
 
 	auto ConsiderT = [&](float t) {
-		if (t <0.0f || t >1.0f) return;
+		if (t < 0.0f || t >1.0f) return;
 		const VECTOR sL = VAdd(pL, VScale(dL, t));
 		const VECTOR cL = ClampPointToAABB(sL);
 		const float dsq = LenSq(VSub(sL, cL));
@@ -563,47 +709,47 @@ void ColliderManager::PushOutBoxCapsule(Collider* a, Collider* b) {
 			bestSegPointL = sL;
 			bestBoxPointL = cL;
 		}
-	};
+		};
 
 	//端点
 	ConsiderT(0.0f);
 	ConsiderT(1.0f);
 
 	// スラブ境界
-	if (std::fabs(dL.x) >1e-6f) {
+	if (std::fabs(dL.x) > 1e-6f) {
 		ConsiderT((-hx - pL.x) / dL.x);
-		ConsiderT(( hx - pL.x) / dL.x);
+		ConsiderT((hx - pL.x) / dL.x);
 	}
-	if (std::fabs(dL.y) >1e-6f) {
+	if (std::fabs(dL.y) > 1e-6f) {
 		ConsiderT((-hy - pL.y) / dL.y);
-		ConsiderT(( hy - pL.y) / dL.y);
+		ConsiderT((hy - pL.y) / dL.y);
 	}
-	if (std::fabs(dL.z) >1e-6f) {
+	if (std::fabs(dL.z) > 1e-6f) {
 		ConsiderT((-hz - pL.z) / dL.z);
-		ConsiderT(( hz - pL.z) / dL.z);
+		ConsiderT((hz - pL.z) / dL.z);
 	}
 
-	const float dist = std::sqrt((std::max)(best,1e-8f));
+	const float dist = std::sqrt((std::max)(best, 1e-8f));
 	const float pen = cap->cap_.radius - dist;
-	if (pen <=0.0f) return;
+	if (pen <= 0.0f) return;
 
 	// ローカルでの法線（箱の最近点 -> 線分最近点）をワールドへ
 	VECTOR nL = VSub(bestSegPointL, bestBoxPointL);
-	const float nLen = std::sqrt((std::max)(LenSq(nL),1e-8f));
-	nL = VScale(nL,1.0f / nLen);
+	const float nLen = std::sqrt((std::max)(LenSq(nL), 1e-8f));
+	nL = VScale(nL, 1.0f / nLen);
 
 	// ローカル法線をワールドへ（OBB軸で合成）
-	VECTOR nW = VGet(0,0,0);
+	VECTOR nW = VGet(0, 0, 0);
 	nW = VAdd(nW, VScale(box->box_.axisX, nL.x));
 	nW = VAdd(nW, VScale(box->box_.axisY, nL.y));
 	nW = VAdd(nW, VScale(box->box_.axisZ, nL.z));
-	const float nWLen = std::sqrt((std::max)(LenSq(nW),1e-8f));
-	nW = VScale(nW,1.0f / nWLen);
+	const float nWLen = std::sqrt((std::max)(LenSq(nW), 1e-8f));
+	nW = VScale(nW, 1.0f / nWLen);
 
-	const float wBox = obox ?1.0f :0.0f;
-	const float wCap = ocap ?1.0f :0.0f;
+	const float wBox = obox ? 1.0f : 0.0f;
+	const float wCap = ocap ? 1.0f : 0.0f;
 	const float wSum = wBox + wCap;
-	if (wSum <=0.0f) return;
+	if (wSum <= 0.0f) return;
 
 	const float moveBox = (wBox / wSum) * pen;
 	const float moveCap = (wCap / wSum) * pen;
@@ -713,10 +859,10 @@ void ColliderManager::CheckBoxBox(Collider* a, Collider* b) {
 	};
 
 	// abs(R) + epsilon
-	const float eps =1e-6f;
+	const float eps = 1e-6f;
 	float AbsR[3][3];
-	for (int i=0;i<3;++i) {
-		for (int j=0;j<3;++j) {
+	for (int i = 0; i < 3; ++i) {
+		for (int j = 0; j < 3; ++j) {
 			AbsR[i][j] = std::fabs(R[i][j]) + eps;
 		}
 	}
@@ -728,73 +874,73 @@ void ColliderManager::CheckBoxBox(Collider* a, Collider* b) {
 	float tval;
 
 	// Axes A0,A1,A2
-	for (int i=0;i<3;++i) {
+	for (int i = 0; i < 3; ++i) {
 		ra = aExt[i];
-		rb = bExt[0]*AbsR[i][0] + bExt[1]*AbsR[i][1] + bExt[2]*AbsR[i][2];
+		rb = bExt[0] * AbsR[i][0] + bExt[1] * AbsR[i][1] + bExt[2] * AbsR[i][2];
 		if (std::fabs(t[i]) > ra + rb) { narrowHit_ = false; return; }
 	}
 
 	// Axes B0,B1,B2
-	for (int j=0;j<3;++j) {
-		ra = aExt[0]*AbsR[0][j] + aExt[1]*AbsR[1][j] + aExt[2]*AbsR[2][j];
+	for (int j = 0; j < 3; ++j) {
+		ra = aExt[0] * AbsR[0][j] + aExt[1] * AbsR[1][j] + aExt[2] * AbsR[2][j];
 		rb = bExt[j];
-		tval = std::fabs(t[0]*R[0][j] + t[1]*R[1][j] + t[2]*R[2][j]);
+		tval = std::fabs(t[0] * R[0][j] + t[1] * R[1][j] + t[2] * R[2][j]);
 		if (tval > ra + rb) { narrowHit_ = false; return; }
 	}
 
 	// Axes A_i x B_j
 	// A0 x B0
-	ra = aExt[1]*AbsR[2][0] + aExt[2]*AbsR[1][0];
-	rb = bExt[1]*AbsR[0][2] + bExt[2]*AbsR[0][1];
-	tval = std::fabs(t[2]*R[1][0] - t[1]*R[2][0]);
+	ra = aExt[1] * AbsR[2][0] + aExt[2] * AbsR[1][0];
+	rb = bExt[1] * AbsR[0][2] + bExt[2] * AbsR[0][1];
+	tval = std::fabs(t[2] * R[1][0] - t[1] * R[2][0]);
 	if (tval > ra + rb) { narrowHit_ = false; return; }
 
 	// A0 x B1
-	ra = aExt[1]*AbsR[2][1] + aExt[2]*AbsR[1][1];
-	rb = bExt[0]*AbsR[0][2] + bExt[2]*AbsR[0][0];
-	tval = std::fabs(t[2]*R[1][1] - t[1]*R[2][1]);
+	ra = aExt[1] * AbsR[2][1] + aExt[2] * AbsR[1][1];
+	rb = bExt[0] * AbsR[0][2] + bExt[2] * AbsR[0][0];
+	tval = std::fabs(t[2] * R[1][1] - t[1] * R[2][1]);
 	if (tval > ra + rb) { narrowHit_ = false; return; }
 
 	// A0 x B2
-	ra = aExt[1]*AbsR[2][2] + aExt[2]*AbsR[1][2];
-	rb = bExt[0]*AbsR[0][1] + bExt[1]*AbsR[0][0];
-	tval = std::fabs(t[2]*R[1][2] - t[1]*R[2][2]);
+	ra = aExt[1] * AbsR[2][2] + aExt[2] * AbsR[1][2];
+	rb = bExt[0] * AbsR[0][1] + bExt[1] * AbsR[0][0];
+	tval = std::fabs(t[2] * R[1][2] - t[1] * R[2][2]);
 	if (tval > ra + rb) { narrowHit_ = false; return; }
 
 	// A1 x B0
-	ra = aExt[0]*AbsR[2][0] + aExt[2]*AbsR[0][0];
-	rb = bExt[1]*AbsR[1][2] + bExt[2]*AbsR[1][1];
-	tval = std::fabs(t[0]*R[2][0] - t[2]*R[0][0]);
+	ra = aExt[0] * AbsR[2][0] + aExt[2] * AbsR[0][0];
+	rb = bExt[1] * AbsR[1][2] + bExt[2] * AbsR[1][1];
+	tval = std::fabs(t[0] * R[2][0] - t[2] * R[0][0]);
 	if (tval > ra + rb) { narrowHit_ = false; return; }
 
 	// A1 x B1
-	ra = aExt[0]*AbsR[2][1] + aExt[2]*AbsR[0][1];
-	rb = bExt[0]*AbsR[1][2] + bExt[2]*AbsR[1][0];
-	tval = std::fabs(t[0]*R[2][1] - t[2]*R[0][1]);
+	ra = aExt[0] * AbsR[2][1] + aExt[2] * AbsR[0][1];
+	rb = bExt[0] * AbsR[1][2] + bExt[2] * AbsR[1][0];
+	tval = std::fabs(t[0] * R[2][1] - t[2] * R[0][1]);
 	if (tval > ra + rb) { narrowHit_ = false; return; }
 
 	// A1 x B2
-	ra = aExt[0]*AbsR[2][2] + aExt[2]*AbsR[0][2];
-	rb = bExt[0]*AbsR[1][1] + bExt[1]*AbsR[1][0];
-	tval = std::fabs(t[0]*R[2][2] - t[2]*R[0][2]);
+	ra = aExt[0] * AbsR[2][2] + aExt[2] * AbsR[0][2];
+	rb = bExt[0] * AbsR[1][1] + bExt[1] * AbsR[1][0];
+	tval = std::fabs(t[0] * R[2][2] - t[2] * R[0][2]);
 	if (tval > ra + rb) { narrowHit_ = false; return; }
 
 	// A2 x B0
-	ra = aExt[0]*AbsR[1][0] + aExt[1]*AbsR[0][0];
-	rb = bExt[1]*AbsR[2][2] + bExt[2]*AbsR[2][1];
-	tval = std::fabs(t[1]*R[0][0] - t[0]*R[1][0]);
+	ra = aExt[0] * AbsR[1][0] + aExt[1] * AbsR[0][0];
+	rb = bExt[1] * AbsR[2][2] + bExt[2] * AbsR[2][1];
+	tval = std::fabs(t[1] * R[0][0] - t[0] * R[1][0]);
 	if (tval > ra + rb) { narrowHit_ = false; return; }
 
 	// A2 x B1
-	ra = aExt[0]*AbsR[1][1] + aExt[1]*AbsR[0][1];
-	rb = bExt[0]*AbsR[2][2] + bExt[2]*AbsR[2][0];
-	tval = std::fabs(t[1]*R[0][1] - t[0]*R[1][1]);
+	ra = aExt[0] * AbsR[1][1] + aExt[1] * AbsR[0][1];
+	rb = bExt[0] * AbsR[2][2] + bExt[2] * AbsR[2][0];
+	tval = std::fabs(t[1] * R[0][1] - t[0] * R[1][1]);
 	if (tval > ra + rb) { narrowHit_ = false; return; }
 
 	// A2 x B2
-	ra = aExt[0]*AbsR[1][2] + aExt[1]*AbsR[0][2];
-	rb = bExt[0]*AbsR[2][1] + bExt[1]*AbsR[2][0];
-	tval = std::fabs(t[1]*R[0][2] - t[0]*R[1][2]);
+	ra = aExt[0] * AbsR[1][2] + aExt[1] * AbsR[0][2];
+	rb = bExt[0] * AbsR[2][1] + bExt[1] * AbsR[2][0];
+	tval = std::fabs(t[1] * R[0][2] - t[0] * R[1][2]);
 	if (tval > ra + rb) { narrowHit_ = false; return; }
 
 	narrowHit_ = true;
@@ -824,34 +970,37 @@ void ColliderManager::CheckCapsuleCapsule(Collider* a, Collider* b) {
 	const float b1 = Dot3(d1, r0);
 	const float b2 = Dot3(d2, r0);
 
-	float s =0.0f;
-	float t =0.0f;
+	float s = 0.0f;
+	float t = 0.0f;
 
 	const float denom = a11 * a22 - a12 * a12;
-	if (denom >1e-6f) {
+	if (denom > 1e-6f) {
 		s = (a12 * b2 - a22 * b1) / denom;
-		s = std::clamp(s,0.0f,1.0f);
-	} else {
+		s = std::clamp(s, 0.0f, 1.0f);
+	}
+	else {
 		//ほぼ平行：とりあえず始点側に寄せる
-		s =0.0f;
+		s = 0.0f;
 	}
 
 	// t を sから求める
 	const float tNom = a12 * s + b2;
-	if (a22 >1e-6f) {
+	if (a22 > 1e-6f) {
 		t = tNom / a22;
-		t = std::clamp(t,0.0f,1.0f);
-	} else {
-		t =0.0f;
+		t = std::clamp(t, 0.0f, 1.0f);
+	}
+	else {
+		t = 0.0f;
 	}
 
 	// s を tで再調整（端点クランプ後の補正）
 	const float sNom = a12 * t - b1;
-	if (a11 >1e-6f) {
+	if (a11 > 1e-6f) {
 		s = sNom / a11;
-		s = std::clamp(s,0.0f,1.0f);
-	} else {
-		s =0.0f;
+		s = std::clamp(s, 0.0f, 1.0f);
+	}
+	else {
+		s = 0.0f;
 	}
 
 	const VECTOR c1 = VAdd(p1, VScale(d1, s));
@@ -880,10 +1029,10 @@ void ColliderManager::CheckSphereCapsule(Collider* a, Collider* b) {
 	const VECTOR v = VSub(s->sphere_.center, p);
 
 	const float segLenSq = Dot3(seg, seg);
-	float t =0.0f;
-	if (segLenSq >1e-6f) {
+	float t = 0.0f;
+	if (segLenSq > 1e-6f) {
 		t = Dot3(v, seg) / segLenSq;
-		t = std::clamp(t,0.0f,1.0f);
+		t = std::clamp(t, 0.0f, 1.0f);
 	}
 
 	const VECTOR closest = VAdd(p, VScale(seg, t));
@@ -910,7 +1059,7 @@ void ColliderManager::CheckBoxCapsule(Collider* a, Collider* b) {
 	auto ToLocal = [&](const VECTOR& w) {
 		const VECTOR d = VSub(w, box->box_.center);
 		return VGet(Dot3(d, box->box_.axisX), Dot3(d, box->box_.axisY), Dot3(d, box->box_.axisZ));
-	};
+		};
 
 	const VECTOR pL = ToLocal(cap->cap_.bottom);
 	const VECTOR qL = ToLocal(cap->cap_.top);
@@ -930,11 +1079,11 @@ void ColliderManager::CheckBoxCapsule(Collider* a, Collider* b) {
 			std::clamp(p.y, -hy, hy),
 			std::clamp(p.z, -hz, hz)
 		);
-	};
+		};
 
 	auto DistSq = [&](const VECTOR& u, const VECTOR& v) {
 		return LenSq(VSub(u, v));
-	};
+		};
 
 	//2-1)端点候補
 	{
@@ -947,26 +1096,26 @@ void ColliderManager::CheckBoxCapsule(Collider* a, Collider* b) {
 	//2-2)交差（内部）チェック + 面への射影候補
 	// 各スラブ境界 t を計算し、線分上の点を評価
 	auto ConsiderT = [&](float t) {
-		if (t <0.0f || t >1.0f) return;
+		if (t < 0.0f || t >1.0f) return;
 		const VECTOR s = VAdd(pL, VScale(dL, t));
 		const VECTOR cs = ClampPointToAABB(s);
 		best = (std::min)(best, DistSq(s, cs));
-	};
+		};
 
 	// x = +/-hx
-	if (std::fabs(dL.x) >1e-6f) {
+	if (std::fabs(dL.x) > 1e-6f) {
 		ConsiderT((-hx - pL.x) / dL.x);
-		ConsiderT(( hx - pL.x) / dL.x);
+		ConsiderT((hx - pL.x) / dL.x);
 	}
 	// y = +/-hy
-	if (std::fabs(dL.y) >1e-6f) {
+	if (std::fabs(dL.y) > 1e-6f) {
 		ConsiderT((-hy - pL.y) / dL.y);
-		ConsiderT(( hy - pL.y) / dL.y);
+		ConsiderT((hy - pL.y) / dL.y);
 	}
 	// z = +/-hz
-	if (std::fabs(dL.z) >1e-6f) {
+	if (std::fabs(dL.z) > 1e-6f) {
 		ConsiderT((-hz - pL.z) / dL.z);
-		ConsiderT(( hz - pL.z) / dL.z);
+		ConsiderT((hz - pL.z) / dL.z);
 	}
 
 	//3) 判定（capsule半径）
@@ -1034,11 +1183,6 @@ void ColliderManager::UnregisterCollider(Collider* collider) {
 
 // 当たり判定ロジック群
 
-// 空間分割
-bool ColliderManager::SpatialPartitioning() {
-	// SpatialHash等
-	return true;
-}
 // Layer/Maskで判定
 bool ColliderManager::CheckLayerMaskCollisions(Collider* a, Collider* b) {
 	// Layer/Mask チェック

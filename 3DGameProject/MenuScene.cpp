@@ -19,20 +19,22 @@
 
 namespace {
 	// カメラ
-	CameraController g_camCtrl;						// カメラコントローラ
-	CameraController::CameraId g_debugCamId = 0;	// デバッグ用操作カメラ
-	CameraController::CameraId g_gameCamId = 0;		// ゲーム用固定カメラ
-	CameraController::CameraId g_currentCamId = 0;	// 現在レンダー中カメラ
-	bool g_useBlend = true;							// カメラ切替をブレンドするか
-	float g_blendSec = 0.4f;						// ブレンド時間
+	CameraController g_camCtrl;
+	CameraController::CameraId g_debugCamId =0;
+	CameraController::CameraId g_gameCamId =0;
+	CameraController::CameraId g_currentCamId =0;
+	bool g_useBlend = true;
+	float g_blendSec =0.4f;
 
-	// プールからスポーンしたデバッグ用オブジェクト
-	DebugPlayer* g_debugPlayer = nullptr;	// デバッグ用プレイヤー
-	DebugEnemy* g_debugEnemy = nullptr;		// デバッグ用エネミー
+	// プールからスポーンするデバッグ用オブジェクト
+	DebugPlayer* g_debugPlayer = nullptr;
+	DebugEnemy* g_debugEnemy = nullptr;
+	DebugHat* g_debugHat = nullptr;
+	DebugGround* g_debugGround = nullptr;
 
-	// グリッド床描画
+	// グリッド床を描画
 	void DrawGridFloor(float y, int halfCells, float step) {
-		const unsigned int colGrid = GetColor(60, 60, 60);
+		const unsigned int colGrid = GetColor(60,60,60);
 		for (int i = -halfCells; i <= halfCells; ++i) {
 			const float x = i * step;
 			DrawLine3D(VGet(x, y, -halfCells * step), VGet(x, y, halfCells * step), colGrid);
@@ -40,24 +42,24 @@ namespace {
 			DrawLine3D(VGet(-halfCells * step, y, z), VGet(halfCells * step, y, z), colGrid);
 		}
 		// axis
-		DrawLine3D(VGet(0, y, 0), VGet(2, y, 0), GetColor(255, 80, 80));
-		DrawLine3D(VGet(0, y, 0), VGet(0, y + 2, 0), GetColor(80, 255, 80));
-		DrawLine3D(VGet(0, y, 0), VGet(0, y, 2), GetColor(80, 80, 255));
+		DrawLine3D(VGet(0, y,0), VGet(2, y,0), GetColor(255,80,80));
+		DrawLine3D(VGet(0, y,0), VGet(0, y +2,0), GetColor(80,255,80));
+		DrawLine3D(VGet(0, y,0), VGet(0, y,2), GetColor(80,80,255));
 	}
 }
 
 void MenuScene::Start() {
-	auto& camMgr = CameraManager::Instance();						// カメラマネージャ取得
-	const int sceneId = SceneManager::Instance().CurrentSceneId();	// 現在シーンID取得
+	auto& camMgr = CameraManager::Instance();
+	const int sceneId = SceneManager::Instance().CurrentSceneId();
 
-	// 操作カメラ（デバッグ用）
-	if (g_debugCamId == 0 || camMgr.Get(g_debugCamId) == nullptr) {
-		g_debugCamId = g_camCtrl.SpawnAuto(sceneId, CameraTag::Debug, VGet(0.0f, 2.0f, -8.0f), VGet(0.0f, 0.0f, 0.0f));
+	// 自由カメラ（デバッグ用）
+	if (g_debugCamId ==0 || camMgr.Get(g_debugCamId) == nullptr) {
+		g_debugCamId = g_camCtrl.SpawnAuto(sceneId, CameraTag::Debug, VGet(0.0f,2.0f, -8.0f), VGet(0.0f,0.0f,0.0f));
 	}
 	// 固定カメラ（ゲーム用）
-	if (g_gameCamId == 0 || camMgr.Get(g_gameCamId) == nullptr) {
+	if (g_gameCamId ==0 || camMgr.Get(g_gameCamId) == nullptr) {
 		g_camCtrl.SetCamera(0);
-		g_gameCamId = g_camCtrl.SpawnAuto(sceneId, CameraTag::Game, VGet(6.0f, 3.0f, -6.0f), VGet(0.0f, 0.8f, 0.0f));
+		g_gameCamId = g_camCtrl.SpawnAuto(sceneId, CameraTag::Game, VGet(6.0f,3.0f, -6.0f), VGet(0.0f,0.8f,0.0f));
 	}
 
 	g_currentCamId = g_debugCamId;
@@ -66,54 +68,67 @@ void MenuScene::Start() {
 	// 登録（最初の一回だけ）
 	static bool s_registered = false;
 	if (!s_registered) {
-		ObjectFactory::Instance().RegisterCreator("DebugPlayer", [](const VariantMap&) { return std::make_unique<DebugPlayer>(); });	// ラムダ式で生成関数を登録
-		ObjectFactory::Instance().RegisterCreator("DebugEnemy", [](const VariantMap&) { return std::make_unique<DebugEnemy>(); });		// ラムダ式で生成関数を登録
-		ObjectManager::Instance().RegisterPool("DebugPlayer", 8);	// プール登録
-		ObjectManager::Instance().RegisterPool("DebugEnemy", 8);	// プール登録
+		ObjectFactory::Instance().RegisterCreator("DebugPlayer", [](const VariantMap&) { return std::make_unique<DebugPlayer>(); });
+		ObjectFactory::Instance().RegisterCreator("DebugEnemy", [](const VariantMap&) { return std::make_unique<DebugEnemy>(); });
+		ObjectFactory::Instance().RegisterCreator("DebugHat", [](const VariantMap&) { return std::make_unique<DebugHat>(); });
+		ObjectFactory::Instance().RegisterCreator("DebugGround", [](const VariantMap&) { return std::make_unique<DebugGround>(); });
+		ObjectManager::Instance().RegisterPool("DebugPlayer",8);
+		ObjectManager::Instance().RegisterPool("DebugEnemy",8);
+		ObjectManager::Instance().RegisterPool("DebugHat",8);
+		ObjectManager::Instance().RegisterPool("DebugGround",2);
 		s_registered = true;
 	}
 
-	// デモ用に DebugPlayer / DebugEnemy をスポーン
-	g_debugPlayer = dynamic_cast<DebugPlayer*>(ObjectManager::Instance().Spawn("DebugPlayer"));	// pool から取得
-	g_debugEnemy = dynamic_cast<DebugEnemy*>(ObjectManager::Instance().Spawn("DebugEnemy"));	// pool から取得
-	if (g_debugPlayer) g_debugPlayer->transform.SetLocalPosition(VGet(-1.5f, 1.0f, 2.0f));		// 少し離す
-	if (g_debugEnemy) g_debugEnemy->transform.SetLocalPosition(VGet(1.5f, 1.0f, 2.0f));			// 少し離す
+	// DebugPlayer / DebugEnemy / Hat / Ground をスポーン
+	g_debugPlayer = dynamic_cast<DebugPlayer*>(ObjectManager::Instance().Spawn("DebugPlayer"));
+	g_debugEnemy = dynamic_cast<DebugEnemy*>(ObjectManager::Instance().Spawn("DebugEnemy"));
+	g_debugHat = dynamic_cast<DebugHat*>(ObjectManager::Instance().Spawn("DebugHat"));
+	g_debugGround = dynamic_cast<DebugGround*>(ObjectManager::Instance().Spawn("DebugGround"));
+
+	if (g_debugPlayer) g_debugPlayer->transform.SetLocalPosition(VGet(-1.5f,1.0f,2.0f));
+	if (g_debugEnemy) g_debugEnemy->transform.SetLocalPosition(VGet(1.5f,1.0f,2.0f));
+
+	// グリッド(0)の下に床を置く
+	if (g_debugGround) g_debugGround->transform.SetLocalPosition(VGet(0.0f,-0.6f,0.0f));
+
+	// 親子付け（親=Player）
+	if (g_debugPlayer && g_debugHat) {
+		g_debugHat->transform.SetParent(&g_debugPlayer->transform);
+		g_debugHat->transform.SetLocalPosition(VGet(0.0f,1.0f,0.0f));
+	}
 }
 
 void MenuScene::Update() {
 	// ObjectManager 配下の更新
 	ObjectManager::Instance().UpdateAll();
 
-	// カメラ操作（デバッグカメラのみ動かす）
+	// カメラ操作（デバッグカメラのみ入力）
 	g_camCtrl.SetCamera(g_debugCamId);
 	g_camCtrl.UpdateFreeMoveMouse(8.0f,0.4f,10.0f);
 
-	// DebugPlayer 移動入力
+	// DebugPlayer 移動
 	if (g_debugPlayer) {
-		VECTOR p = g_debugPlayer->transform.LocalPosition();	// 現在位置取得
-		const float spd = 0.08f;								// 移動速度
-		if (CheckHitKey(KEY_INPUT_J)) p.x -= spd;				// 左
-		if (CheckHitKey(KEY_INPUT_L)) p.x += spd;				// 右
-		if (CheckHitKey(KEY_INPUT_I)) p.z += spd;				// 前
-		if (CheckHitKey(KEY_INPUT_K)) p.z -= spd;				// 後
-		if (CheckHitKey(KEY_INPUT_U)) p.y += spd;				// 上
-		if (CheckHitKey(KEY_INPUT_O)) p.y -= spd;				// 下
-		g_debugPlayer->transform.SetLocalPosition(p);			// 位置更新
+		VECTOR p = g_debugPlayer->transform.LocalPosition();
+		const float spd =0.08f;
+		if (CheckHitKey(KEY_INPUT_J)) p.x -= spd;
+		if (CheckHitKey(KEY_INPUT_L)) p.x += spd;
+		if (CheckHitKey(KEY_INPUT_I)) p.z += spd;
+		if (CheckHitKey(KEY_INPUT_K)) p.z -= spd;
+		if (CheckHitKey(KEY_INPUT_U)) p.y += spd;
+		if (CheckHitKey(KEY_INPUT_O)) p.y -= spd;
+		g_debugPlayer->transform.SetLocalPosition(p);
 	}
-
-	// 当たり更新
-	ColliderManager::GetInstance().Update();
 
 	// カメラ切替入力
-	if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_B)) {	// ブレンドON/OFF切替
+	if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_B)) {    // ブレンドON/OFF切替
 		g_useBlend = !g_useBlend;
 	}
-	if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_1)) {	// デバッグカメラ
+	if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_1)) {    // デバッグカメラ
 		g_currentCamId = g_debugCamId;
 		if (g_useBlend) CameraManager::Instance().BlendRenderTo(g_currentCamId, g_blendSec);
 		else CameraManager::Instance().SetRender(g_currentCamId);
 	}
-	if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_2)) {	// ゲームカメラ
+	if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_2)) {    // ゲームカメラ
 		g_currentCamId = g_gameCamId;
 		if (g_useBlend) CameraManager::Instance().BlendRenderTo(g_currentCamId, g_blendSec);
 		else CameraManager::Instance().SetRender(g_currentCamId);
@@ -121,6 +136,12 @@ void MenuScene::Update() {
 
 	// シーン切替入力
 	if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_SPACE)) {
+		if (g_debugHat) {
+			g_debugHat->transform.SetParent(nullptr);
+			ObjectManager::Instance().Release(g_debugHat);
+			g_debugHat = nullptr;
+		}
+		if (g_debugGround) { ObjectManager::Instance().Release(g_debugGround); g_debugGround = nullptr; }
 		if (g_debugPlayer) { ObjectManager::Instance().Release(g_debugPlayer); g_debugPlayer = nullptr; }
 		if (g_debugEnemy) { ObjectManager::Instance().Release(g_debugEnemy); g_debugEnemy = nullptr; }
 

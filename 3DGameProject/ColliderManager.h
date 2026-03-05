@@ -3,6 +3,7 @@
 #include "DxLib.h"
 #include <vector>
 #include <unordered_set>
+#include <unordered_map>
 #include <cstdint>
 #include <cstddef>
 #include <atomic>
@@ -18,7 +19,7 @@ private: // ペア状態管理（※unordered_set のメンバより先に定義が必要）
 	// ハッシュ関数
 	struct PairHash {
 		std::size_t operator()(const PairKey& k) const noexcept {
-			return (reinterpret_cast<std::uintptr_t>(k.a) >> 4) ^ (reinterpret_cast<std::uintptr_t>(k.b) << 1);
+			return (reinterpret_cast<std::uintptr_t>(k.a) >>4) ^ (reinterpret_cast<std::uintptr_t>(k.b) <<1);
 		}
 	};
 
@@ -33,11 +34,11 @@ private: // ペア状態管理（※unordered_set のメンバより先に定義が必要）
 	void DispatchExit(Collider* a, Collider* b);
 
 	// ペア管理
-	std::unordered_set<PairKey, PairHash> prevPairs_{}; // 前フレームのペア
-	std::unordered_set<PairKey, PairHash> currPairs_{}; // 今フレームのペア
+	std::unordered_set<PairKey, PairHash> _prevPairs{}; // 前フレームのペア
+	std::unordered_set<PairKey, PairHash> _currPairs{}; // 今フレームのペア
 
 	// 終了処理ガード：終了中は Update/Register/Unregister を no-op にする
-	std::atomic_bool shuttingDown_{ false };
+	std::atomic_bool _shuttingDown{ false };
 
 private:
 	ColliderManager() = default;
@@ -51,7 +52,7 @@ public:
 
 	// 明示的終了（main/WinMainから呼び、静的デストラクタより前に安全化する）
 	void Shutdown() noexcept; // 終了処理(Mainの最後で呼ぶ)
-	bool IsShuttingDown() const noexcept { return shuttingDown_.load(std::memory_order_relaxed); }
+	bool IsShuttingDown() const noexcept { return _shuttingDown.load(std::memory_order_relaxed); }
 
 public:
 	// 更新
@@ -77,9 +78,9 @@ public:
 
 private:
 	// 判定ヘルパー
-	void UpdateAllShapes();						// 形状更新
-	void BuildCurrentPairs();					// ペア構築
-	void ProcessPairEvents();					// イベント処理
+	void UpdateAllShapes();					//形状更新
+	void BuildCurrentPairs();				// ペア構築
+	void ProcessPairEvents();				// イベント処理
 	void ResolvePushOut(Collider* a, Collider* b);	// 押し戻し
 
 private:
@@ -94,20 +95,32 @@ private:
 	// 各種押し戻し処理
 	void PushOutSphereSphere(Collider* a, Collider* b);		// Sphere-Sphere 押し戻し
 	void PushOutSphereBox(Collider* a, Collider* b);		// Sphere-Box 押し戻し
-	void PushOutBoxBox(Collider* a, Collider* b);			// Box-Box 押し戻し
-	void PushOutCapsuleCapsule(Collider* a, Collider* b);	// Capsule-Capsule 押し戻し
-	void PushOutSphereCapsule(Collider* a, Collider* b);	// Sphere-Capsule 押し戻し
-	void PushOutBoxCapsule(Collider* a, Collider* b);		// Box-Capsule 押し戻し
+	void PushOutBoxBox(Collider* a, Collider* b); 			// Box-Box 押し戻し
+	void PushOutCapsuleCapsule(Collider* a, Collider* b); 	// Capsule-Capsule 押し戻し
+	void PushOutSphereCapsule(Collider* a, Collider* b); 	// Sphere-Capsule 押し戻し
+	void PushOutBoxCapsule(Collider* a, Collider* b); 		// Box-Capsule 押し戻し
 
 public:
 	// 空間分割セルサイズ（ワールド単位）。デフォルト:50
 	float GetCellSize() const noexcept { return _cellSize; }
 	void SetCellSize(float cellSize) noexcept { _cellSize = (cellSize >0.01f) ? cellSize :0.01f; }
 
+	// Contact情報（Physics 用）
+	struct Contact {
+		Collider* a = nullptr; // contact normal は a -> b
+		Collider* b = nullptr;
+		VECTOR normal = VGet(0,0,0);
+		float penetration = 0.0f;
+	};
+
+	const std::vector<Contact>& GetContacts() const noexcept { return _contacts; }
+
 private:
 	// 空間分割（Spatial Hash）セルサイズ
 	float _cellSize =50.0f;
 
-	std::vector<Collider*> colliders_{};	// 登録コライダー群
-	bool narrowHit_ = false;				// 詳細判定結果
+	std::vector<Collider*> _colliders{}; 	// 登録コライダー群
+	bool _narrowHit = false; 			// 詳細判定結果
+	std::vector<Contact> _contacts; // 今フレームの接触情報
+	std::unordered_map<Collider*, AABB> _prevAABBs; // 前フレームのAABB（CCD用）
 };

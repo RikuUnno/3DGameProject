@@ -12,15 +12,15 @@ namespace { // ユーティリティ関数群
 	}
 	// 3つのベクトル和
 	inline VECTOR Add3(const VECTOR& a, const VECTOR& b, const VECTOR& c) {
-		return VAdd(VAdd(a,b),c);
+		return VAdd(VAdd(a, b), c);
 	}
 	// 3次元ドット積
 	inline float Dot3Local(const VECTOR& a, const VECTOR& b) {
-		return a.x*b.x + a.y*b.y + a.z*b.z;
+		return a.x * b.x + a.y * b.y + a.z * b.z;
 	}
 	// ベクトル長
 	inline float LenLocal(const VECTOR& v) {
-		return std::sqrt(Dot3Local(v,v));
+		return std::sqrt(Dot3Local(v, v));
 	}
 	// ベクトル正規化（ゼロベクトル対策付き）
 	inline VECTOR SafeNormalize(const VECTOR& v, const VECTOR& fallback) {
@@ -65,9 +65,9 @@ void BoxCollider::UpdateShape() {
 	const VECTOR ez = VScale(AbsVec(box_.axisZ), box_.halfExtents.z);
 	const VECTOR ext = Add3(ex, ey, ez);
 
-	aabb_.center = box_.center;
-	aabb_.min = VSub(box_.center, ext);
-	aabb_.max = VAdd(box_.center, ext);
+	_aabb.center = box_.center;
+	_aabb.min = VSub(box_.center, ext);
+	_aabb.max = VAdd(box_.center, ext);
 }
 
 // 本体デバッグ描画の実装
@@ -113,8 +113,8 @@ void BoxCollider::DrawDebug() {
 // AABBデバッグ描画の実装
 void BoxCollider::DrawDebugAABB() {
 	const unsigned int col = GetColor(120,120,120);
-	const VECTOR mn = aabb_.min;
-	const VECTOR mx = aabb_.max;
+	const VECTOR mn = _aabb.min;
+	const VECTOR mx = _aabb.max;
 
 	const VECTOR p000 = VGet(mn.x,mn.y,mn.z);
 	const VECTOR p001 = VGet(mn.x,mn.y,mx.z);

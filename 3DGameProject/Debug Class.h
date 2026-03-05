@@ -3,10 +3,65 @@
 #include <memory>
 
 #include "GameObject.h"
+#include "PhysicsBody.h"
 
 class CapsuleCollider;
+class BoxCollider;
 
-// Player を疑似再現するデバッグ用クラス（ObjectPool 対応）
+// Hat を疑似再現するデバッグ用クラス（Pool管理想定）
+class DebugHat : public GameObject
+{
+public:
+	DebugHat();
+	virtual ~DebugHat() override;
+
+	void Awake() override;
+	void Start() override;
+	void Update() override;
+	void Draw() override;
+	void End() override;
+	void OnDestroy() override;
+
+	void OnAcquire(const VariantMap& params) override;
+	void OnRelease() override;
+
+	BoxCollider* GetCollider() const noexcept;
+
+	// 衝突中はピンク
+	void OnCollisionStay(Collider* self, Collider* other) override;
+	void OnCollisionExit(Collider* self, Collider* other) override;
+
+private:
+	std::unique_ptr<BoxCollider> collider_;
+	PhysicsBody _physicsBody{};
+	bool registeredToColliderMgr_ = false;
+};
+
+// Ground を疑似再現するデバッグ用クラス（BoxColliderで床を作る）
+class DebugGround : public GameObject
+{
+public:
+	DebugGround();
+	virtual ~DebugGround() override;
+
+	void Awake() override;
+	void Start() override;
+	void Update() override;
+	void Draw() override;
+	void End() override;
+	void OnDestroy() override;
+
+	void OnAcquire(const VariantMap& params) override;
+	void OnRelease() override;
+
+	BoxCollider* GetCollider() const noexcept;
+
+private:
+	std::unique_ptr<BoxCollider> collider_;
+	bool registeredToColliderMgr_ = false;
+};
+
+// Player ?疑似再現するデバッグ用クラス（ObjectPool 対応）
 class DebugPlayer : public GameObject
 {
 public:
@@ -37,8 +92,12 @@ public:
 	void SetColliding(bool colliding) noexcept { _isColliding = colliding; }
 	bool IsColliding() const noexcept { return _isColliding; }
 
+	PhysicsBody* GetPhysicsBody() noexcept { return &_physicsBody; }
+	const PhysicsBody* GetPhysicsBody() const noexcept { return &_physicsBody; }
+
 private:
 	std::unique_ptr<CapsuleCollider> collider_;
+	PhysicsBody _physicsBody{};
 	bool registeredToColliderMgr_ = false;
 	bool _isColliding = false;
 };
@@ -70,8 +129,12 @@ public:
 	void OnTriggerStay(Collider* self, Collider* other) override;
 	void OnTriggerExit(Collider* self, Collider* other) override;
 
+	PhysicsBody* GetPhysicsBody() noexcept { return &_physicsBody; }
+	const PhysicsBody* GetPhysicsBody() const noexcept { return &_physicsBody; }
+
 private:
 	std::unique_ptr<CapsuleCollider> collider_;
+	PhysicsBody _physicsBody{};
 	bool registeredToColliderMgr_ = false;
 	bool _isColliding = false;
 };

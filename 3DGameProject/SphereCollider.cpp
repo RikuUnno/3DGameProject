@@ -17,9 +17,9 @@ void SphereCollider::UpdateShape() {
 		sphere_.center = owner->transform.WorldPosition();
 	}
 
-	aabb_.center = sphere_.center;
-	aabb_.min = VGet(sphere_.center.x - sphere_.radius, sphere_.center.y - sphere_.radius, sphere_.center.z - sphere_.radius);
-	aabb_.max = VGet(sphere_.center.x + sphere_.radius, sphere_.center.y + sphere_.radius, sphere_.center.z + sphere_.radius);
+	_aabb.center = sphere_.center;
+	_aabb.min = VGet(sphere_.center.x - sphere_.radius, sphere_.center.y - sphere_.radius, sphere_.center.z - sphere_.radius);
+	_aabb.max = VGet(sphere_.center.x + sphere_.radius, sphere_.center.y + sphere_.radius, sphere_.center.z + sphere_.radius);
 }
 
 void SphereCollider::DrawDebug() {
@@ -30,8 +30,8 @@ void SphereCollider::DrawDebug() {
 
 void SphereCollider::DrawDebugAABB() {
 	const unsigned int col = GetColor(120,120,120);
-	const VECTOR mn = aabb_.min;
-	const VECTOR mx = aabb_.max;
+	const VECTOR mn = _aabb.min;
+	const VECTOR mx = _aabb.max;
 
 	const VECTOR p000 = VGet(mn.x,mn.y,mn.z);
 	const VECTOR p001 = VGet(mn.x,mn.y,mx.z);

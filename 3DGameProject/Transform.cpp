@@ -14,6 +14,15 @@ Transform::Transform() {
 	_worldMatrix = MGetIdent();
 }
 
+Transform::~Transform() {
+	// 親子リストがぶら下がらないように切り離す
+	SetParent(nullptr);
+	for (auto* c : _children) {
+		if (c) c->_parent = nullptr;
+	}
+	_children.clear();
+}
+
 void Transform::SetLocalPosition(const VECTOR& p) noexcept {
 	_localPosition = p;
 	MarkDirty();
@@ -42,14 +51,56 @@ void Transform::SetLocalRotation(const Quaternion& q) noexcept {
 
 // 親子関係
 void Transform::SetParent(Transform* parent) noexcept {
+	if (_parent == parent) {
+		return;
+	}
+
+	//旧親から外す
+	if (_parent) {
+		_parent->RemoveChild(this);
+	}
+
 	_parent = parent;
+
+	// 新親へ登録
+	if (_parent) {
+		_parent->AddChild(this);
+	}
+
 	MarkDirty();
+}
+
+void Transform::AddChild(Transform* child) noexcept {
+	if (!child) return;
+	for (auto* c : _children) {
+		if (c == child) return;
+	}
+	_children.push_back(child);
+}
+
+void Transform::RemoveChild(Transform* child) noexcept {
+	if (!child) return;
+	auto it = std::remove(_children.begin(), _children.end(), child);
+	_children.erase(it, _children.end());
+}
+
+void Transform::PropagateDirtyToChildren() noexcept {
+	for (auto* c : _children) {
+		if (!c) continue;
+		// 子はワールドだけ古くなる（ローカルは変わらない）
+		if (!c->_worldDirty) {
+			c->_worldDirty = true;
+			// 孫にも伝播
+			c->PropagateDirtyToChildren();
+		}
+	}
 }
 
 // dirty: 行列キャッシュを古くする
 void Transform::MarkDirty() noexcept {
 	_localDirty = true;
 	_worldDirty = true;
+	PropagateDirtyToChildren();
 }
 
 // 軸ベクトル取得
@@ -57,7 +108,7 @@ VECTOR Transform::Forward() const noexcept {
 	return VNorm(_localRotation.RotateVector(VGet(0,0,1)));
 }
 
-// 右方向ベクトル取得
+//右方向ベクトル取得
 VECTOR Transform::Right() const noexcept {
 	return VNorm(_localRotation.RotateVector(VGet(1,0,0)));
 }

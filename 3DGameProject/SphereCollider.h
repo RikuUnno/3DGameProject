@@ -8,7 +8,7 @@ public:
 
 public:
 	Kind GetKind() const override { return Kind::Sphere; }
-	const AABB& GetAABB() const override { return aabb_; }
+	const AABB& GetAABB() const override { return _aabb; }
 	VECTOR GetCenter() const override { return sphere_.center; }
 	void UpdateShape() override;
 
@@ -21,5 +21,5 @@ public:
 	void DrawDebugAABB() override;
 
 private:
-	AABB aabb_{};
+	AABB _aabb{};
 };

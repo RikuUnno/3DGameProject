@@ -26,7 +26,7 @@ void CapsuleCollider::UpdateShape() {
 	}
 
 	// bottom/top は「中心 + up * offset」としてワールドへ
-	// cap_.bottom/top はローカルの上下オフセット量（y成分）を参照
+	// cap_.bottom/top はローカルの上下オフセット量（y差分）を参照
 	const float halfLen = (cap_.top.y - cap_.bottom.y) *0.5f;
 	const VECTOR upN = VNorm(up);
 	cap_.center = center;
@@ -41,9 +41,9 @@ void CapsuleCollider::UpdateShape() {
 	const float maxY = (std::max)(cap_.bottom.y, cap_.top.y) + r;
 	const float maxZ = (std::max)(cap_.bottom.z, cap_.top.z) + r;
 
-	aabb_.min = VGet(minX,minY,minZ);
-	aabb_.max = VGet(maxX,maxY,maxZ);
-	aabb_.center = VScale(VAdd(aabb_.min, aabb_.max),0.5f);
+	_aabb.min = VGet(minX,minY,minZ);
+	_aabb.max = VGet(maxX,maxY,maxZ);
+	_aabb.center = VScale(VAdd(_aabb.min, _aabb.max),0.5f);
 }
 
 void CapsuleCollider::DrawDebug() {
@@ -55,7 +55,7 @@ void CapsuleCollider::DrawDebug() {
 	// 軸（中心線）
 	DrawLine3D(cap_.bottom, cap_.top, col);
 
-	//端の球（面）
+	//端の球
 	DrawSphere3D(cap_.bottom, cap_.radius,16, col, col, FALSE);
 	DrawSphere3D(cap_.top, cap_.radius,16, col, col, FALSE);
 
@@ -75,7 +75,7 @@ void CapsuleCollider::DrawDebug() {
 
 	constexpr int kSideLines =16;
 	const float pi = DX_PI_F;
-	for (int i=0; i<kSideLines; ++i) {
+	for (int i =0; i < kSideLines; ++i) {
 		const float theta = (2.0f*pi) * (float)i / (float)kSideLines;
 		const VECTOR dir = VAdd(VScale(right, std::cos(theta)), VScale(forward, std::sin(theta)));
 		const VECTOR off = VScale(dir, r);
@@ -87,8 +87,8 @@ void CapsuleCollider::DrawDebug() {
 
 void CapsuleCollider::DrawDebugAABB() {
 	const unsigned int col = GetColor(120,120,120);
-	const VECTOR mn = aabb_.min;
-	const VECTOR mx = aabb_.max;
+	const VECTOR mn = _aabb.min;
+	const VECTOR mx = _aabb.max;
 
 	const VECTOR p000 = VGet(mn.x,mn.y,mn.z);
 	const VECTOR p001 = VGet(mn.x,mn.y,mx.z);

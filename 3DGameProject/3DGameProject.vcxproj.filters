@@ -199,9 +199,6 @@
     <Filter Include="ヘッダー ファイル\System\Template\ManagerTpl">
       <UniqueIdentifier>{e24bc90b-3186-4a5a-bde6-49670e893727}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ソース ファイル\System\Template">
-      <UniqueIdentifier>{8d8e9891-fd9d-479d-8cd2-f1f190c79beb}</UniqueIdentifier>
-    </Filter>
     <Filter Include="ソース ファイル\Debug">
       <UniqueIdentifier>{9c8679e1-4659-4062-addd-b501f77e220a}</UniqueIdentifier>
     </Filter>
@@ -262,6 +259,27 @@
     <Filter Include="ソース ファイル\Scene\Transition">
       <UniqueIdentifier>{5b832177-3ea6-4181-bd18-ce7eefa94ce3}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ソース ファイル\System\Physics">
+      <UniqueIdentifier>{96effe93-c4a1-4e75-a768-98a9a9e3de35}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Physics\Manager">
+      <UniqueIdentifier>{10f48bca-570b-47e0-8f2e-abe200bacedd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Physics\Physics">
+      <UniqueIdentifier>{12dae0e3-04fb-4122-ab04-df21bd3f6473}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Physics">
+      <UniqueIdentifier>{d214e332-2bf8-408b-8ad5-c9a7a6025a9e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Physics\Physics">
+      <UniqueIdentifier>{20495d4d-ca89-4afe-abeb-d845bdb8deeb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Physics\Manager">
+      <UniqueIdentifier>{d5726ec0-9358-49c5-ab35-47c608226a3a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Physics\Controller">
+      <UniqueIdentifier>{872021c7-169d-4368-9b87-87fc43a60b4f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -287,9 +305,6 @@
     </ClCompile>
     <ClCompile Include="ObjectFactory.cpp">
       <Filter>ソース ファイル\System\Object\Factory</Filter>
-    </ClCompile>
-    <ClCompile Include="GameObject.cpp">
-      <Filter>ソース ファイル\System\Object\GameObject</Filter>
     </ClCompile>
     <ClCompile Include="ObjectManager.cpp">
       <Filter>ソース ファイル\System\Object\Manager</Filter>
@@ -344,6 +359,12 @@
     </ClCompile>
     <ClCompile Include="SceneTransition.cpp">
       <Filter>ソース ファイル\Scene\Transition</Filter>
+    </ClCompile>
+    <ClCompile Include="PhysicsBody.cpp">
+      <Filter>ソース ファイル\System\Physics\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="PhysicsManager.cpp">
+      <Filter>ソース ファイル\System\Physics\Manager</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -458,6 +479,15 @@
     <ClInclude Include="SceneTransition.h">
       <Filter>ヘッダー ファイル\Scene\Transition</Filter>
     </ClInclude>
+    <ClInclude Include="PhysicsManager.h">
+      <Filter>ヘッダー ファイル\System\Physics\Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="PhysicsController.h">
+      <Filter>ヘッダー ファイル\System\Physics\Controller</Filter>
+    </ClInclude>
+    <ClInclude Include="PhysicsBody.h">
+      <Filter>ヘッダー ファイル\System\Physics\Physics</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="オブジェクト構造想定.txt">
@@ -472,9 +502,6 @@
     <Text Include="現状追加一覧.txt">
       <Filter>メモ</Filter>
     </Text>
-    <Text Include="手順書.txt">
-      <Filter>メモ</Filter>
-    </Text>
     <Text Include="生成アルゴリズム.txt">
       <Filter>メモ</Filter>
     </Text>
@@ -482,9 +509,6 @@
       <Filter>メモ</Filter>
     </Text>
     <Text Include="現在の実装内容.txt">
-      <Filter>メモ</Filter>
-    </Text>
-    <Text Include="方針.txt">
       <Filter>メモ</Filter>
     </Text>
     <Text Include="Camera_Manual_Reference.txt">

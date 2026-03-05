@@ -16,21 +16,16 @@ public:
 	virtual ~GameObject() = default;
 
 	// 押し戻し等で動かない固定物フラグ（ワールド固定/壁扱い）
-	// true の場合、衝突解決で位置を変更しない
 	bool isStatic = false;
 
-	// Active フラグ（無効化中は Update/Draw/Collision 等の対象外にする想定）
+	// Active フラグ
 	bool IsActive() const noexcept { return _isActive; }
 	void SetActive(bool active) noexcept { _isActive = active; }
 
-	// Transform（位置・回転・スケール）
-	// - 見やすさ重視で Euler(rad) を保持
-	// - 行列生成は Quaternion を使用
-	// - 親子関係を見越した local/world キャッシュ
+	// Transform
 	Transform transform;
 
 	// --- Unity風: GameObjectが直接受け取るコールバック ---
-	// self/other を渡す（複数Collider対応）
 	virtual void OnCollisionEnter(Collider* self, Collider* other) {}
 	virtual void OnCollisionStay(Collider* self, Collider* other) {}
 	virtual void OnCollisionExit(Collider* self, Collider* other) {}
@@ -40,16 +35,16 @@ public:
 	virtual void OnTriggerExit(Collider* self, Collider* other) {}
 
 	// ライフサイクル
-	virtual void Awake() {}			// 生成直後一度だけ呼ばれる
-	virtual void Start() {}			// シーン開始時一度だけ呼ばれる
-	virtual void Update() {}		// 毎フレーム呼ばれる
-	virtual void Draw() {}			// 毎フレーム呼ばれる（描画用）
-	virtual void End() {}			// シーン終了時一度だけ呼ばれる
-	virtual void OnDestroy() {}		// 破棄直前一度だけ呼ばれる
+	virtual void Awake() {}
+	virtual void Start() {}
+	virtual void Update() {}
+	virtual void Draw() {}
+	virtual void End() {}
+	virtual void OnDestroy() {}
 
 	// プール/再利用フック
-	virtual void OnAcquire(const VariantMap& params) {} //取得時初期化
-	virtual void OnRelease() {}							//返却時クリア
+	virtual void OnAcquire(const VariantMap& params) {}
+	virtual void OnRelease() {}
 
 	// Prototype: 深い複製（派生で実装）未実装時は nullptr を返す
 	virtual std::unique_ptr<GameObject> Clone() const { return nullptr; }

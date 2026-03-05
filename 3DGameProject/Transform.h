@@ -2,6 +2,7 @@
 
 #include "DxLib.h"
 #include "Math/Quaternion.h"
+#include <vector>
 
 // Transform
 // - 内部の回転は Quaternion を正とする（補間・合成が安定する）
@@ -11,12 +12,13 @@
 class Transform {
 public:
 	Transform();
+	~Transform();
 
 	// ローカル変換成分の取得・設定
 	const VECTOR& LocalPosition() const noexcept { return _localPosition; }
 
 	// Euler は入出力用（内部は Quaternion）
-	VECTOR LocalEulerRad() const noexcept; //その時点の回転をEulerで取得（表示用）
+	VECTOR LocalEulerRad() const noexcept; // その時点の回転をEulerで取得（表示用）
 	void SetLocalEulerRad(const VECTOR& eulerRad) noexcept; // Euler入力 -> Quaternionへ反映
 
 	// Quaternion を直接扱う（内部表現）
@@ -47,11 +49,16 @@ public:
 	void MarkDirty() noexcept;
 
 private:
+	void AddChild(Transform* child) noexcept;
+	void RemoveChild(Transform* child) noexcept;
+	void PropagateDirtyToChildren() noexcept;
+
 	VECTOR _localPosition{};
 	Quaternion _localRotation{}; // 回転（内部表現）
 	VECTOR _localScale{};
 
 	Transform* _parent = nullptr;
+	std::vector<Transform*> _children;
 
 	mutable bool _localDirty = true;
 	mutable bool _worldDirty = true;

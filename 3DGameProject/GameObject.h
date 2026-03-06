@@ -37,7 +37,7 @@ public:
 	// ライフサイクル
 	virtual void Awake() {}
 	virtual void Start() {}
-	virtual void Update() {}
+	virtual void Update(float /*dt*/) {}
 	virtual void Draw() {}
 	virtual void End() {}
 	virtual void OnDestroy() {}

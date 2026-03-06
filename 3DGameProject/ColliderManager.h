@@ -57,6 +57,7 @@ public:
 public:
 	// 更新
 	void Update();
+	void Update(float dtSec);
 
 public:
 	// デバッグ描画
@@ -120,6 +121,7 @@ public:
 private:
 	// 空間分割（Spatial Hash）セルサイズ
 	float _cellSize =50.0f;
+	float _deltaTimeSec = 1.0f / 60.0f;
 
 	std::vector<Collider*> _colliders{}; 	// 登録コライダー群
 	bool _narrowHit = false; 			// 詳細判定結果

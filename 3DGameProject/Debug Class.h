@@ -17,7 +17,7 @@ public:
 
 	void Awake() override;
 	void Start() override;
-	void Update() override;
+	void Update(float dt) override;
 	void Draw() override;
 	void End() override;
 	void OnDestroy() override;
@@ -46,7 +46,7 @@ public:
 
 	void Awake() override;
 	void Start() override;
-	void Update() override;
+	void Update(float dt) override;
 	void Draw() override;
 	void End() override;
 	void OnDestroy() override;
@@ -61,7 +61,7 @@ private:
 	bool registeredToColliderMgr_ = false;
 };
 
-// Player ?疑似再現するデバッグ用クラス（ObjectPool 対応）
+// Player 疑似再現するデバッグ用クラス（ObjectPool 対応）
 class DebugPlayer : public GameObject
 {
 public:
@@ -70,7 +70,7 @@ public:
 
 	void Awake() override;
 	void Start() override;
-	void Update() override;
+	void Update(float dt) override;
 	void Draw() override;
 	void End() override;
 	void OnDestroy() override;
@@ -111,7 +111,7 @@ public:
 
 	void Awake() override;
 	void Start() override;
-	void Update() override;
+	void Update(float dt) override;
 	void Draw() override;
 	void End() override;
 	void OnDestroy() override;

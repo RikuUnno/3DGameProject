@@ -19,16 +19,17 @@ public:
 	GameObject* Spawn(const std::string& key, const VariantMap& params = {});   // オブジェクト取得
 	void RegisterPool(const std::string& key, size_t maxSize = 64);             // プール登録
 	void Release(GameObject* obj);                                              // オブジェクト返却
-	void UpdateAll();															// 全オブジェクト更新
+	void UpdateAll();															// 互換用：全オブジェクト更新
+	void UpdateAll(float dtSec);										// 可変FPS対応：全オブジェクト更新
 	void DrawAll();                                                             // 全オブジェクト描画
 	GameObject* FindById(int id) const;                                         // ID で検索
 	bool RemoveById(int id);                                                    // ID で削除
 
 	// ---- Scene integration ----
-	// 現在アクティブなシーンID（Spawnされたオブジェクトへ ownerSceneId を設定する）
+	// 現在アクティブなシーンID（Spawnされたオブジェクトの ownerSceneId を設定する）
 	void SetCurrentSceneId(int sceneId);
 	int CurrentSceneId() const;
-	// 指定シーンIDに所属するオブジェクトを一括で Releaseする（シーン終了時用）
+	// 指定シーンIDに所属するオブジェクトを一括で Releaseする（シーン終了用）
 	void ReleaseBySceneId(int sceneId);
 
 	// ---- Pool maintenance (generic / safe) ----
@@ -38,11 +39,12 @@ public:
 	size_t TrimPoolUnused(const std::string& key, double maxIdleSeconds);
 	// 全プールに対して TrimUnused を実行（戻り値: 総削除数）
 	size_t TrimAllPoolsUnused(double maxIdleSeconds);
-	// プール登録を解除する（freeList は破棄）。使用中が残っている場合は false.
+	// プール登録解除する（freeList は破棄）。使用中が残っている場合は false.
 	bool UnregisterPool(const std::string& key);
 
 	// Manager
 	void Update() override { UpdateAll(); }
+	void Update(float dt) override { UpdateAll(dt); }
 
 #ifdef _DEBUG
 	// デバッグ表示（Releaseではコンパイルされない）
@@ -58,7 +60,7 @@ private:
 	ObjectManager() = default;
 	virtual ~ObjectManager();
 
-	// _objects は ObjectPool::UniquePtr を保持する（プール由来/工場由来の両方を格納可能）
+	// _objects は ObjectPool::UniquePtr を保持する（プール経由/外部経由の両方を格納可能）
 	std::vector<ObjectPool::UniquePtr> _objects;
 
 	// プール管理コンテナ
@@ -68,7 +70,7 @@ private:
 	int _currentSceneId = 0; // 現在のシーンID
 
 #ifdef _DEBUG
-	// デバッグ用統計
+	// デバッグ用カウント
 	size_t _debugTotalSpawn = 0;
 	size_t _debugTotalDeleted = 0;
 #endif

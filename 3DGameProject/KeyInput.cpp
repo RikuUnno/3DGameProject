@@ -1,5 +1,4 @@
 #include "KeyInput.h"
-#include "DxLib.h"
 #include <cstring>
 #include <cassert>
 #include <cstdio>
@@ -12,7 +11,8 @@ KeyInput& KeyInput::Instance() noexcept {
 KeyInput::KeyInput()
 {
 	Initialize();
-	GetHitKeyStateAll(_previousKey);
+	GetHitKeyStateAll(_currentKey);
+	std::memcpy(_previousKey, _currentKey, sizeof(_currentKey));
 }
 
 KeyInput::~KeyInput()
@@ -26,16 +26,51 @@ void KeyInput::Initialize()
 	std::fill(std::begin(_previousKey), std::end(_previousKey),0);
 	std::fill(std::begin(_repeatedTime), std::end(_repeatedTime),1.0);
 	std::fill(std::begin(_repeatedTimer), std::end(_repeatedTimer),0.0);
+	std::fill(std::begin(_repeatedFlag), std::end(_repeatedFlag), false);
 }
 
-bool KeyInput::IsKeyInputTrigger(int keyCode)
+void KeyInput::Update(float dtSec)
+{
+	if (!_isKeyInputOn) return;
+	if (dtSec < 0.0f) dtSec = 0.0f;
+
+	std::memcpy(_previousKey, _currentKey, sizeof(_currentKey));
+	GetHitKeyStateAll(_currentKey);
+
+	for (int keyCode = 0; keyCode < KEY_COUNT; ++keyCode) {
+		_repeatedFlag[keyCode] = false;
+
+		if (_currentKey[keyCode] == 0) {
+			_repeatedTimer[keyCode] = 0.0;
+			continue;
+		}
+
+		if (_previousKey[keyCode] == 0) {
+			_repeatedTimer[keyCode] = 0.0;
+			continue;
+		}
+
+		if (_repeatedTime[keyCode] <= 0.0) {
+			_repeatedFlag[keyCode] = true;
+			continue;
+		}
+
+		_repeatedTimer[keyCode] += dtSec;
+		if (_repeatedTimer[keyCode] >= _repeatedTime[keyCode]) {
+			_repeatedFlag[keyCode] = true;
+			do {
+				_repeatedTimer[keyCode] -= _repeatedTime[keyCode];
+			} while (_repeatedTimer[keyCode] >= _repeatedTime[keyCode]);
+		}
+	}
+}
+
+bool KeyInput::IsKeyInputTrigger(int keyCode) const
 {
 	if (!_isKeyInputOn) return false;
 	if (keyCode <0 || keyCode >= KEY_COUNT) return false;
 
-	GetHitKeyStateAll(_currentKey);
-	const bool flag = (_currentKey[keyCode] !=0) && (_currentKey[keyCode] != _previousKey[keyCode]);
-	_previousKey[keyCode] = _currentKey[keyCode];
+	const bool flag = (_currentKey[keyCode] !=0) && (_previousKey[keyCode] ==0);
 
 #ifdef _DEBUG
 	DrawFormatString(0,90, GetColor(255,255,255), "TriggerFlag[%d]: %d", keyCode, flag);
@@ -44,21 +79,19 @@ bool KeyInput::IsKeyInputTrigger(int keyCode)
 	return flag;
 }
 
-bool KeyInput::IsKeyInputHeld(int keyCode)
+bool KeyInput::IsKeyInputHeld(int keyCode) const
 {
 	if (!_isKeyInputOn) return false;
 	if (keyCode <0 || keyCode >= KEY_COUNT) return false;
-	return (CheckHitKey(keyCode) !=0);
+	return (_currentKey[keyCode] !=0);
 }
 
-bool KeyInput::IsKeyInputReleased(int keyCode)
+bool KeyInput::IsKeyInputReleased(int keyCode) const
 {
 	if (!_isKeyInputOn) return false;
 	if (keyCode <0 || keyCode >= KEY_COUNT) return false;
 
-	GetHitKeyStateAll(_currentKey);
 	const bool flag = (_previousKey[keyCode] !=0) && (_currentKey[keyCode] ==0);
-	_previousKey[keyCode] = _currentKey[keyCode];
 
 #ifdef _DEBUG
 	DrawFormatString(0,75, GetColor(255,255,255), "ReleasedFlag[%d]: %d", keyCode, flag);
@@ -67,31 +100,14 @@ bool KeyInput::IsKeyInputReleased(int keyCode)
 	return flag;
 }
 
-bool KeyInput::IsKeyInputRepeated(int keyCode)
+bool KeyInput::IsKeyInputRepeated(int keyCode) const
 {
 	if (!_isKeyInputOn) return false;
 	if (keyCode <0 || keyCode >= KEY_COUNT) return false;
 
-	bool flag = false;
-	GetHitKeyStateAll(_currentKey);
-
-	if (_currentKey[keyCode] !=0)
-	{
-		_repeatedTimer[keyCode] += Time::Instance().GetDeltaTime();
-
-		if (_repeatedTime[keyCode] >0.0 && _repeatedTimer[keyCode] >= _repeatedTime[keyCode])
-		{
-			flag = true;
-			_repeatedTimer[keyCode] =0.0;
-		}
-	}
-	else
-	{
-		_repeatedTimer[keyCode] =0.0;
-	}
+	const bool flag = _repeatedFlag[keyCode];
 
 #ifdef _DEBUG
-	DrawFormatString(0,75, GetColor(255,255,255), "DeltaTime: %.4f", Time::Instance().GetDeltaTime());
 	DrawFormatString(0,90, GetColor(255,255,255), "RepeatedTimer[%d]: %.4f", keyCode, _repeatedTimer[keyCode]);
 	DrawFormatString(0,105, GetColor(255,255,255), "RepeatedFlag[%d]: %d", keyCode, flag);
 #endif
@@ -109,9 +125,15 @@ void KeyInput::SetInputRepeatedTime(int keyCode, double setTime)
 void KeyInput::BeginKeyInput()
 {
 	_isKeyInputOn = true;
+	GetHitKeyStateAll(_currentKey);
+	std::memcpy(_previousKey, _currentKey, sizeof(_currentKey));
+	std::fill(std::begin(_repeatedTimer), std::end(_repeatedTimer),0.0);
+	std::fill(std::begin(_repeatedFlag), std::end(_repeatedFlag), false);
 }
 
 void KeyInput::EndKeyInput()
 {
 	_isKeyInputOn = false;
+	std::fill(std::begin(_repeatedTimer), std::end(_repeatedTimer),0.0);
+	std::fill(std::begin(_repeatedFlag), std::end(_repeatedFlag), false);
 }

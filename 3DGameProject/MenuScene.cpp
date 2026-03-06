@@ -99,13 +99,13 @@ void MenuScene::Start() {
 	}
 }
 
-void MenuScene::Update() {
+void MenuScene::Update(float dtSec) {
 	// ObjectManager 配下の更新
-	ObjectManager::Instance().UpdateAll();
+	ObjectManager::Instance().UpdateAll(dtSec);
 
 	// カメラ操作（デバッグカメラのみ入力）
 	g_camCtrl.SetCamera(g_debugCamId);
-	g_camCtrl.UpdateFreeMoveMouse(8.0f,0.4f,10.0f);
+	g_camCtrl.UpdateFreeMoveMouse(8.0f,0.4f,10.0f, dtSec);
 
 	// DebugPlayer 移動
 	if (g_debugPlayer) {
@@ -114,12 +114,12 @@ void MenuScene::Update() {
 			const float moveSpeed =4.8f;
 			const float verticalSpeed =4.0f;
 			VECTOR input = VGet(0.0f,0.0f,0.0f);
-			if (CheckHitKey(KEY_INPUT_J)) input.x -= 1.0f;
-			if (CheckHitKey(KEY_INPUT_L)) input.x += 1.0f;
-			if (CheckHitKey(KEY_INPUT_I)) input.z += 1.0f;
-			if (CheckHitKey(KEY_INPUT_K)) input.z -= 1.0f;
-			if (CheckHitKey(KEY_INPUT_U)) input.y += 1.0f;
-			if (CheckHitKey(KEY_INPUT_O)) input.y -= 1.0f;
+			if (KeyInput::Instance().IsKeyInputHeld(KEY_INPUT_J)) input.x -= 1.0f;
+			if (KeyInput::Instance().IsKeyInputHeld(KEY_INPUT_L)) input.x += 1.0f;
+			if (KeyInput::Instance().IsKeyInputHeld(KEY_INPUT_I)) input.z += 1.0f;
+			if (KeyInput::Instance().IsKeyInputHeld(KEY_INPUT_K)) input.z -= 1.0f;
+			if (KeyInput::Instance().IsKeyInputHeld(KEY_INPUT_U)) input.y += 1.0f;
+			if (KeyInput::Instance().IsKeyInputHeld(KEY_INPUT_O)) input.y -= 1.0f;
 
 			const VECTOR horizontalInput = VGet(input.x,0.0f,input.z);
 			const float horizontalLenSq = horizontalInput.x * horizontalInput.x + horizontalInput.z * horizontalInput.z;

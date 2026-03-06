@@ -5,7 +5,6 @@
 #include "BoxCollider.h"
 #include "CapsuleCollider.h"
 #include "Assert.h"
-#include "Time.h"
 #include <algorithm>
 #include <cmath>
 #include <cfloat>
@@ -156,7 +155,7 @@ AABB ColliderManager::GetSweptAABB(Collider* collider) const {
 			(curr.min.z + curr.max.z) * 0.5f);
 		const VECTOR d = VSub(currCenter, prevCenter);
 		const float distSq = LenSq(d);
-		float dt = static_cast<float>(Time::Instance().GetDeltaTime());
+		float dt = _deltaTimeSec;
 		if (dt < 1e-6f) dt = 1e-6f;
 		const float speedSq = distSq / (dt * dt);
 		const float thr = collider->ccdDistanceThreshold;
@@ -981,9 +980,14 @@ void ColliderManager::PushOutBoxCapsule(Collider* a, Collider* b) {
 
 // 1フレームぶんのコライダ更新入口。
 void ColliderManager::Update() {
+	Update(_deltaTimeSec);
+}
+
+void ColliderManager::Update(float dtSec) {
 	if (IsShuttingDown()) {
 		return;
 	}
+	_deltaTimeSec = (dtSec > 1e-6f) ? dtSec : 1e-6f;
 	UpdateAllShapes();
 	CheckDetailedCollisions();
 }

@@ -145,7 +145,7 @@ void PhysicsManager::Update(float dt) {
 			body->_owner->transform.SetLocalPosition(p);
 		}
 
-		ColliderManager::Instance().Update();
+		ColliderManager::Instance().Update(stepDt);
 		ResolveContacts();
 	}
 }

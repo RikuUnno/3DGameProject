@@ -33,9 +33,7 @@ public:
 	void Initialize() override {}	// 初期化
 	void Shutdown() override; 			// 明示的終了（Main終了時の安全化）
 	void Update() override {} 			// dt付き更新を基本にするため、ここはno-op
-
-	// dt付き更新
-	void Update(float dt); // 毎フレーム呼ばれる
+	void Update(float dt) override; // 毎フレーム呼ばれる
 
 	// 終了処理ガード
 	bool IsShuttingDown() const noexcept { return _shuttingDown.load(std::memory_order_relaxed); } 

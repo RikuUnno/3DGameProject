@@ -17,7 +17,7 @@ public:
 	GameObject* Spawn(const std::string& key, const VariantMap& params = {});
 
 	//1s‚ÅŠ®Œ‹‚·‚é¶¬APIi–¢“o˜^‚È‚ç Factory/Pool “o˜^‚às‚¤j
-	// - creator: Factory “o˜^—p‚Ì¶¬ŠÖ”iparams ‚ğó‚¯æ‚ê‚éj
+	// - creator: Factory “o˜^—p‚Ì¶¬ŠÖ”iparams ‚ğó‚¯æ‚éj
 	// - poolSize:0 ‚Ìê‡‚Íƒv[ƒ‹“o˜^‚µ‚È‚¢
 	GameObject* SpawnAuto(
 		const std::string& key,
@@ -30,6 +30,7 @@ public:
 	void ReleaseAll();
 
 	void UpdateAll();
+	void UpdateAll(float dtSec);
 	void DrawAll();
 
 	size_t Count() const { return _objects.size(); }

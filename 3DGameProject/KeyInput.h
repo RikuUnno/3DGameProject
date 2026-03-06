@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Time.h"
 #include "DxLib.h"
 #include <algorithm>
 
@@ -24,17 +23,20 @@ public:
 	// 初期化（コンストラクタから呼ぶ）
 	void Initialize();
 
+	// 毎フレームの入力更新
+	void Update(float dtSec);
+
 	// 押下判定（押された瞬間に true を返す）
-	bool IsKeyInputTrigger(int keyCode);
+	bool IsKeyInputTrigger(int keyCode) const;
 
 	// 押している間 true を返す（連続）
-	bool IsKeyInputHeld(int keyCode);
+	bool IsKeyInputHeld(int keyCode) const;
 
 	// 離された瞬間に true を返す
-	bool IsKeyInputReleased(int keyCode);
+	bool IsKeyInputReleased(int keyCode) const;
 
 	// 一定間隔で断続的に true を返す（パルス／リピート）
-	bool IsKeyInputRepeated(int keyCode);
+	bool IsKeyInputRepeated(int keyCode) const;
 
 	// キーごとの繰り返し間隔をセット（秒）
 	void SetInputRepeatedTime(int keyCode, double setTime);
@@ -51,6 +53,7 @@ private:
 	// リピート設定（秒）とタイマー（秒）
 	double _repeatedTime[KEY_COUNT];
 	double _repeatedTimer[KEY_COUNT];
+	bool _repeatedFlag[KEY_COUNT];
 
 	bool _isKeyInputOn{};
 };

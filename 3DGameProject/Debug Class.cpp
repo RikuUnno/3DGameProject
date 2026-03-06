@@ -1,12 +1,13 @@
 #include "Debug Class.h"
 
+#include <cmath>
+
 #include "CapsuleCollider.h"
 #include "BoxCollider.h"
 #include "ColliderManager.h"
 #include "SceneManager.h"
 #include "LayerMask.h"
 #include "PhysicsManager.h"
-#include "Time.h"
 
 // ---------------- DebugHat ----------------
 
@@ -38,10 +39,9 @@ DebugHat::~DebugHat() {
 
 void DebugHat::Awake() {}
 void DebugHat::Start() {}
-void DebugHat::Update() {
+void DebugHat::Update(float dt) {
 	// 約2秒で1周するように、親基準のローカル位置をY軸回転させる
 	const float angularSpeed = DX_PI_F;
-	const float dt = static_cast<float>(Time::Instance().GetDeltaTime());
 	const float angle = angularSpeed * dt;
 
 	VECTOR localPos = transform.LocalPosition();
@@ -144,7 +144,7 @@ DebugGround::~DebugGround() {
 
 void DebugGround::Awake() {}
 void DebugGround::Start() {}
-void DebugGround::Update() {}
+void DebugGround::Update(float /*dt*/) {}
 
 void DebugGround::Draw() {
 	if (collider_) {
@@ -208,7 +208,7 @@ DebugPlayer::~DebugPlayer() {
 void DebugPlayer::Awake() {}
 void DebugPlayer::Start() {}
 
-void DebugPlayer::Update() {
+void DebugPlayer::Update(float /*dt*/) {
 	//ここでは移動などは行わない（MenuScene用デバッグ）
 }
 
@@ -311,7 +311,7 @@ DebugEnemy::~DebugEnemy() {
 void DebugEnemy::Awake() {}
 void DebugEnemy::Start() {}
 
-void DebugEnemy::Update() {
+void DebugEnemy::Update(float /*dt*/) {
 	//ここでは移動などは行わない（MenuScene用デバッグ）
 }
 

@@ -9,8 +9,12 @@ SceneManager& SceneManager::Instance() noexcept {
 }
 
 void SceneManager::Update() {
+	Update(0.0f);
+}
+
+void SceneManager::Update(float dtSec) {
 	if (!_stack.empty()) {
-		_stack.back()->Update();
+		_stack.back()->Update(dtSec);
 	}
 }
 

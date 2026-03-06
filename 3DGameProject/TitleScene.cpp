@@ -8,13 +8,13 @@
 
 #include <memory>
 
-static constexpr double kShowFMessageSeconds = 1.0; // F 押下で表示する時間
+static constexpr double kShowFMessageSeconds = 1.0; // F 表示用の秒数
 
 void TitleScene::Start() {
 }
 
-void TitleScene::Update() {
-	// Enter 押下でメニューへ遷移
+void TitleScene::Update(float /*dt*/) {
+	// Enter 入力でメニューへ遷移
 	if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_RETURN)) {
 		SceneTransition::Params p;
 		p.mode = SceneTransition::Mode::MaskImage;

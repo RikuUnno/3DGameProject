@@ -223,12 +223,16 @@ bool ObjectManager::UnregisterPool(const std::string& key) {
 }
 
 void ObjectManager::UpdateAll() {
+	UpdateAll(0.0f);
+}
+
+void ObjectManager::UpdateAll(float dtSec) {
 	std::lock_guard lk(_mtx);
 	for (auto& up : _objects) {
 		GameObject* obj = up.get();
 		if (!obj) continue;
 		if (!obj->IsActive()) continue;
-		obj->Update();
+		obj->Update(dtSec);
 	}
 }
 

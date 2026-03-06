@@ -8,6 +8,6 @@ public:
 	static std::string StaticName() { return "TitleScene"; }
 
 	void Start() override;
-	void Update() override;
+	void Update(float dt) override;
 	void Draw() override;
 };

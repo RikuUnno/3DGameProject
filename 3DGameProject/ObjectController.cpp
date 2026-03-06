@@ -13,7 +13,7 @@ GameObject* ObjectController::Spawn(const std::string& key, const VariantMap& pa
 
 GameObject* ObjectController::SpawnAuto(const std::string& key, ObjectFactory::Creator creator,
 	size_t poolSize, const VariantMap& params) {
-	// –¢“o˜^‚È‚çA‚±‚±‚Å Factory/Pool ‚ð“o˜^‚·‚é
+	// –¢“o˜^‚È‚çA•K—v‚É‰ž‚¶‚Ä Factory/Pool ‚ð“o˜^‚·‚é
 	if (!_registeredKeys.contains(key)) {
 		_registeredKeys.insert(key);
 		ObjectFactory::Instance().RegisterCreator(key, std::move(creator));
@@ -38,6 +38,10 @@ void ObjectController::ReleaseAll() {
 }
 
 void ObjectController::UpdateAll() {
+	UpdateAll(0.0f);
+}
+
+void ObjectController::UpdateAll(float dtSec) {
 	for (auto it = _objects.begin(); it != _objects.end();) {
 		GameObject* obj = *it;
 		if (!obj) {
@@ -48,7 +52,7 @@ void ObjectController::UpdateAll() {
 			++it;
 			continue;
 		}
-		obj->Update();
+		obj->Update(dtSec);
 		++it;
 	}
 }

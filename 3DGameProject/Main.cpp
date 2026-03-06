@@ -54,14 +54,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		Time::Instance().Update();
 		const float dt = static_cast<float>(Time::Instance().GetDeltaTime());
 
-		KeyInput::Instance();
+		KeyInput::Instance().Update(dt);
 
-		SceneManager::Instance().Update();
+		SceneManager::Instance().Update(dt);
 
 		//•¨—(d—ÍE‘¬“xÏ•ª)
 		PhysicsManager::Instance().Update(dt);
 
-		SceneTransition::Instance().Update(Time::Instance().GetDeltaTime());
+		SceneTransition::Instance().Update(dt);
 
 		CameraManager::Instance().Update(dt);
 
@@ -69,9 +69,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 			SeManager::Instance().SetListener(&cam->transform);
 		}
 
-		SeManager::Instance().Update();
+		SeManager::Instance().Update(dt);
+		BgmManager::Instance().Update(dt);
 
-		poolTrimAccumSec += Time::Instance().GetDeltaTime();
+		poolTrimAccumSec += dt;
 		if (poolTrimAccumSec >= kPoolTrimIntervalSec) {
 			ObjectManager::Instance().TrimAllPoolsUnused(kPoolMaxIdleSec);
 			poolTrimAccumSec =0.0;

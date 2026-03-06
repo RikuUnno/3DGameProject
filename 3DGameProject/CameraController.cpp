@@ -1,7 +1,8 @@
 #include "CameraController.h"
 
+#include <algorithm>
+
 #include "KeyInput.h"
-#include "Time.h"
 #include "DxLib.h"
 
 CameraController::CameraId CameraController::SpawnAuto(
@@ -41,14 +42,12 @@ CameraController::CameraId CameraController::SpawnAuto(
 	return id;
 }
 
-void CameraController::UpdateFreeMove(float moveSpeed, float rotSpeed) {
+void CameraController::UpdateFreeMove(float moveSpeed, float rotSpeed, float dt) {
 	auto* cam = CameraManager::Instance().Get(_cameraId);
 	if (!cam) return;
 
-	const float dt = (float)Time::Instance().GetDeltaTime();
-
-	// 回転入力（矢印）
-	// - Eulerで入力するが、Transform内部はQuaternionへ変換される
+	// 回転入力（簡易）
+	// - Eulerで入力するが、Transform内部でQuaternionへ変換される
 	VECTOR e = cam->transform.LocalEulerRad();
 	if (KeyInput::Instance().IsKeyInputHeld(KEY_INPUT_LEFT)) e.y -= rotSpeed * dt;
 	if (KeyInput::Instance().IsKeyInputHeld(KEY_INPUT_RIGHT)) e.y += rotSpeed * dt;
@@ -73,14 +72,12 @@ void CameraController::UpdateFreeMove(float moveSpeed, float rotSpeed) {
 	cam->MarkDirty();
 }
 
-void CameraController::UpdateFreeMoveQuat(float moveSpeed, float rotSpeed) {
+void CameraController::UpdateFreeMoveQuat(float moveSpeed, float rotSpeed, float dt) {
 	auto* cam = CameraManager::Instance().Get(_cameraId);
 	if (!cam) return;
 
-	const float dt = (float)Time::Instance().GetDeltaTime();
-
-	// 回転：Quaternionを直接合成する
-	// - yaw: ワールドUp(0,1,0) を軸として回す（左/右）
+	// 回転：Quaternionを直接更新する
+	// - yaw: ワールドUp(0,1,0) 軸として回す（左/右）
 	// - pitch: 現在のカメラRight軸を基準に回す（上/下）
 	Quaternion q = cam->transform.LocalRotation();
 
@@ -94,7 +91,7 @@ void CameraController::UpdateFreeMoveQuat(float moveSpeed, float rotSpeed) {
 		q = Quaternion::FromAxisAngleRad(VGet(0,1,0), yawDelta) * q;
 	}
 
-	// pitchだけは「現在の右軸」を使う（ローカル回転）
+	// pitch入力は「現在の右軸」を使う（ローカル回転）
 	const VECTOR right = VNorm(q.RotateVector(VGet(1,0,0)));
 	if (KeyInput::Instance().IsKeyInputHeld(KEY_INPUT_UP)) {
 		q = Quaternion::FromAxisAngleRad(right, -pitchDelta) * q;
@@ -133,11 +130,9 @@ namespace {
 	}
 }
 
-void CameraController::UpdateFreeMoveQuatClamped(float moveSpeed, float rotSpeed, float pitchMinRad, float pitchMaxRad) {
+void CameraController::UpdateFreeMoveQuatClamped(float moveSpeed, float rotSpeed, float pitchMinRad, float pitchMaxRad, float dt) {
 	auto* cam = CameraManager::Instance().Get(_cameraId);
 	if (!cam) return;
-
-	const float dt = (float)Time::Instance().GetDeltaTime();
 
 	Quaternion q = cam->transform.LocalRotation();
 
@@ -157,13 +152,13 @@ void CameraController::UpdateFreeMoveQuatClamped(float moveSpeed, float rotSpeed
 	const float pitchNow = EstimatePitchRadFromQuat(q);
 
 	if (KeyInput::Instance().IsKeyInputHeld(KEY_INPUT_UP)) {
-		// 上を向く方向へ回す
+		// 見上げる方向へ回す
 		if (pitchNow < pitchMaxRad) {
 			q = Quaternion::FromAxisAngleRad(right, pitchDelta) * q;
 		}
 	}
 	if (KeyInput::Instance().IsKeyInputHeld(KEY_INPUT_DOWN)) {
-		// 下を向く方向へ回す
+		// 見下ろす方向へ回す
 		if (pitchNow > pitchMinRad) {
 			q = Quaternion::FromAxisAngleRad(right, -pitchDelta) * q;
 		}
@@ -188,11 +183,9 @@ void CameraController::UpdateFreeMoveQuatClamped(float moveSpeed, float rotSpeed
 	cam->MarkDirty();
 }
 
-void CameraController::UpdateFreeMoveMouse(float moveSpeed, float rotSpeed, float wheelMoveSpeed) {
+void CameraController::UpdateFreeMoveMouse(float moveSpeed, float rotSpeed, float wheelMoveSpeed, float dt) {
 	auto* cam = CameraManager::Instance().Get(_cameraId);
 	if (!cam) return;
-
-	const float dt = (float)Time::Instance().GetDeltaTime();
 
 	static int s_prevX =0;
 	static int s_prevY =0;

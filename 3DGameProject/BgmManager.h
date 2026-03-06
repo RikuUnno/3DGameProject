@@ -13,14 +13,15 @@ class BgmManager : public Manager {
 public:
 	static BgmManager& Instance() noexcept;
 
-	// 指定パスのBGMをループ再生（同じパスなら鳴らし直し）
+	// 指定パスのBGMをループ再生（同じパスなら鳴らし直し可）
 	bool PlayLoop(const std::string& filePath, bool restart = true);
 	void Stop();
 	bool IsPlaying() const;
 
-	// ボリューム等が必要ならここに追加
+	// ボリューム調整が必要ならここに追加
 
 	void Update() override {}
+	void Update(float dt) override { (void)dt; Update(); }
 
 private:
 	BgmManager() = default;

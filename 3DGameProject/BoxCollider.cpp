@@ -1,5 +1,6 @@
 #include "BoxCollider.h"
 
+#include <algorithm>
 #include <cmath>
 
 #include "GameObject.h"
@@ -43,34 +44,53 @@ BoxCollider::~BoxCollider() = default;
 
 void BoxCollider::UpdateShape() {
 	if (owner) {
-		_box.center = owner->transform.WorldPosition();
-		_box.axisX = owner->transform.Right();
-		_box.axisY = owner->transform.Up();
-		_box.axisZ = owner->transform.Forward();
+		const VECTOR worldScale = owner->transform.WorldScale();
+		// _box.center は owner基準のローカル中心。
+		// 親の回転・スケール込みでワールドへ変換する。
+		_center = owner->transform.TransformPoint(_box.center);
+		// OBB の軸は owner のワールド軸をそのまま使うことで、
+		// 親の回転を受けた子オブジェクトでも向きが一致する。
+		_axisX = owner->transform.Right();
+		_axisY = owner->transform.Up();
+		_axisZ = owner->transform.Forward();
+		// 半サイズは親スケール込みのワールド半サイズに変換する。
+		_halfExtents = VGet(
+			std::fabs(_box.halfExtents.x * worldScale.x),
+			std::fabs(_box.halfExtents.y * worldScale.y),
+			std::fabs(_box.halfExtents.z * worldScale.z)
+		);
+	}
+	else {
+		_center = _box.center;
+		_axisX = _box.axisX;
+		_axisY = _box.axisY;
+		_axisZ = _box.axisZ;
+		_halfExtents = _box.halfExtents;
 	}
 
-	_box.axisX = SafeNormalize(_box.axisX, VGet(1,0,0));
-	_box.axisY = SafeNormalize(_box.axisY, VGet(0,1,0));
-	_box.axisZ = SafeNormalize(_box.axisZ, VGet(0,0,1));
+	_axisX = SafeNormalize(_axisX, VGet(1,0,0));
+	_axisY = SafeNormalize(_axisY, VGet(0,1,0));
+	_axisZ = SafeNormalize(_axisZ, VGet(0,0,1));
 
-	const VECTOR ex = VScale(AbsVec(_box.axisX), _box.halfExtents.x);
-	const VECTOR ey = VScale(AbsVec(_box.axisY), _box.halfExtents.y);
-	const VECTOR ez = VScale(AbsVec(_box.axisZ), _box.halfExtents.z);
+	// OBB を包むAABBは、各ワールド軸ベクトルの絶対値成分を使って求める。
+	const VECTOR ex = VScale(AbsVec(_axisX), _halfExtents.x);
+	const VECTOR ey = VScale(AbsVec(_axisY), _halfExtents.y);
+	const VECTOR ez = VScale(AbsVec(_axisZ), _halfExtents.z);
 	const VECTOR ext = Add3(ex, ey, ez);
 
-	_aabb.center = _box.center;
-	_aabb.min = VSub(_box.center, ext);
-	_aabb.max = VAdd(_box.center, ext);
+	_aabb.center = _center;
+	_aabb.min = VSub(_center, ext);
+	_aabb.max = VAdd(_center, ext);
 }
 
 void BoxCollider::DrawDebug() {
 	const unsigned int col = isTrigger ? GetColor(255,220,80) : GetColor(80,200,200);
 
 	auto Corner = [&](float sx, float sy, float sz) {
-		VECTOR p = _box.center;
-		p = VAdd(p, VScale(_box.axisX, _box.halfExtents.x * sx));
-		p = VAdd(p, VScale(_box.axisY, _box.halfExtents.y * sy));
-		p = VAdd(p, VScale(_box.axisZ, _box.halfExtents.z * sz));
+		VECTOR p = _center;
+		p = VAdd(p, VScale(_axisX, _halfExtents.x * sx));
+		p = VAdd(p, VScale(_axisY, _halfExtents.y * sy));
+		p = VAdd(p, VScale(_axisZ, _halfExtents.z * sz));
 		return p;
 	};
 
@@ -98,7 +118,7 @@ void BoxCollider::DrawDebug() {
 	DrawLine3D(p010, p110, col);
 	DrawLine3D(p011, p111, col);
 
-	DrawSphere3D(_box.center,0.05f,8, col, col, TRUE);
+	DrawSphere3D(_center,0.05f,8, col, col, TRUE);
 }
 
 void BoxCollider::DrawDebugAABB() {

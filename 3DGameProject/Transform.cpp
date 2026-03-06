@@ -1,11 +1,21 @@
 #include "Transform.h"
+#include <algorithm>
+#include <cmath>
 
 // ヘルパー
 namespace {
 	inline VECTOR Vec(float x, float y, float z) noexcept { return VGet(x, y, z); }
+	inline float Len3Local(const VECTOR& v) noexcept {
+		return std::sqrt((std::max)(v.x * v.x + v.y * v.y + v.z * v.z, 0.0f));
+	}
+	inline VECTOR SafeNormalizeLocal(const VECTOR& v, const VECTOR& fallback) noexcept {
+		const float len = Len3Local(v);
+		if (len > 1e-6f) return VScale(v, 1.0f / len);
+		return fallback;
+	}
 }
 
-// Transform 実装
+// Transform 生成
 Transform::Transform() {
 	_localPosition = Vec(0,0,0);
 	_localRotation = Quaternion::Identity();
@@ -15,7 +25,7 @@ Transform::Transform() {
 }
 
 Transform::~Transform() {
-	// 親子リストがぶら下がらないように切り離す
+	// 親子リスト相互参照が残らないように切り離す
 	SetParent(nullptr);
 	for (auto* c : _children) {
 		if (c) c->_parent = nullptr;
@@ -34,7 +44,7 @@ void Transform::SetLocalScale(const VECTOR& s) noexcept {
 }
 
 VECTOR Transform::LocalEulerRad() const noexcept {
-	// デバッグ表示・GUI入力用
+	// デバッグ表示やGUI入力用
 	return _localRotation.ToEulerRad();
 }
 
@@ -55,7 +65,7 @@ void Transform::SetParent(Transform* parent) noexcept {
 		return;
 	}
 
-	//旧親から外す
+	// 旧親から除去
 	if (_parent) {
 		_parent->RemoveChild(this);
 	}
@@ -87,7 +97,7 @@ void Transform::RemoveChild(Transform* child) noexcept {
 void Transform::PropagateDirtyToChildren() noexcept {
 	for (auto* c : _children) {
 		if (!c) continue;
-		// 子はワールドだけ古くなる（ローカルは変わらない）
+		// 子はワールドのみ古くなる（ローカルは変わらない）
 		if (!c->_worldDirty) {
 			c->_worldDirty = true;
 			// 孫にも伝播
@@ -96,26 +106,63 @@ void Transform::PropagateDirtyToChildren() noexcept {
 	}
 }
 
-// dirty: 行列キャッシュを古くする
+// dirty: 行列キャッシュが古くなった状態
 void Transform::MarkDirty() noexcept {
 	_localDirty = true;
 	_worldDirty = true;
 	PropagateDirtyToChildren();
 }
 
-// 軸ベクトル取得
+// ローカルベクトルをワールド空間の方向ベクトルへ変換する。
+// 平行移動は含めず、回転とスケールのみ反映する。
+// 親が回転・拡大縮小している子オブジェクトでも、正しい向きを得るために使う。
+VECTOR Transform::TransformVector(const VECTOR& localVector) const noexcept {
+	const MATRIX& W = WorldMatrix();
+	return VGet(
+		localVector.x * W.m[0][0] + localVector.y * W.m[1][0] + localVector.z * W.m[2][0],
+		localVector.x * W.m[0][1] + localVector.y * W.m[1][1] + localVector.z * W.m[2][1],
+		localVector.x * W.m[0][2] + localVector.y * W.m[1][2] + localVector.z * W.m[2][2]
+	);
+}
+
+// ローカル点をワールド空間へ変換する。
+// 親の回転・スケール・平行移動をすべて反映するため、
+// 子オブジェクトのコライダ中心や端点の計算に使う。
+VECTOR Transform::TransformPoint(const VECTOR& localPoint) const noexcept {
+	const MATRIX& W = WorldMatrix();
+	return VGet(
+		localPoint.x * W.m[0][0] + localPoint.y * W.m[1][0] + localPoint.z * W.m[2][0] + W.m[3][0],
+		localPoint.x * W.m[0][1] + localPoint.y * W.m[1][1] + localPoint.z * W.m[2][1] + W.m[3][1],
+		localPoint.x * W.m[0][2] + localPoint.y * W.m[1][2] + localPoint.z * W.m[2][2] + W.m[3][2]
+	);
+}
+
+// ワールド軸の長さからスケールを取り出す。
+// 親スケール込みの値になるため、子コライダの最終サイズ反映に使える。
+VECTOR Transform::WorldScale() const noexcept {
+	const MATRIX& W = WorldMatrix();
+	const VECTOR axisX = VGet(W.m[0][0], W.m[0][1], W.m[0][2]);
+	const VECTOR axisY = VGet(W.m[1][0], W.m[1][1], W.m[1][2]);
+	const VECTOR axisZ = VGet(W.m[2][0], W.m[2][1], W.m[2][2]);
+	return VGet(Len3Local(axisX), Len3Local(axisY), Len3Local(axisZ));
+}
+
+// 前方ベクトル取得（親回転込みのワールド軸）
 VECTOR Transform::Forward() const noexcept {
-	return VNorm(_localRotation.RotateVector(VGet(0,0,1)));
+	const MATRIX& W = WorldMatrix();
+	return SafeNormalizeLocal(VGet(W.m[2][0], W.m[2][1], W.m[2][2]), VGet(0,0,1));
 }
 
-//右方向ベクトル取得
+// 右方向ベクトル取得（親回転込みのワールド軸）
 VECTOR Transform::Right() const noexcept {
-	return VNorm(_localRotation.RotateVector(VGet(1,0,0)));
+	const MATRIX& W = WorldMatrix();
+	return SafeNormalizeLocal(VGet(W.m[0][0], W.m[0][1], W.m[0][2]), VGet(1,0,0));
 }
 
-// 上方向ベクトル取得
+// 上方向ベクトル取得（親回転込みのワールド軸）
 VECTOR Transform::Up() const noexcept {
-	return VNorm(_localRotation.RotateVector(VGet(0,1,0)));
+	const MATRIX& W = WorldMatrix();
+	return SafeNormalizeLocal(VGet(W.m[1][0], W.m[1][1], W.m[1][2]), VGet(0,1,0));
 }
 
 // ローカル行列取得
@@ -128,7 +175,7 @@ const MATRIX& Transform::LocalMatrix() const {
 	const MATRIX R = _localRotation.ToRotationMatrix();
 	const MATRIX T = MGetTranslate(_localPosition);
 
-	// 組み立て順はプロジェクト内で統一（必要ならテストして入れ替える）
+	// 組み立て順はプロジェクトで統一（必要ならテストして調整する）
 	_localMatrix = MMult(MMult(S, R), T);
 	return _localMatrix;
 }
@@ -140,6 +187,7 @@ const MATRIX& Transform::WorldMatrix() const {
 
 	const MATRIX L = LocalMatrix();
 	if (_parent) {
+		// 親のワールド行列を掛けることで、子は親の位置・回転・スケールを継承する。
 		_worldMatrix = MMult(L, _parent->WorldMatrix());
 	} else {
 		_worldMatrix = L;

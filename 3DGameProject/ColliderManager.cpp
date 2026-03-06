@@ -6,57 +6,59 @@
 #include "CapsuleCollider.h"
 #include "Assert.h"
 #include "Time.h"
-#include <algorithm> // clamp, min/max
+#include <algorithm>
 #include <cmath>
 #include <cfloat>
 
-// ユーティリティ関数群
 namespace {
-	// AABB同士の交差判定（ワールド座標系）
+	// ワールド空間AABB同士の重なり判定。
+	// broad-phase の候補絞り込みに使う。
 	inline bool IntersectAABBWorld(const AABB& a, const AABB& b) noexcept {
 		return (a.min.x <= b.max.x && a.max.x >= b.min.x) &&
 			(a.min.y <= b.max.y && a.max.y >= b.min.y) &&
 			(a.min.z <= b.max.z && a.max.z >= b.min.z);
 	}
-	// ベクトル内積
+	// 3次元ベクトルの内積。
+	// 投影長、角度判定、SAT などの基礎計算に使う。
 	inline float Dot3(const VECTOR& a, const VECTOR& b) noexcept { return a.x * b.x + a.y * b.y + a.z * b.z; }
-	// ベクトル長^2
+	// ベクトル長の二乗。
+	// sqrt を避けて距離比較を軽くするために使う。
 	inline float LenSq(const VECTOR& v) noexcept { return Dot3(v, v); }
-	// ベクトル長
+	// ベクトル長。
 	inline float Len3(const VECTOR& v) noexcept { return std::sqrt((std::max)(LenSq(v),0.0f)); }
-	// 安全正規化
+	// 安全正規化。
+	// ゼロ長ベクトルに近い場合は fallback を返して NaN を防ぐ。
 	inline VECTOR SafeNorm(const VECTOR& v, const VECTOR& fallback = VGet(1,0,0)) noexcept {
 		const float l = Len3(v);
 		if (l >1e-6f) return VScale(v,1.0f / l);
 		return fallback;
 	}
+	// 内積の絶対値。
+	// SAT で各軸への投影半径を求める時に使う。
 	inline float AbsDot3(const VECTOR& a, const VECTOR& b) noexcept { return std::fabs(Dot3(a, b)); }
 }
 
-// 明示的終了処理
+// 明示終了。
+// 終了中に Unregister が走っても安全なように内部コンテナを空にする。
 void ColliderManager::Shutdown() noexcept {
-	// 多重呼び出し安全
 	const bool wasShuttingDown = _shuttingDown.exchange(true, std::memory_order_relaxed);
 	if (wasShuttingDown) {
 		return;
 	}
 
-	// 終了時にデストラクタなどから UnregisterCollider が呼ばれても
-	// unordered_set / vector に触らないように、ここで空にしておく。
 	_currPairs.clear();
 	_prevPairs.clear();
 	_colliders.clear();
 	_prevAABBs.clear();
-	// _narrowHit はローカル状態なので放置でOK
 }
 
-// イベントディスパッチ
+// 衝突開始イベントの配送。
+// Trigger と通常衝突で呼ぶコールバックを分けている。
 void ColliderManager::DispatchEnter(Collider* a, Collider* b) {
 	if (!a || !b) return;
 	if (a->isTrigger || b->isTrigger) {
 		if (a->sendEventsToOwner && a->owner) a->owner->OnTriggerEnter(a, b);
 		if (b->sendEventsToOwner && b->owner) b->owner->OnTriggerEnter(b, a);
-		// Collider側
 		a->OnTriggerEnter(b);
 		b->OnTriggerEnter(a);
 	}
@@ -68,6 +70,7 @@ void ColliderManager::DispatchEnter(Collider* a, Collider* b) {
 	}
 }
 
+// 衝突継続イベントの配送。
 void ColliderManager::DispatchStay(Collider* a, Collider* b) {
 	if (!a || !b) return;
 	if (a->isTrigger || b->isTrigger) {
@@ -84,6 +87,7 @@ void ColliderManager::DispatchStay(Collider* a, Collider* b) {
 	}
 }
 
+// 衝突終了イベントの配送。
 void ColliderManager::DispatchExit(Collider* a, Collider* b) {
 	if (!a || !b) return;
 	if (a->isTrigger || b->isTrigger) {
@@ -100,12 +104,60 @@ void ColliderManager::DispatchExit(Collider* a, Collider* b) {
 	}
 }
 
-// コライダー種別ペアチェック
+// 判定関数選択用の種別ペア比較。
+// a-b / b-a の順不同で同じ組み合わせとして扱う。
 static bool IsPair(Collider::Kind a, Collider::Kind b, Collider::Kind x, Collider::Kind y) {
 	return (a == x && b == y) || (a == y && b == x);
 }
 
-//形状更新
+// 現フレームAABBと前フレームAABBを合成した swept AABB を返す。
+// これは「前回位置から今回位置までに通過した可能性のある領域」を近似したもの。
+// 完全な連続衝突判定ではないが、高速移動時の broad-phase 取りこぼしを減らせる。
+AABB ColliderManager::GetSweptAABB(Collider* collider) const {
+	const AABB curr = collider->GetAABB();
+	auto it = _prevAABBs.find(collider);
+	if (it == _prevAABBs.end()) {
+		return curr;
+	}
+
+	bool useSweep = collider->enableCCD;
+	if (!useSweep) {
+		// enableCCD が明示されていない場合でも、
+		// フレーム間速度が閾値を超えたら sweep を有効化する。
+		// speed^2 = distance^2 / dt^2 で sqrt を避けて比較している。
+		const VECTOR prevCenter = VGet((it->second.min.x + it->second.max.x) * 0.5f,
+			(it->second.min.y + it->second.max.y) * 0.5f,
+			(it->second.min.z + it->second.max.z) * 0.5f);
+		const VECTOR currCenter = VGet((curr.min.x + curr.max.x) * 0.5f,
+			(curr.min.y + curr.max.y) * 0.5f,
+			(curr.min.z + curr.max.z) * 0.5f);
+		const VECTOR d = VSub(currCenter, prevCenter);
+		const float distSq = LenSq(d);
+		float dt = static_cast<float>(Time::Instance().GetDeltaTime());
+		if (dt < 1e-6f) dt = 1e-6f;
+		const float speedSq = distSq / (dt * dt);
+		const float thr = collider->ccdDistanceThreshold;
+		useSweep = (speedSq > thr * thr);
+	}
+
+	if (!useSweep) {
+		return curr;
+	}
+
+	// 前回AABBと今回AABBの union を取り、移動区間全体を含むAABBにする。
+	AABB sweep = curr;
+	sweep.min.x = (std::min)(sweep.min.x, it->second.min.x);
+	sweep.min.y = (std::min)(sweep.min.y, it->second.min.y);
+	sweep.min.z = (std::min)(sweep.min.z, it->second.min.z);
+	sweep.max.x = (std::max)(sweep.max.x, it->second.max.x);
+	sweep.max.y = (std::max)(sweep.max.y, it->second.max.y);
+	sweep.max.z = (std::max)(sweep.max.z, it->second.max.z);
+	sweep.center = VScale(VAdd(sweep.min, sweep.max), 0.5f);
+	return sweep;
+}
+
+// 全コライダのワールド形状更新。
+// Transform 変更後に narrow-phase へ入る前提をそろえる。
 void ColliderManager::UpdateAllShapes() {
 	for (auto* c : _colliders) {
 		if (!c) continue;
@@ -113,14 +165,15 @@ void ColliderManager::UpdateAllShapes() {
 	}
 }
 
-// ペア構築
+// 今フレームの衝突候補を再構築。
 void ColliderManager::BuildCurrentPairs() {
 	_currPairs.clear();
 	_contacts.clear();
 	SpatialPartitioning();
 }
 
-// Broad-phase（空間分割）
+// 空間分割による broad-phase。
+// swept AABB をセルに登録し、同じセルにいるペアだけを詳細判定に回す。
 void ColliderManager::SpatialPartitioning() {
 	const int currentSceneId = SceneManager::Instance().CurrentSceneId();
 
@@ -157,52 +210,12 @@ void ColliderManager::SpatialPartitioning() {
 		return true;
 	};
 
-	//1) AABB範囲（スイープ：前フレームAABBと共に）をセルに登録
 	for (auto* c : _colliders) {
 		if (!PassCommonFilters(c)) continue;
 
-		const AABB curr = c->GetAABB();
-		AABB sweep = curr;
-
-		// Decide whether to use swept AABB:
-		// - if collider explicitly enableCCD
-		// - or if per-frame center displacement (speed) exceeds Collider::ccdDistanceThreshold
-		auto it = _prevAABBs.find(c);
-		bool useSweep = false;
-		if (c->enableCCD) {
-			useSweep = true;
-		}
-		else if (it != _prevAABBs.end()) {
-			// previous and current centers
-			const VECTOR prevCenter = VGet((it->second.min.x + it->second.max.x) * 0.5f,
-								(it->second.min.y + it->second.max.y) * 0.5f,
-								(it->second.min.z + it->second.max.z) * 0.5f);
-			const VECTOR currCenter = VGet((curr.min.x + curr.max.x) * 0.5f,
-								(curr.min.y + curr.max.y) * 0.5f,
-								(curr.min.z + curr.max.z) * 0.5f);
-			const VECTOR d = VSub(currCenter, prevCenter);
-			const float distSq = LenSq(d);
-			const float thr = c->ccdDistanceThreshold; // interpreted as speed threshold (units/sec)
-
-			// compute per-frame speed (units/sec) using delta time
-			double dt_d = Time::Instance().GetDeltaTime();
-			float dt = static_cast<float>(dt_d);
-			const float minDt = 1e-6f;
-			if (dt < minDt) dt = minDt;
-			const float speedSq = distSq / (dt * dt);
-			if (speedSq > thr * thr) useSweep = true;
-		}
-
-		if (useSweep && it != _prevAABBs.end()) {
-			// union previous and current to form swept AABB
-			sweep.min.x = (std::min)(sweep.min.x, it->second.min.x);
-			sweep.min.y = (std::min)(sweep.min.y, it->second.min.y);
-			sweep.min.z = (std::min)(sweep.min.z, it->second.min.z);
-			sweep.max.x = (std::max)(sweep.max.x, it->second.max.x);
-			sweep.max.y = (std::max)(sweep.max.y, it->second.max.y);
-			sweep.max.z = (std::max)(sweep.max.z, it->second.max.z);
-		}
-
+		// 高速移動体は前回位置も含めた swept AABB でセル登録することで、
+		// 「今フレームの終点では離れているが途中で近づいた」候補を拾いやすくする。
+		const AABB sweep = GetSweptAABB(c);
 		const int minX = ToCell(sweep.min.x);
 		const int minY = ToCell(sweep.min.y);
 		const int minZ = ToCell(sweep.min.z);
@@ -219,7 +232,6 @@ void ColliderManager::SpatialPartitioning() {
 		}
 	}
 
-	//2) セル内のペア生成（重複は_currPairsでガード）
 	for (auto& [cell, cellCols] : grid) {
 		const size_t n = cellCols.size();
 		for (size_t i =0; i < n; ++i) {
@@ -229,14 +241,11 @@ void ColliderManager::SpatialPartitioning() {
 
 				const auto key = MakeKey(a, b);
 				if (_currPairs.contains(key)) continue;
-
-				// Layer/Mask
 				if (CheckLayerMaskCollisions(a, b)) continue;
+				// broad-phase のAABB判定にも swept AABB を使う。
+				// これによりセル登録だけ sweep して、AABB判定で落ちる状況を減らす。
+				if (CheckAABBCollisionsSwept(a, b)) continue;
 
-				// AABB
-				if (CheckAABBCollisions(a, b)) continue;
-
-				// 詳細判定
 				_narrowHit = false;
 				const auto ka = a->GetKind();
 				const auto kb = b->GetKind();
@@ -254,8 +263,6 @@ void ColliderManager::SpatialPartitioning() {
 				if (!_narrowHit) continue;
 
 				_currPairs.insert(key);
-
-				// 押し戻し（Triggerは除外）
 				if (!(a->isTrigger || b->isTrigger)) {
 					ResolvePushOut(a, b);
 				}
@@ -264,9 +271,9 @@ void ColliderManager::SpatialPartitioning() {
 	}
 }
 
-// イベント処理
+// Enter / Stay / Exit の差分計算。
+// 前フレーム集合と今フレーム集合を比較してイベントを確定する。
 void ColliderManager::ProcessPairEvents() {
-	// Enter/Stay
 	for (const auto& k : _currPairs) {
 		if (_prevPairs.contains(k)) {
 			DispatchStay(k.a, k.b);
@@ -276,7 +283,6 @@ void ColliderManager::ProcessPairEvents() {
 		}
 	}
 
-	// Exit
 	for (const auto& k : _prevPairs) {
 		if (!_currPairs.contains(k)) {
 			DispatchExit(k.a, k.b);
@@ -286,30 +292,28 @@ void ColliderManager::ProcessPairEvents() {
 	_prevPairs = _currPairs;
 }
 
-// 詳細判定
+// 詳細判定一式。
+// 最後に現在AABBを保存し、次フレームの swept AABB 計算に使う。
 void ColliderManager::CheckDetailedCollisions() {
 	BuildCurrentPairs();
 	ProcessPairEvents();
 
-	// 更新が終わったら次フレーム用に現在のAABBを保存しておく（CCD用）
 	for (auto* c : _colliders) {
 		if (!c) continue;
 		_prevAABBs[c] = c->GetAABB();
 	}
 }
 
-// 押し戻し
+// 押し戻し。
+// 両方可動なら形状ごとの押し戻しへ、片側固定なら簡易MTVで可動側のみ移動する。
 void ColliderManager::ResolvePushOut(Collider* a, Collider* b) {
 	if (!a || !b) return;
 	if (a->isTrigger || b->isTrigger) return;
 
 	GameObject* oa = a->owner;
 	GameObject* ob = b->owner;
-
-	//どちらも owner 無しなら何もしない
 	if (!oa && !ob) return;
 
-	// --- Extensible fixed rule ---
 	const bool aFixed = (!oa) || (oa && oa->isStatic);
 	const bool bFixed = (!ob) || (ob && ob->isStatic);
 
@@ -317,7 +321,6 @@ void ColliderManager::ResolvePushOut(Collider* a, Collider* b) {
 		return;
 	}
 
-	// 両方可動なら従来（重み付きで両方動かす）
 	const auto ka = a->GetKind();
 	const auto kb = b->GetKind();
 	if (!aFixed && !bFixed) {
@@ -345,11 +348,9 @@ void ColliderManager::ResolvePushOut(Collider* a, Collider* b) {
 		return;
 	}
 
-	// ----片側固定: 可動側だけ動かす ----
 	GameObject* movable = nullptr;
 	Collider* movableCol = nullptr;
 	Collider* fixedCol = nullptr;
-	const bool movableIsB = aFixed; // aが固定ならbが可動
 
 	if (aFixed) {
 		movable = ob;
@@ -363,9 +364,10 @@ void ColliderManager::ResolvePushOut(Collider* a, Collider* b) {
 	}
 	if (!movable || !movableCol || !fixedCol) return;
 
-	// AABB の重なりから最小押し戻し軸(MTV)を選ぶ
 	const AABB& A = movableCol->GetAABB();
 	const AABB& B = fixedCol->GetAABB();
+	// 各軸の重なり量。
+	// 最小重なり軸を選ぶことで、最も短い移動量での押し戻しを行う。
 	const float ox = (std::min)(A.max.x, B.max.x) - (std::max)(A.min.x, B.min.x);
 	const float oy = (std::min)(A.max.y, B.max.y) - (std::max)(A.min.y, B.min.y);
 	const float oz = (std::min)(A.max.z, B.max.z) - (std::max)(A.min.z, B.min.z);
@@ -382,7 +384,6 @@ void ColliderManager::ResolvePushOut(Collider* a, Collider* b) {
 		n = VGet(0,0, (movableCol->GetCenter().z >= fixedCol->GetCenter().z) ?1.0f : -1.0f);
 	}
 
-	// record contact: fixedCol -> movableCol (normal points from fixed to movable)
 	Contact ct;
 	ct.a = fixedCol;
 	ct.b = movableCol;
@@ -398,9 +399,8 @@ void ColliderManager::ResolvePushOut(Collider* a, Collider* b) {
 	fixedCol->UpdateShape();
 }
 
-// 各種押し戻し処理関数群
-
-// Sphere-Sphere 押し戻し
+// Sphere-Sphere 押し戻し。
+// 中心間ベクトルを法線とし、半径和との差分だけ分離する。
 void ColliderManager::PushOutSphereSphere(Collider* a, Collider* b) {
 	auto* sa = dynamic_cast<SphereCollider*>(a);
 	auto* sb = dynamic_cast<SphereCollider*>(b);
@@ -410,11 +410,11 @@ void ColliderManager::PushOutSphereSphere(Collider* a, Collider* b) {
 	GameObject* ob = static_cast<Collider*>(sb)->owner;
 	if (!oa && !ob) return;
 
-	const VECTOR ca = sa->_sphere.center;
-	const VECTOR cb = sb->_sphere.center;
+	const VECTOR ca = sa->GetCenter();
+	const VECTOR cb = sb->GetCenter();
 	const VECTOR d = VSub(cb, ca);
 	const float dist = std::sqrt((std::max)(LenSq(d), 1e-8f));
-	const float r = sa->_sphere.radius + sb->_sphere.radius;
+	const float r = sa->GetRadius() + sb->GetRadius();
 	const float pen = r - dist;
 	if (pen <= 0.0f) return;
 
@@ -449,7 +449,9 @@ void ColliderManager::PushOutSphereSphere(Collider* a, Collider* b) {
 	sa->UpdateShape();
 	sb->UpdateShape();
 }
-// Sphere-Box 押し戻し
+
+// Sphere-Box 押し戻し。
+// 球中心からOBBへの最近点を求め、その差ベクトルを押し戻し法線にする。
 void ColliderManager::PushOutSphereBox(Collider* a, Collider* b) {
 	SphereCollider* s = dynamic_cast<SphereCollider*>(a);
 	BoxCollider* box = dynamic_cast<BoxCollider*>(b);
@@ -462,28 +464,26 @@ void ColliderManager::PushOutSphereBox(Collider* a, Collider* b) {
 	GameObject* os = static_cast<Collider*>(s)->owner;
 	if (!os) return;
 
-	// 最近点
 	const VECTOR c = s->GetCenter();
-	const VECTOR d = VSub(c, box->_box.center);
-	float x = Dot3(d, box->_box.axisX);
-	float y = Dot3(d, box->_box.axisY);
-	float z = Dot3(d, box->_box.axisZ);
-	x = std::clamp(x, -box->_box.halfExtents.x, box->_box.halfExtents.x);
-	y = std::clamp(y, -box->_box.halfExtents.y, box->_box.halfExtents.y);
-	z = std::clamp(z, -box->_box.halfExtents.z, box->_box.halfExtents.z);
-	VECTOR closest = box->_box.center;
-	closest = VAdd(closest, VScale(box->_box.axisX, x));
-	closest = VAdd(closest, VScale(box->_box.axisY, y));
-	closest = VAdd(closest, VScale(box->_box.axisZ, z));
+	const VECTOR d = VSub(c, box->GetCenter());
+	float x = Dot3(d, box->GetAxisX());
+	float y = Dot3(d, box->GetAxisY());
+	float z = Dot3(d, box->GetAxisZ());
+	x = std::clamp(x, -box->GetHalfExtents().x, box->GetHalfExtents().x);
+	y = std::clamp(y, -box->GetHalfExtents().y, box->GetHalfExtents().y);
+	z = std::clamp(z, -box->GetHalfExtents().z, box->GetHalfExtents().z);
+	VECTOR closest = box->GetCenter();
+	closest = VAdd(closest, VScale(box->GetAxisX(), x));
+	closest = VAdd(closest, VScale(box->GetAxisY(), y));
+	closest = VAdd(closest, VScale(box->GetAxisZ(), z));
 
 	VECTOR diff = VSub(c, closest);
 	float dist = std::sqrt((std::max)(LenSq(diff), 1e-8f));
-	float pen = s->_sphere.radius - dist;
+	float pen = s->GetRadius() - dist;
 	if (pen <= 0.0f) return;
 
 	VECTOR n = VScale(diff, 1.0f / dist);
 
-	// record contact (sphere -> box)
 	Contact ct;
 	ct.a = s;
 	ct.b = box;
@@ -497,7 +497,10 @@ void ColliderManager::PushOutSphereBox(Collider* a, Collider* b) {
 
 	s->UpdateShape();
 }
-// Box-Box 押し戻し
+
+// Box-Box 押し戻し。
+// OBB同士は SAT(Separating Axis Theorem) ベースで最小貫通軸を求める。
+// 分離軸候補は面法線6本 + 辺同士の外積9本。
 void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 	auto* ba = dynamic_cast<BoxCollider*>(a);
 	auto* bb = dynamic_cast<BoxCollider*>(b);
@@ -507,17 +510,16 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 	GameObject* ob = bb->owner;
 	if (!oa && !ob) return;
 
-	// OBB vs OBB: SAT の最小貫通軸(MTV)を使って押し戻し（AABB近似を廃止）
-	const VECTOR A0 = SafeNorm(ba->_box.axisX, VGet(1,0,0));
-	const VECTOR A1 = SafeNorm(ba->_box.axisY, VGet(0,1,0));
-	const VECTOR A2 = SafeNorm(ba->_box.axisZ, VGet(0,0,1));
-	const VECTOR B0 = SafeNorm(bb->_box.axisX, VGet(1,0,0));
-	const VECTOR B1 = SafeNorm(bb->_box.axisY, VGet(0,1,0));
-	const VECTOR B2 = SafeNorm(bb->_box.axisZ, VGet(0,0,1));
-	const float aExt[3] = { ba->_box.halfExtents.x, ba->_box.halfExtents.y, ba->_box.halfExtents.z };
-	const float bExt[3] = { bb->_box.halfExtents.x, bb->_box.halfExtents.y, bb->_box.halfExtents.z };
+	const VECTOR A0 = SafeNorm(ba->GetAxisX(), VGet(1,0,0));
+	const VECTOR A1 = SafeNorm(ba->GetAxisY(), VGet(0,1,0));
+	const VECTOR A2 = SafeNorm(ba->GetAxisZ(), VGet(0,0,1));
+	const VECTOR B0 = SafeNorm(bb->GetAxisX(), VGet(1,0,0));
+	const VECTOR B1 = SafeNorm(bb->GetAxisY(), VGet(0,1,0));
+	const VECTOR B2 = SafeNorm(bb->GetAxisZ(), VGet(0,0,1));
+	const float aExt[3] = { ba->GetHalfExtents().x, ba->GetHalfExtents().y, ba->GetHalfExtents().z };
+	const float bExt[3] = { bb->GetHalfExtents().x, bb->GetHalfExtents().y, bb->GetHalfExtents().z };
 
-	const VECTOR tV = VSub(bb->_box.center, ba->_box.center);
+	const VECTOR tV = VSub(bb->GetCenter(), ba->GetCenter());
 	const float tA[3] = { Dot3(tV, A0), Dot3(tV, A1), Dot3(tV, A2) };
 
 	float R[3][3] = {
@@ -537,7 +539,8 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 	VECTOR bestAxisW = VGet(1,0,0);
 
 	auto ConsiderAxis = [&](const VECTOR& axisW, float dist, float ra, float rb) {
-		// dist = |t・axis|, pen = (ra+rb) - dist
+		// pen = (両者の投影半径の和) - (中心間投影距離)
+		// 最小の貫通量を持つ軸が MTV になる。
 		const float sep = (ra + rb) - dist;
 		if (sep < bestPen) {
 			bestPen = sep;
@@ -545,7 +548,6 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 		}
 	};
 
-	// A0,A1,A2
 	for (int i =0; i <3; ++i) {
 		float ra = aExt[i];
 		float rb = bExt[0] * AbsR[i][0] + bExt[1] * AbsR[i][1] + bExt[2] * AbsR[i][2];
@@ -553,7 +555,6 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 		ConsiderAxis((i ==0) ? A0 : (i ==1) ? A1 : A2, dist, ra, rb);
 	}
 
-	// B0,B1,B2
 	for (int j =0; j <3; ++j) {
 		float ra = aExt[0] * AbsR[0][j] + aExt[1] * AbsR[1][j] + aExt[2] * AbsR[2][j];
 		float rb = bExt[j];
@@ -561,7 +562,6 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 		ConsiderAxis((j ==0) ? B0 : (j ==1) ? B1 : B2, dist, ra, rb);
 	}
 
-	// A_i x B_j
 	auto CrossAxis = [&](const VECTOR& aAxis, const VECTOR& bAxis) {
 		return VCross(aAxis, bAxis);
 	};
@@ -677,14 +677,12 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 
 	if (bestPen == FLT_MAX || bestPen <=0.0f) return;
 
-	// 押し出し方向の符号を揃える（A -> B方向に押し出す）
 	VECTOR n = bestAxisW;
 	if (Dot3(tV, n) <0.0f) {
 		n = VScale(n, -1.0f);
 	}
 	const float pen = bestPen;
 
-	// record contact (ba -> bb)
 	Contact ct;
 	ct.a = ba;
 	ct.b = bb;
@@ -714,7 +712,9 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 	ba->UpdateShape();
 	bb->UpdateShape();
 }
-// Capsule-Capsule 押し戻し
+
+// Capsule-Capsule 押し戻し。
+// 2本の線分の最近点同士を求め、その法線方向へ半径和ぶん分離する。
 void ColliderManager::PushOutCapsuleCapsule(Collider* a, Collider* b) {
 	auto* ca = dynamic_cast<CapsuleCollider*>(a);
 	auto* cb = dynamic_cast<CapsuleCollider*>(b);
@@ -724,10 +724,10 @@ void ColliderManager::PushOutCapsuleCapsule(Collider* a, Collider* b) {
 	GameObject* ob = cb->owner;
 	if (!oa && !ob) return;
 
-	const VECTOR p1 = ca->_cap.bottom;
-	const VECTOR q1 = ca->_cap.top;
-	const VECTOR p2 = cb->_cap.bottom;
-	const VECTOR q2 = cb->_cap.top;
+	const VECTOR p1 = ca->GetBottom();
+	const VECTOR q1 = ca->GetTop();
+	const VECTOR p2 = cb->GetBottom();
+	const VECTOR q2 = cb->GetTop();
 
 	const VECTOR d1 = VSub(q1, p1);
 	const VECTOR d2 = VSub(q2, p2);
@@ -772,7 +772,7 @@ void ColliderManager::PushOutCapsuleCapsule(Collider* a, Collider* b) {
 	const VECTOR c2 = VAdd(p2, VScale(d2, t));
 	VECTOR diff = VSub(c1, c2);
 	const float dist = std::sqrt((std::max)(LenSq(diff), 1e-8f));
-	const float r = ca->_cap.radius + cb->_cap.radius;
+	const float r = ca->GetRadius() + cb->GetRadius();
 	const float pen = r - dist;
 	if (pen <= 0.0f) return;
 
@@ -807,7 +807,9 @@ void ColliderManager::PushOutCapsuleCapsule(Collider* a, Collider* b) {
 	ca->UpdateShape();
 	cb->UpdateShape();
 }
-// Sphere-Capsule 押し戻し
+
+// Sphere-Capsule 押し戻し。
+// カプセル軸線分上の最近点を求め、球中心との差で法線を作る。
 void ColliderManager::PushOutSphereCapsule(Collider* a, Collider* b) {
 	SphereCollider* s = dynamic_cast<SphereCollider*>(a);
 	CapsuleCollider* c = dynamic_cast<CapsuleCollider*>(b);
@@ -823,10 +825,10 @@ void ColliderManager::PushOutSphereCapsule(Collider* a, Collider* b) {
 	GameObject* oc = c->owner;
 	if (!os && !oc) return;
 
-	const VECTOR p = c->_cap.bottom;
-	const VECTOR q = c->_cap.top;
+	const VECTOR p = c->GetBottom();
+	const VECTOR q = c->GetTop();
 	const VECTOR seg = VSub(q, p);
-	const VECTOR v = VSub(s->_sphere.center, p);
+	const VECTOR v = VSub(s->GetCenter(), p);
 
 	const float segLenSq = Dot3(seg, seg);
 	float t =0.0f;
@@ -836,9 +838,9 @@ void ColliderManager::PushOutSphereCapsule(Collider* a, Collider* b) {
 	}
 
 	const VECTOR closest = VAdd(p, VScale(seg, t));
-	VECTOR diff = VSub(s->_sphere.center, closest);
+	VECTOR diff = VSub(s->GetCenter(), closest);
 	const float dist = std::sqrt((std::max)(LenSq(diff), 1e-8f));
-	const float r = s->_sphere.radius + c->_cap.radius;
+	const float r = s->GetRadius() + c->GetRadius();
 	const float pen = r - dist;
 	if (pen <= 0.0f) return;
 
@@ -873,7 +875,9 @@ void ColliderManager::PushOutSphereCapsule(Collider* a, Collider* b) {
 	s->UpdateShape();
 	c->UpdateShape();
 }
-// Box-Capsule 押し戻し
+
+// Box-Capsule 押し戻し。
+// カプセル端点をOBBローカル空間へ移し、AABBとの最近点問題に落として近似する。
 void ColliderManager::PushOutBoxCapsule(Collider* a, Collider* b) {
 	BoxCollider* box = dynamic_cast<BoxCollider*>(a);
 	CapsuleCollider* cap = dynamic_cast<CapsuleCollider*>(b);
@@ -887,26 +891,25 @@ void ColliderManager::PushOutBoxCapsule(Collider* a, Collider* b) {
 	GameObject* ocap = cap->owner;
 	if (!obox && !ocap) return;
 
-	// OBBローカルへ: sphere-box の最近点計算を流用するため、カプセル端点をローカル化
 	auto ToLocal = [&](const VECTOR& w) {
-		const VECTOR d = VSub(w, box->_box.center);
-		return VGet(Dot3(d, box->_box.axisX), Dot3(d, box->_box.axisY), Dot3(d, box->_box.axisZ));
+		const VECTOR d = VSub(w, box->GetCenter());
+		return VGet(Dot3(d, box->GetAxisX()), Dot3(d, box->GetAxisY()), Dot3(d, box->GetAxisZ()));
 	 };
 	auto ToWorld = [&](const VECTOR& l) {
-		VECTOR w = box->_box.center;
-		w = VAdd(w, VScale(box->_box.axisX, l.x));
-		w = VAdd(w, VScale(box->_box.axisY, l.y));
-		w = VAdd(w, VScale(box->_box.axisZ, l.z));
+		VECTOR w = box->GetCenter();
+		w = VAdd(w, VScale(box->GetAxisX(), l.x));
+		w = VAdd(w, VScale(box->GetAxisY(), l.y));
+		w = VAdd(w, VScale(box->GetAxisZ(), l.z));
 		return w;
 	 };
 
-	const VECTOR pL = ToLocal(cap->_cap.bottom);
-	const VECTOR qL = ToLocal(cap->_cap.top);
+	const VECTOR pL = ToLocal(cap->GetBottom());
+	const VECTOR qL = ToLocal(cap->GetTop());
 	const VECTOR dL = VSub(qL, pL);
 
-	const float hx = box->_box.halfExtents.x;
-	const float hy = box->_box.halfExtents.y;
-	const float hz = box->_box.halfExtents.z;
+	const float hx = box->GetHalfExtents().x;
+	const float hy = box->GetHalfExtents().y;
+	const float hz = box->GetHalfExtents().z;
 
 	auto ClampPointToAABB = [&](const VECTOR& p) {
 		return VGet(
@@ -916,83 +919,44 @@ void ColliderManager::PushOutBoxCapsule(Collider* a, Collider* b) {
 		);
 	};
 
-	// 候補点（端点 + スラブ境界）から、最近点ペアを得る
 	float best = FLT_MAX;
-	VECTOR bestSegPointL = pL;
-	VECTOR bestBoxPointL = ClampPointToAABB(pL);
 
-	auto ConsiderT = [&](float t) {
-		if (t < 0.0f || t >1.0f) return;
-		const VECTOR sL = VAdd(pL, VScale(dL, t));
-		const VECTOR cL = ClampPointToAABB(sL);
-		const float dsq = LenSq(VSub(sL, cL));
-		if (dsq < best) {
-			best = dsq;
-			bestSegPointL = sL;
-			bestBoxPointL = cL;
-		}
+	auto DistSq = [&](const VECTOR& u, const VECTOR& v) {
+		return LenSq(VSub(u, v));
 	};
 
-	//端点
-	ConsiderT(0.0f);
-	ConsiderT(1.0f);
+	{
+		const VECTOR cp = ClampPointToAABB(pL);
+		best = (std::min)(best, DistSq(pL, cp));
+		const VECTOR cq = ClampPointToAABB(qL);
+		best = (std::min)(best, DistSq(qL, cq));
+	}
 
-	// スラブ境界
-	if (std::fabs(dL.x) > 1e-6f) {
+	auto ConsiderT = [&](float t) {
+		if (t <0.0f || t >1.0f) return;
+		const VECTOR s = VAdd(pL, VScale(dL, t));
+		const VECTOR cs = ClampPointToAABB(s);
+		best = (std::min)(best, DistSq(s, cs));
+	};
+
+	if (std::fabs(dL.x) >1e-6f) {
 		ConsiderT((-hx - pL.x) / dL.x);
 		ConsiderT((hx - pL.x) / dL.x);
 	}
-	if (std::fabs(dL.y) > 1e-6f) {
+	if (std::fabs(dL.y) >1e-6f) {
 		ConsiderT((-hy - pL.y) / dL.y);
 		ConsiderT((hy - pL.y) / dL.y);
 	}
-	if (std::fabs(dL.z) > 1e-6f) {
+	if (std::fabs(dL.z) >1e-6f) {
 		ConsiderT((-hz - pL.z) / dL.z);
 		ConsiderT((hz - pL.z) / dL.z);
 	}
 
-	const float dist = std::sqrt((std::max)(best, 1e-8f));
-	const float pen = cap->_cap.radius - dist;
-	if (pen <= 0.0f) return;
-
-	// ローカルでの法線（箱の最近点 -> 線分最近点）をワールドへ
-	VECTOR nL = VSub(bestSegPointL, bestBoxPointL);
-	const float nLen = std::sqrt((std::max)(LenSq(nL), 1e-8f));
-	nL = VScale(nL, 1.0f / nLen);
-
-	// ローカル法線をワールドへ（OBB軸で合成）
-	VECTOR nW = VGet(0, 0, 0);
-	nW = VAdd(nW, VScale(box->_box.axisX, nL.x));
-	nW = VAdd(nW, VScale(box->_box.axisY, nL.y));
-	nW = VAdd(nW, VScale(box->_box.axisZ, nL.z));
-	const float nWLen = std::sqrt((std::max)(LenSq(nW), 1e-8f));
-	nW = VScale(nW, 1.0f / nWLen);
-
-	const float wBox = obox ? 1.0f : 0.0f;
-	const float wCap = ocap ? 1.0f : 0.0f;
-	const float wSum = wBox + wCap;
-	if (wSum <= 0.0f) return;
-
-	const float moveBox = (wBox / wSum) * pen;
-	const float moveCap = (wCap / wSum) * pen;
-
-	// cap を +nW, box を -nW に動かす
-	if (ocap) {
-		VECTOR p0 = ocap->transform.LocalPosition();
-		p0 = VAdd(p0, VScale(nW, moveCap));
-		ocap->transform.SetLocalPosition(p0);
-	}
-	if (obox) {
-		VECTOR p0 = obox->transform.LocalPosition();
-		p0 = VSub(p0, VScale(nW, moveBox));
-		obox->transform.SetLocalPosition(p0);
-	}
-
-	box->UpdateShape();
-	cap->UpdateShape();
+	const float r = cap->GetRadius();
+	_narrowHit = (best <= r * r);
 }
 
-// 更新
+// 1フレームぶんのコライダ更新入口。
 void ColliderManager::Update() {
 	if (IsShuttingDown()) {
 		return;
@@ -1001,7 +965,8 @@ void ColliderManager::Update() {
 	CheckDetailedCollisions();
 }
 
-// Sphere-Sphere 当たり判定
+// Sphere-Sphere 詳細判定。
+// 距離二乗と半径和二乗の比較で sqrt を避ける。
 void ColliderManager::CheckSphereSphere(Collider* a, Collider* b) {
 	auto* sa = dynamic_cast<SphereCollider*>(a);
 	auto* sb = dynamic_cast<SphereCollider*>(b);
@@ -1009,14 +974,15 @@ void ColliderManager::CheckSphereSphere(Collider* a, Collider* b) {
 		_narrowHit = false;
 		return;
 	}
-	const VECTOR ca = sa->_sphere.center;
-	const VECTOR cb = sb->_sphere.center;
+	const VECTOR ca = sa->GetCenter();
+	const VECTOR cb = sb->GetCenter();
 	const VECTOR d = VSub(cb, ca);
-	const float r = sa->_sphere.radius + sb->_sphere.radius;
+	const float r = sa->GetRadius() + sb->GetRadius();
 	_narrowHit = (LenSq(d) <= r * r);
 }
 
-// Sphere-Box(OBB) 当たり判定
+// Sphere-Box 詳細判定。
+// 球中心から OBB 上の最近点を求め、その距離が半径以内かを判定する。
 void ColliderManager::CheckSphereBox(Collider* a, Collider* b) {
 	SphereCollider* s = dynamic_cast<SphereCollider*>(a);
 	BoxCollider* box = dynamic_cast<BoxCollider*>(b);
@@ -1029,27 +995,28 @@ void ColliderManager::CheckSphereBox(Collider* a, Collider* b) {
 		return;
 	}
 
-	const VECTOR c = s->_sphere.center;
-	const float r = s->_sphere.radius;
-	const VECTOR d = VSub(c, box->_box.center);
-	float x = Dot3(d, box->_box.axisX);
-	float y = Dot3(d, box->_box.axisY);
-	float z = Dot3(d, box->_box.axisZ);
+	const VECTOR c = s->GetCenter();
+	const float r = s->GetRadius();
+	const VECTOR d = VSub(c, box->GetCenter());
+	float x = Dot3(d, box->GetAxisX());
+	float y = Dot3(d, box->GetAxisY());
+	float z = Dot3(d, box->GetAxisZ());
 
-	x = std::clamp(x, -box->_box.halfExtents.x, box->_box.halfExtents.x);
-	y = std::clamp(y, -box->_box.halfExtents.y, box->_box.halfExtents.y);
-	z = std::clamp(z, -box->_box.halfExtents.z, box->_box.halfExtents.z);
+	x = std::clamp(x, -box->GetHalfExtents().x, box->GetHalfExtents().x);
+	y = std::clamp(y, -box->GetHalfExtents().y, box->GetHalfExtents().y);
+	z = std::clamp(z, -box->GetHalfExtents().z, box->GetHalfExtents().z);
 
-	VECTOR closest = box->_box.center;
-	closest = VAdd(closest, VScale(box->_box.axisX, x));
-	closest = VAdd(closest, VScale(box->_box.axisY, y));
-	closest = VAdd(closest, VScale(box->_box.axisZ, z));
+	VECTOR closest = box->GetCenter();
+	closest = VAdd(closest, VScale(box->GetAxisX(), x));
+	closest = VAdd(closest, VScale(box->GetAxisY(), y));
+	closest = VAdd(closest, VScale(box->GetAxisZ(), z));
 
 	const VECTOR diff = VSub(c, closest);
 	_narrowHit = (LenSq(diff) <= r * r);
 }
 
-// Box-Box(OBB) 当たり判定
+// Box-Box 詳細判定。
+// SAT により「分離軸が1本でもあれば非衝突」と判定する。
 void ColliderManager::CheckBoxBox(Collider* a, Collider* b) {
 	BoxCollider* ba = dynamic_cast<BoxCollider*>(a);
 	BoxCollider* bb = dynamic_cast<BoxCollider*>(b);
@@ -1058,15 +1025,14 @@ void ColliderManager::CheckBoxBox(Collider* a, Collider* b) {
 		return;
 	}
 
-	// SAT: OBB vs OBB
-	const VECTOR A0 = ba->_box.axisX;
-	const VECTOR A1 = ba->_box.axisY;
-	const VECTOR A2 = ba->_box.axisZ;
-	const VECTOR B0 = bb->_box.axisX;
-	const VECTOR B1 = bb->_box.axisY;
-	const VECTOR B2 = bb->_box.axisZ;
+	const VECTOR A0 = ba->GetAxisX();
+	const VECTOR A1 = ba->GetAxisY();
+	const VECTOR A2 = ba->GetAxisZ();
+	const VECTOR B0 = bb->GetAxisX();
+	const VECTOR B1 = bb->GetAxisY();
+	const VECTOR B2 = bb->GetAxisZ();
 
-	const VECTOR tV = VSub(bb->_box.center, ba->_box.center);
+	const VECTOR tV = VSub(bb->GetCenter(), ba->GetCenter());
 	const float t[3] = { Dot3(tV, A0), Dot3(tV, A1), Dot3(tV, A2) };
 
 	float R[3][3] = {
@@ -1083,8 +1049,8 @@ void ColliderManager::CheckBoxBox(Collider* a, Collider* b) {
 		}
 	}
 
-	const float aExt[3] = { ba->_box.halfExtents.x, ba->_box.halfExtents.y, ba->_box.halfExtents.z };
-	const float bExt[3] = { bb->_box.halfExtents.x, bb->_box.halfExtents.y, bb->_box.halfExtents.z };
+	const float aExt[3] = { ba->GetHalfExtents().x, ba->GetHalfExtents().y, ba->GetHalfExtents().z };
+	const float bExt[3] = { bb->GetHalfExtents().x, bb->GetHalfExtents().y, bb->GetHalfExtents().z };
 
 	float ra, rb;
 	float tval;
@@ -1102,7 +1068,6 @@ void ColliderManager::CheckBoxBox(Collider* a, Collider* b) {
 		if (tval > ra + rb) { _narrowHit = false; return; }
 	}
 
-	// A_i x B_j
 	ra = aExt[1] * AbsR[2][0] + aExt[2] * AbsR[1][0];
 	rb = bExt[1] * AbsR[0][2] + bExt[2] * AbsR[0][1];
 	tval = std::fabs(t[2] * R[1][0] - t[1] * R[2][0]);
@@ -1151,7 +1116,8 @@ void ColliderManager::CheckBoxBox(Collider* a, Collider* b) {
 	_narrowHit = true;
 }
 
-// Capsule-Capsule 当たり判定
+// Capsule-Capsule 詳細判定。
+// 線分間最近点距離と半径和の比較。
 void ColliderManager::CheckCapsuleCapsule(Collider* a, Collider* b) {
 	auto* ca = dynamic_cast<CapsuleCollider*>(a);
 	auto* cb = dynamic_cast<CapsuleCollider*>(b);
@@ -1160,11 +1126,11 @@ void ColliderManager::CheckCapsuleCapsule(Collider* a, Collider* b) {
 		return;
 	}
 
-	const VECTOR p1 = ca->_cap.bottom;
-	const VECTOR q1 = ca->_cap.top;
-	const VECTOR p2 = cb->_cap.bottom;
-	const VECTOR q2 = cb->_cap.top;
-	const float r = ca->_cap.radius + cb->_cap.radius;
+	const VECTOR p1 = ca->GetBottom();
+	const VECTOR q1 = ca->GetTop();
+	const VECTOR p2 = cb->GetBottom();
+	const VECTOR q2 = cb->GetTop();
+	const float r = ca->GetRadius() + cb->GetRadius();
 
 	const VECTOR d1 = VSub(q1, p1);
 	const VECTOR d2 = VSub(q2, p2);
@@ -1212,7 +1178,8 @@ void ColliderManager::CheckCapsuleCapsule(Collider* a, Collider* b) {
 	_narrowHit = (LenSq(diff) <= r * r);
 }
 
-// Sphere-Capsule 当たり判定
+// Sphere-Capsule 詳細判定。
+// カプセル軸線分上の最近点を求め、球中心との差で法線を作る。
 void ColliderManager::CheckSphereCapsule(Collider* a, Collider* b) {
 	SphereCollider* s = dynamic_cast<SphereCollider*>(a);
 	CapsuleCollider* c = dynamic_cast<CapsuleCollider*>(b);
@@ -1225,10 +1192,10 @@ void ColliderManager::CheckSphereCapsule(Collider* a, Collider* b) {
 		return;
 	}
 
-	const VECTOR p = c->_cap.bottom;
-	const VECTOR q = c->_cap.top;
+	const VECTOR p = c->GetBottom();
+	const VECTOR q = c->GetTop();
 	const VECTOR seg = VSub(q, p);
-	const VECTOR v = VSub(s->_sphere.center, p);
+	const VECTOR v = VSub(s->GetCenter(), p);
 
 	const float segLenSq = Dot3(seg, seg);
 	float t =0.0f;
@@ -1238,12 +1205,13 @@ void ColliderManager::CheckSphereCapsule(Collider* a, Collider* b) {
 	}
 
 	const VECTOR closest = VAdd(p, VScale(seg, t));
-	const VECTOR diff = VSub(s->_sphere.center, closest);
-	const float r = s->_sphere.radius + c->_cap.radius;
+	const VECTOR diff = VSub(s->GetCenter(), closest);
+	const float r = s->GetRadius() + c->GetRadius();
 	_narrowHit = (LenSq(diff) <= r * r);
 }
 
-// Box(OBB)-Capsule 当たり判定
+// Box-Capsule 詳細判定。
+// カプセル線分を OBB ローカルに変換し、AABB との最近距離を近似評価する。
 void ColliderManager::CheckBoxCapsule(Collider* a, Collider* b) {
 	BoxCollider* box = dynamic_cast<BoxCollider*>(a);
 	CapsuleCollider* cap = dynamic_cast<CapsuleCollider*>(b);
@@ -1256,26 +1224,18 @@ void ColliderManager::CheckBoxCapsule(Collider* a, Collider* b) {
 		return;
 	}
 
-	// OBBローカルへ: sphere-box の最近点計算を流用するため、カプセル端点をローカル化
 	auto ToLocal = [&](const VECTOR& w) {
-		const VECTOR d = VSub(w, box->_box.center);
-		return VGet(Dot3(d, box->_box.axisX), Dot3(d, box->_box.axisY), Dot3(d, box->_box.axisZ));
-	 };
-	auto ToWorld = [&](const VECTOR& l) {
-		VECTOR w = box->_box.center;
-		w = VAdd(w, VScale(box->_box.axisX, l.x));
-		w = VAdd(w, VScale(box->_box.axisY, l.y));
-		w = VAdd(w, VScale(box->_box.axisZ, l.z));
-		return w;
+		const VECTOR d = VSub(w, box->GetCenter());
+		return VGet(Dot3(d, box->GetAxisX()), Dot3(d, box->GetAxisY()), Dot3(d, box->GetAxisZ()));
 	 };
 
-	const VECTOR pL = ToLocal(cap->_cap.bottom);
-	const VECTOR qL = ToLocal(cap->_cap.top);
+	const VECTOR pL = ToLocal(cap->GetBottom());
+	const VECTOR qL = ToLocal(cap->GetTop());
 	const VECTOR dL = VSub(qL, pL);
 
-	const float hx = box->_box.halfExtents.x;
-	const float hy = box->_box.halfExtents.y;
-	const float hz = box->_box.halfExtents.z;
+	const float hx = box->GetHalfExtents().x;
+	const float hy = box->GetHalfExtents().y;
+	const float hz = box->GetHalfExtents().z;
 
 	float best = FLT_MAX;
 
@@ -1318,11 +1278,11 @@ void ColliderManager::CheckBoxCapsule(Collider* a, Collider* b) {
 		ConsiderT((hz - pL.z) / dL.z);
 	}
 
-	const float r = cap->_cap.radius;
+	const float r = cap->GetRadius();
 	_narrowHit = (best <= r * r);
 }
 
-// デバッグ描画
+// デバッグ描画。
 void ColliderManager::DrawDebugAll() {
 	for (auto* collider : _colliders) {
 		if (!collider) continue;
@@ -1330,6 +1290,7 @@ void ColliderManager::DrawDebugAll() {
 	}
 }
 
+// broad-phase 用 AABB のデバッグ描画。
 void ColliderManager::DrawDebugAABBAll() {
 	for (auto* collider : _colliders) {
 		if (!collider) continue;
@@ -1337,7 +1298,7 @@ void ColliderManager::DrawDebugAABBAll() {
 	}
 }
 
-// Collider登録
+// 管理対象への登録。
 void ColliderManager::RegisterCollider(Collider* collider) {
 	if (IsShuttingDown()) {
 		return;
@@ -1347,7 +1308,8 @@ void ColliderManager::RegisterCollider(Collider* collider) {
 	_colliders.push_back(collider);
 }
 
-// Collider解除
+// 管理対象からの解除。
+// ペア集合と前回AABBも一緒に掃除して dangling を防ぐ。
 void ColliderManager::UnregisterCollider(Collider* collider) {
 	if (IsShuttingDown()) {
 		return;
@@ -1379,16 +1341,23 @@ void ColliderManager::UnregisterCollider(Collider* collider) {
 	}
 }
 
-// Layer/Mask判定
+// Layer / Mask フィルタ。
+// false ではなく true を返した時に「衝突させない」設計になっている点に注意。
 bool ColliderManager::CheckLayerMaskCollisions(Collider* a, Collider* b) {
 	if ((a->layer & b->mask) ==0) return true;
 	if ((b->layer & a->mask) ==0) return true;
 	return false;
 }
 
-// AABB判定
+// 現在AABB同士の通常判定。
 bool ColliderManager::CheckAABBCollisions(Collider* a, Collider* b) {
 	return !IntersectAABBWorld(a->GetAABB(), b->GetAABB());
+}
+
+// swept AABB 同士の判定。
+// broad-phase での取りこぼし抑制用であり、これ自体は連続衝突判定ではない。
+bool ColliderManager::CheckAABBCollisionsSwept(Collider* a, Collider* b) {
+	return !IntersectAABBWorld(GetSweptAABB(a), GetSweptAABB(b));
 }
 
 

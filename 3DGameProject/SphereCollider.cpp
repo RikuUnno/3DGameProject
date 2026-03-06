@@ -1,6 +1,7 @@
 #include "SphereCollider.h"
 #include "GameObject.h"
 #include "DxLib.h"
+#include <algorithm>
 
 SphereCollider::SphereCollider() {
 	// デフォルト値
@@ -12,20 +13,31 @@ SphereCollider::SphereCollider() {
 SphereCollider::~SphereCollider() = default;
 
 void SphereCollider::UpdateShape() {
-	// owner Transformから中心を算出（Transformが無い場合は保持値を使用）
+	// owner がある場合、_sphere.center は「ワールド中心」ではなく
+	// 「owner基準のローカルオフセット」として扱う。
+	// これにより親回転・親スケール・親移動をすべて反映できる。
 	if (owner) {
-		_sphere.center = owner->transform.WorldPosition();
+		const VECTOR worldScale = owner->transform.WorldScale();
+		// Sphere は非一様スケールを厳密には表現できないため、
+		// 最大スケールを採用して抜けにくさを優先する。
+		const float maxScale = (std::max)((std::max)(std::fabs(worldScale.x), std::fabs(worldScale.y)), std::fabs(worldScale.z));
+		_center = owner->transform.TransformPoint(_sphere.center);
+		_radius = _sphere.radius * maxScale;
+	}
+	else {
+		_center = _sphere.center;
+		_radius = _sphere.radius;
 	}
 
-	_aabb.center = _sphere.center;
-	_aabb.min = VGet(_sphere.center.x - _sphere.radius, _sphere.center.y - _sphere.radius, _sphere.center.z - _sphere.radius);
-	_aabb.max = VGet(_sphere.center.x + _sphere.radius, _sphere.center.y + _sphere.radius, _sphere.center.z + _sphere.radius);
+	_aabb.center = _center;
+	_aabb.min = VGet(_center.x - _radius, _center.y - _radius, _center.z - _radius);
+	_aabb.max = VGet(_center.x + _radius, _center.y + _radius, _center.z + _radius);
 }
 
 void SphereCollider::DrawDebug() {
 	const unsigned int col = isTrigger ? GetColor(255,220,80) : GetColor(80,200,200);
-	DrawSphere3D(_sphere.center, _sphere.radius,20, col, col, FALSE);
-	DrawSphere3D(_sphere.center,0.05f,8, col, col, TRUE);
+	DrawSphere3D(_center, _radius,20, col, col, FALSE);
+	DrawSphere3D(_center,0.05f,8, col, col, TRUE);
 }
 
 void SphereCollider::DrawDebugAABB() {

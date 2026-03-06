@@ -6,7 +6,6 @@ class GameObject;
 
 // PhysicsBody
 // - Collider のように GameObjectへ付与するコンポーネント（データ保持）
-// -付けたい時だけ AddPhysicsBody()で生成し、要らない時は RemovePhysicsBody()で外す想定
 class PhysicsBody {
 public:
 	PhysicsBody() = default;

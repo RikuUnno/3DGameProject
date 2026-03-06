@@ -1,4 +1,5 @@
 #pragma once
+
 #include "Collider.h"
 
 class BoxCollider : public Collider {
@@ -9,12 +10,12 @@ public:
 public:
 	Kind GetKind() const override { return Kind::Box; }
 	const AABB& GetAABB() const override { return _aabb; }
-	VECTOR GetCenter() const override { return box_.center; }
+	VECTOR GetCenter() const override { return _box.center; }
 	void UpdateShape() override;
 
 public:
 	// 設定値（ワールド）
-	Box box_{};
+	Box _box{};
 
 public:
 	void DrawDebug() override;

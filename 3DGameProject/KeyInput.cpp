@@ -28,82 +28,82 @@ void KeyInput::Initialize()
 	std::fill(std::begin(_repeatedTimer), std::end(_repeatedTimer),0.0);
 }
 
-bool KeyInput::IsKeyInputTrigger(int KeyCode)
+bool KeyInput::IsKeyInputTrigger(int keyCode)
 {
 	if (!_isKeyInputOn) return false;
-	if (KeyCode <0 || KeyCode >= KEY_COUNT) return false;
+	if (keyCode <0 || keyCode >= KEY_COUNT) return false;
 
 	GetHitKeyStateAll(_currentKey);
-	const bool flag = (_currentKey[KeyCode] !=0) && (_currentKey[KeyCode] != _previousKey[KeyCode]);
-	_previousKey[KeyCode] = _currentKey[KeyCode];
+	const bool flag = (_currentKey[keyCode] !=0) && (_currentKey[keyCode] != _previousKey[keyCode]);
+	_previousKey[keyCode] = _currentKey[keyCode];
 
 #ifdef _DEBUG
-	DrawFormatString(0,90, GetColor(255,255,255), "TriggerFlag[%d]: %d", KeyCode, flag);
+	DrawFormatString(0,90, GetColor(255,255,255), "TriggerFlag[%d]: %d", keyCode, flag);
 #endif
 
 	return flag;
 }
 
-bool KeyInput::IsKeyInputHeld(int KeyCode)
+bool KeyInput::IsKeyInputHeld(int keyCode)
 {
 	if (!_isKeyInputOn) return false;
-	if (KeyCode <0 || KeyCode >= KEY_COUNT) return false;
-	return (CheckHitKey(KeyCode) !=0);
+	if (keyCode <0 || keyCode >= KEY_COUNT) return false;
+	return (CheckHitKey(keyCode) !=0);
 }
 
-bool KeyInput::IsKeyInputReleased(int KeyCode)
+bool KeyInput::IsKeyInputReleased(int keyCode)
 {
 	if (!_isKeyInputOn) return false;
-	if (KeyCode <0 || KeyCode >= KEY_COUNT) return false;
+	if (keyCode <0 || keyCode >= KEY_COUNT) return false;
 
 	GetHitKeyStateAll(_currentKey);
-	const bool flag = (_previousKey[KeyCode] !=0) && (_currentKey[KeyCode] ==0);
-	_previousKey[KeyCode] = _currentKey[KeyCode];
+	const bool flag = (_previousKey[keyCode] !=0) && (_currentKey[keyCode] ==0);
+	_previousKey[keyCode] = _currentKey[keyCode];
 
 #ifdef _DEBUG
-	DrawFormatString(0,75, GetColor(255,255,255), "ReleasedFlag[%d]: %d", KeyCode, flag);
+	DrawFormatString(0,75, GetColor(255,255,255), "ReleasedFlag[%d]: %d", keyCode, flag);
 #endif
 
 	return flag;
 }
 
-bool KeyInput::IsKeyInputRepeated(int KeyCode)
+bool KeyInput::IsKeyInputRepeated(int keyCode)
 {
 	if (!_isKeyInputOn) return false;
-	if (KeyCode <0 || KeyCode >= KEY_COUNT) return false;
+	if (keyCode <0 || keyCode >= KEY_COUNT) return false;
 
 	bool flag = false;
 	GetHitKeyStateAll(_currentKey);
 
-	if (_currentKey[KeyCode] !=0)
+	if (_currentKey[keyCode] !=0)
 	{
-		_repeatedTimer[KeyCode] += Time::Instance().GetDeltaTime();
+		_repeatedTimer[keyCode] += Time::Instance().GetDeltaTime();
 
-		if (_repeatedTime[KeyCode] >0.0 && _repeatedTimer[KeyCode] >= _repeatedTime[KeyCode])
+		if (_repeatedTime[keyCode] >0.0 && _repeatedTimer[keyCode] >= _repeatedTime[keyCode])
 		{
 			flag = true;
-			_repeatedTimer[KeyCode] =0.0;
+			_repeatedTimer[keyCode] =0.0;
 		}
 	}
 	else
 	{
-		_repeatedTimer[KeyCode] =0.0;
+		_repeatedTimer[keyCode] =0.0;
 	}
 
 #ifdef _DEBUG
 	DrawFormatString(0,75, GetColor(255,255,255), "DeltaTime: %.4f", Time::Instance().GetDeltaTime());
-	DrawFormatString(0,90, GetColor(255,255,255), "RepeatedTimer[%d]: %.4f", KeyCode, _repeatedTimer[KeyCode]);
-	DrawFormatString(0,105, GetColor(255,255,255), "RepeatedFlag[%d]: %d", KeyCode, flag);
+	DrawFormatString(0,90, GetColor(255,255,255), "RepeatedTimer[%d]: %.4f", keyCode, _repeatedTimer[keyCode]);
+	DrawFormatString(0,105, GetColor(255,255,255), "RepeatedFlag[%d]: %d", keyCode, flag);
 #endif
 
 	return flag;
 }
 
-void KeyInput::SetInputRepeatedTime(int KeyCode, double SetTime)
+void KeyInput::SetInputRepeatedTime(int keyCode, double setTime)
 {
-	if (KeyCode <0 || KeyCode >= KEY_COUNT) return;
-	if (SetTime <0.0) SetTime =0.0;
-	_repeatedTime[KeyCode] = SetTime;
+	if (keyCode <0 || keyCode >= KEY_COUNT) return;
+	if (setTime <0.0) setTime =0.0;
+	_repeatedTime[keyCode] = setTime;
 }
 
 void KeyInput::BeginKeyInput()

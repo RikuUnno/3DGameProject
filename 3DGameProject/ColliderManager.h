@@ -45,7 +45,7 @@ private:
 	virtual ~ColliderManager() {};
 
 public:
-	static ColliderManager& GetInstance() {
+	static ColliderManager& Instance() {
 		static ColliderManager instance;
 		return instance;
 	}
@@ -73,6 +73,7 @@ public:
 	void SpatialPartitioning();
 	bool CheckLayerMaskCollisions(Collider* a, Collider* b);
 	bool CheckAABBCollisions(Collider* a, Collider* b);
+	bool CheckAABBCollisionsSwept(Collider* a, Collider* b);
 
 	void CheckDetailedCollisions(); // 詳細判定
 
@@ -82,6 +83,7 @@ private:
 	void BuildCurrentPairs();				// ペア構築
 	void ProcessPairEvents();				// イベント処理
 	void ResolvePushOut(Collider* a, Collider* b);	// 押し戻し
+	AABB GetSweptAABB(Collider* collider) const;
 
 private:
 	// 各種詳細判定

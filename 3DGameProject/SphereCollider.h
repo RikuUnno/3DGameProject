@@ -9,12 +9,12 @@ public:
 public:
 	Kind GetKind() const override { return Kind::Sphere; }
 	const AABB& GetAABB() const override { return _aabb; }
-	VECTOR GetCenter() const override { return sphere_.center; }
+	VECTOR GetCenter() const override { return _sphere.center; }
 	void UpdateShape() override;
 
 public:
 	// 設定値（ワールド）
-	Sphere sphere_{};
+	Sphere _sphere{};
 
 public:
 	void DrawDebug() override;

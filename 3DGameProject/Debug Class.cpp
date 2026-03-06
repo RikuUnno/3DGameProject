@@ -18,7 +18,7 @@ DebugHat::DebugHat() {
 	collider_->mask = mask::ALL;
 
 	// 帽子サイズ
-	collider_->box_.halfExtents = VGet(0.25f,0.15f,0.25f);
+	collider_->_box.halfExtents = VGet(0.25f,0.15f,0.25f);
 
 	// 親子追従の見た目用。押し戻しで位置を変えないようにする
 	isStatic = true;
@@ -29,7 +29,7 @@ DebugHat::DebugHat() {
 
 DebugHat::~DebugHat() {
 	if (registeredToColliderMgr_ && collider_) {
-		ColliderManager::GetInstance().UnregisterCollider(collider_.get());
+		ColliderManager::Instance().UnregisterCollider(collider_.get());
 		registeredToColliderMgr_ = false;
 	}
 	PhysicsManager::Instance().UnregisterBody(&_physicsBody);
@@ -47,7 +47,7 @@ void DebugHat::End() {}
 
 void DebugHat::OnDestroy() {
 	if (registeredToColliderMgr_ && collider_) {
-		ColliderManager::GetInstance().UnregisterCollider(collider_.get());
+		ColliderManager::Instance().UnregisterCollider(collider_.get());
 		registeredToColliderMgr_ = false;
 	}
 	PhysicsManager::Instance().UnregisterBody(&_physicsBody);
@@ -57,7 +57,7 @@ void DebugHat::OnAcquire(const VariantMap& /*params*/) {
 	_ownerSceneId = SceneManager::Instance().CurrentSceneId();
 	SetActive(true);
 	if (!registeredToColliderMgr_ && collider_) {
-		ColliderManager::GetInstance().RegisterCollider(collider_.get());
+		ColliderManager::Instance().RegisterCollider(collider_.get());
 		registeredToColliderMgr_ = true;
 	}
 
@@ -72,7 +72,7 @@ void DebugHat::OnRelease() {
 	transform.SetParent(nullptr);
 
 	if (registeredToColliderMgr_ && collider_) {
-		ColliderManager::GetInstance().UnregisterCollider(collider_.get());
+		ColliderManager::Instance().UnregisterCollider(collider_.get());
 		registeredToColliderMgr_ = false;
 	}
 	PhysicsManager::Instance().UnregisterBody(&_physicsBody);
@@ -106,7 +106,7 @@ DebugGround::DebugGround() {
 
 	// グリッドの少し下に置く床（大きめ）
 	// ※中心は Transformから同期されるので、ここはサイズだけ設定
-	collider_->box_.halfExtents = VGet(50.0f,0.5f,50.0f);
+	collider_->_box.halfExtents = VGet(50.0f,0.5f,50.0f);
 
 	// 動かない固定物
 	isStatic = true;
@@ -117,7 +117,7 @@ DebugGround::DebugGround() {
 
 DebugGround::~DebugGround() {
 	if (registeredToColliderMgr_ && collider_) {
-		ColliderManager::GetInstance().UnregisterCollider(collider_.get());
+		ColliderManager::Instance().UnregisterCollider(collider_.get());
 		registeredToColliderMgr_ = false;
 	}
 }
@@ -137,7 +137,7 @@ void DebugGround::End() {}
 
 void DebugGround::OnDestroy() {
 	if (registeredToColliderMgr_ && collider_) {
-		ColliderManager::GetInstance().UnregisterCollider(collider_.get());
+		ColliderManager::Instance().UnregisterCollider(collider_.get());
 		registeredToColliderMgr_ = false;
 	}
 }
@@ -146,14 +146,14 @@ void DebugGround::OnAcquire(const VariantMap& /*params*/) {
 	_ownerSceneId = SceneManager::Instance().CurrentSceneId();
 	SetActive(true);
 	if (!registeredToColliderMgr_ && collider_) {
-		ColliderManager::GetInstance().RegisterCollider(collider_.get());
+		ColliderManager::Instance().RegisterCollider(collider_.get());
 		registeredToColliderMgr_ = true;
 	}
 }
 
 void DebugGround::OnRelease() {
 	if (registeredToColliderMgr_ && collider_) {
-		ColliderManager::GetInstance().UnregisterCollider(collider_.get());
+		ColliderManager::Instance().UnregisterCollider(collider_.get());
 		registeredToColliderMgr_ = false;
 	}
 	SetActive(false);
@@ -179,7 +179,7 @@ DebugPlayer::DebugPlayer() {
 
 DebugPlayer::~DebugPlayer() {
 	if (registeredToColliderMgr_ && collider_) {
-		ColliderManager::GetInstance().UnregisterCollider(collider_.get());
+		ColliderManager::Instance().UnregisterCollider(collider_.get());
 		registeredToColliderMgr_ = false;
 	}
 	PhysicsManager::Instance().UnregisterBody(&_physicsBody);
@@ -200,7 +200,7 @@ void DebugPlayer::End() {}
 
 void DebugPlayer::OnDestroy() {
 	if (registeredToColliderMgr_ && collider_) {
-		ColliderManager::GetInstance().UnregisterCollider(collider_.get());
+		ColliderManager::Instance().UnregisterCollider(collider_.get());
 		registeredToColliderMgr_ = false;
 	}
 	PhysicsManager::Instance().UnregisterBody(&_physicsBody);
@@ -210,7 +210,7 @@ void DebugPlayer::OnAcquire(const VariantMap& /*params*/) {
 	_ownerSceneId = SceneManager::Instance().CurrentSceneId();
 	SetActive(true);
 	if (!registeredToColliderMgr_ && collider_) {
-		ColliderManager::GetInstance().RegisterCollider(collider_.get());
+		ColliderManager::Instance().RegisterCollider(collider_.get());
 		registeredToColliderMgr_ = true;
 	}
 
@@ -222,7 +222,7 @@ void DebugPlayer::OnAcquire(const VariantMap& /*params*/) {
 
 void DebugPlayer::OnRelease() {
 	if (registeredToColliderMgr_ && collider_) {
-		ColliderManager::GetInstance().UnregisterCollider(collider_.get());
+		ColliderManager::Instance().UnregisterCollider(collider_.get());
 		registeredToColliderMgr_ = false;
 	}
 	PhysicsManager::Instance().UnregisterBody(&_physicsBody);
@@ -269,7 +269,7 @@ DebugEnemy::DebugEnemy() {
 	collider_->mask = mask::ALL;
 
 	// 押し戻しで動かさない
-	isStatic = true;
+	// isStatic = true;
 
 	_physicsBody._owner = this;
 	_physicsBody.Reset();
@@ -278,7 +278,7 @@ DebugEnemy::DebugEnemy() {
 
 DebugEnemy::~DebugEnemy() {
 	if (registeredToColliderMgr_ && collider_) {
-		ColliderManager::GetInstance().UnregisterCollider(collider_.get());
+		ColliderManager::Instance().UnregisterCollider(collider_.get());
 		registeredToColliderMgr_ = false;
 	}
 	PhysicsManager::Instance().UnregisterBody(&_physicsBody);
@@ -299,7 +299,7 @@ void DebugEnemy::End() {}
 
 void DebugEnemy::OnDestroy() {
 	if (registeredToColliderMgr_ && collider_) {
-		ColliderManager::GetInstance().UnregisterCollider(collider_.get());
+		ColliderManager::Instance().UnregisterCollider(collider_.get());
 		registeredToColliderMgr_ = false;
 	}
 	PhysicsManager::Instance().UnregisterBody(&_physicsBody);
@@ -309,7 +309,7 @@ void DebugEnemy::OnAcquire(const VariantMap& /*params*/) {
 	_ownerSceneId = SceneManager::Instance().CurrentSceneId();
 	SetActive(true);
 	if (!registeredToColliderMgr_ && collider_) {
-		ColliderManager::GetInstance().RegisterCollider(collider_.get());
+		ColliderManager::Instance().RegisterCollider(collider_.get());
 		registeredToColliderMgr_ = true;
 	}
 
@@ -321,7 +321,7 @@ void DebugEnemy::OnAcquire(const VariantMap& /*params*/) {
 
 void DebugEnemy::OnRelease() {
 	if (registeredToColliderMgr_ && collider_) {
-		ColliderManager::GetInstance().UnregisterCollider(collider_.get());
+		ColliderManager::Instance().UnregisterCollider(collider_.get());
 		registeredToColliderMgr_ = false;
 	}
 	PhysicsManager::Instance().UnregisterBody(&_physicsBody);

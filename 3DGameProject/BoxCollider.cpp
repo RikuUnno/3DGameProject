@@ -30,56 +30,47 @@ namespace { // ユーティリティ関数群
 	}
 }
 
-// コンストラクタ
 BoxCollider::BoxCollider() : Collider() {
-	box_.center = VGet(0,0,0);
-	box_.halfExtents = VGet(0.5f,0.5f,0.5f);
-	box_.axisX = VGet(1,0,0);
-	box_.axisY = VGet(0,1,0);
-	box_.axisZ = VGet(0,0,1);
+	_box.center = VGet(0,0,0);
+	_box.halfExtents = VGet(0.5f,0.5f,0.5f);
+	_box.axisX = VGet(1,0,0);
+	_box.axisY = VGet(0,1,0);
+	_box.axisZ = VGet(0,0,1);
 	UpdateShape();
 }
 
-// デストラクタ
 BoxCollider::~BoxCollider() = default;
 
-// 形状更新
 void BoxCollider::UpdateShape() {
-	// owner Transformから中心/軸を算出（Transformが無い場合は保持値を使用）
 	if (owner) {
-		box_.center = owner->transform.WorldPosition();
-		box_.axisX = owner->transform.Right();
-		box_.axisY = owner->transform.Up();
-		box_.axisZ = owner->transform.Forward();
+		_box.center = owner->transform.WorldPosition();
+		_box.axisX = owner->transform.Right();
+		_box.axisY = owner->transform.Up();
+		_box.axisZ = owner->transform.Forward();
 	}
 
-	// axis を正規化（Transform連動時に重要）
-	box_.axisX = SafeNormalize(box_.axisX, VGet(1,0,0));
-	box_.axisY = SafeNormalize(box_.axisY, VGet(0,1,0));
-	box_.axisZ = SafeNormalize(box_.axisZ, VGet(0,0,1));
+	_box.axisX = SafeNormalize(_box.axisX, VGet(1,0,0));
+	_box.axisY = SafeNormalize(_box.axisY, VGet(0,1,0));
+	_box.axisZ = SafeNormalize(_box.axisZ, VGet(0,0,1));
 
-	// OBB を内包する AABB を作成
-	// ext = |axisX|*hx + |axisY|*hy + |axisZ|*hz
-	const VECTOR ex = VScale(AbsVec(box_.axisX), box_.halfExtents.x);
-	const VECTOR ey = VScale(AbsVec(box_.axisY), box_.halfExtents.y);
-	const VECTOR ez = VScale(AbsVec(box_.axisZ), box_.halfExtents.z);
+	const VECTOR ex = VScale(AbsVec(_box.axisX), _box.halfExtents.x);
+	const VECTOR ey = VScale(AbsVec(_box.axisY), _box.halfExtents.y);
+	const VECTOR ez = VScale(AbsVec(_box.axisZ), _box.halfExtents.z);
 	const VECTOR ext = Add3(ex, ey, ez);
 
-	_aabb.center = box_.center;
-	_aabb.min = VSub(box_.center, ext);
-	_aabb.max = VAdd(box_.center, ext);
+	_aabb.center = _box.center;
+	_aabb.min = VSub(_box.center, ext);
+	_aabb.max = VAdd(_box.center, ext);
 }
 
-// 本体デバッグ描画の実装
 void BoxCollider::DrawDebug() {
-	// OBB ワイヤーフレーム描画（線のみなので陰影は発生しない）
 	const unsigned int col = isTrigger ? GetColor(255,220,80) : GetColor(80,200,200);
 
 	auto Corner = [&](float sx, float sy, float sz) {
-		VECTOR p = box_.center;
-		p = VAdd(p, VScale(box_.axisX, box_.halfExtents.x * sx));
-		p = VAdd(p, VScale(box_.axisY, box_.halfExtents.y * sy));
-		p = VAdd(p, VScale(box_.axisZ, box_.halfExtents.z * sz));
+		VECTOR p = _box.center;
+		p = VAdd(p, VScale(_box.axisX, _box.halfExtents.x * sx));
+		p = VAdd(p, VScale(_box.axisY, _box.halfExtents.y * sy));
+		p = VAdd(p, VScale(_box.axisZ, _box.halfExtents.z * sz));
 		return p;
 	};
 
@@ -107,10 +98,9 @@ void BoxCollider::DrawDebug() {
 	DrawLine3D(p010, p110, col);
 	DrawLine3D(p011, p111, col);
 
-	DrawSphere3D(box_.center,0.05f,8, col, col, TRUE);
+	DrawSphere3D(_box.center,0.05f,8, col, col, TRUE);
 }
 
-// AABBデバッグ描画の実装
 void BoxCollider::DrawDebugAABB() {
 	const unsigned int col = GetColor(120,120,120);
 	const VECTOR mn = _aabb.min;

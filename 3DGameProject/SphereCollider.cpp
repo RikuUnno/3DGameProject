@@ -4,8 +4,8 @@
 
 SphereCollider::SphereCollider() {
 	// デフォルト値
-	sphere_.center = VGet(0,0,0);
-	sphere_.radius =0.5f;
+	_sphere.center = VGet(0,0,0);
+	_sphere.radius =0.5f;
 	UpdateShape();
 }
 
@@ -14,18 +14,18 @@ SphereCollider::~SphereCollider() = default;
 void SphereCollider::UpdateShape() {
 	// owner Transformから中心を算出（Transformが無い場合は保持値を使用）
 	if (owner) {
-		sphere_.center = owner->transform.WorldPosition();
+		_sphere.center = owner->transform.WorldPosition();
 	}
 
-	_aabb.center = sphere_.center;
-	_aabb.min = VGet(sphere_.center.x - sphere_.radius, sphere_.center.y - sphere_.radius, sphere_.center.z - sphere_.radius);
-	_aabb.max = VGet(sphere_.center.x + sphere_.radius, sphere_.center.y + sphere_.radius, sphere_.center.z + sphere_.radius);
+	_aabb.center = _sphere.center;
+	_aabb.min = VGet(_sphere.center.x - _sphere.radius, _sphere.center.y - _sphere.radius, _sphere.center.z - _sphere.radius);
+	_aabb.max = VGet(_sphere.center.x + _sphere.radius, _sphere.center.y + _sphere.radius, _sphere.center.z + _sphere.radius);
 }
 
 void SphereCollider::DrawDebug() {
 	const unsigned int col = isTrigger ? GetColor(255,220,80) : GetColor(80,200,200);
-	DrawSphere3D(sphere_.center, sphere_.radius,20, col, col, FALSE);
-	DrawSphere3D(sphere_.center,0.05f,8, col, col, TRUE);
+	DrawSphere3D(_sphere.center, _sphere.radius,20, col, col, FALSE);
+	DrawSphere3D(_sphere.center,0.05f,8, col, col, TRUE);
 }
 
 void SphereCollider::DrawDebugAABB() {

@@ -80,19 +80,19 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		ClearDrawScreen();
 
 		{
-			int w =0, h =0;
-			GetDrawScreenSize(&w, &h);
-			CameraManager::Instance().ApplyRenderCameraToDxLib(w, h);
+			int width =0, height =0;
+			GetDrawScreenSize(&width, &height);
+			CameraManager::Instance().ApplyRenderCameraToDxLib(width, height);
 		}
 
 		SceneTransition::Instance().Draw();
 
 #ifdef _DEBUG
 		{
-			int w =0, h =0;
-			GetDrawScreenSize(&w, &h);
+			int width =0, height =0;
+			GetDrawScreenSize(&width, &height);
 			const int x =10;
-			const int y = h -140;
+			const int y = height -140;
 			ObjectManager::Instance().DebugDraw(x, y);
 		}
 #endif
@@ -102,7 +102,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		SceneManager::Instance().ProcessPendingChanges();
 	}
 
-	ColliderManager::GetInstance().Shutdown();
+	ColliderManager::Instance().Shutdown();
 	PhysicsManager::Instance().Shutdown();
 
 	KeyInput::Instance().EndKeyInput();

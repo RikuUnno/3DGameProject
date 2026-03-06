@@ -25,19 +25,19 @@ public:
 	void Initialize();
 
 	// 押下判定（押された瞬間に true を返す）
-	bool IsKeyInputTrigger(int KeyCode);
+	bool IsKeyInputTrigger(int keyCode);
 
 	// 押している間 true を返す（連続）
-	bool IsKeyInputHeld(int KeyCode);
+	bool IsKeyInputHeld(int keyCode);
 
 	// 離された瞬間に true を返す
-	bool IsKeyInputReleased(int KeyCode);
+	bool IsKeyInputReleased(int keyCode);
 
 	// 一定間隔で断続的に true を返す（パルス／リピート）
-	bool IsKeyInputRepeated(int KeyCode);
+	bool IsKeyInputRepeated(int keyCode);
 
 	// キーごとの繰り返し間隔をセット（秒）
-	void SetInputRepeatedTime(int KeyCode, double SetTime);
+	void SetInputRepeatedTime(int keyCode, double setTime);
 
 	// 入力のオン／オフ
 	void BeginKeyInput(); // 入力有効化

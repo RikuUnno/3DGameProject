@@ -6,40 +6,36 @@
 #include "DxLib.h"
 
 CapsuleCollider::CapsuleCollider() {
-	cap_.radius =0.3f;
-	// デフォルトは上下1.0のカプセル（ローカル）
-	cap_.bottom = VGet(0,-0.5f,0);
-	cap_.top = VGet(0,0.5f,0);
-	cap_.center = VGet(0,0,0);
+	_cap.radius =0.3f;
+	_cap.bottom = VGet(0,-0.5f,0);
+	_cap.top = VGet(0,0.5f,0);
+	_cap.center = VGet(0,0,0);
 	UpdateShape();
 }
 
 CapsuleCollider::~CapsuleCollider() = default;
 
 void CapsuleCollider::UpdateShape() {
-	// owner Transformから center を算出
-	VECTOR center = cap_.center;
+	VECTOR center = _cap.center;
 	VECTOR up = VGet(0,1,0);
 	if (owner) {
 		center = owner->transform.WorldPosition();
 		up = owner->transform.Up();
 	}
 
-	// bottom/top は「中心 + up * offset」としてワールドへ
-	// cap_.bottom/top はローカルの上下オフセット量（y差分）を参照
-	const float halfLen = (cap_.top.y - cap_.bottom.y) *0.5f;
+	const float halfLen = (_cap.top.y - _cap.bottom.y) *0.5f;
 	const VECTOR upN = VNorm(up);
-	cap_.center = center;
-	cap_.bottom = VSub(center, VScale(upN, halfLen));
-	cap_.top = VAdd(center, VScale(upN, halfLen));
+	_cap.center = center;
+	_cap.bottom = VSub(center, VScale(upN, halfLen));
+	_cap.top = VAdd(center, VScale(upN, halfLen));
 
-	const float r = cap_.radius;
-	const float minX = (std::min)(cap_.bottom.x, cap_.top.x) - r;
-	const float minY = (std::min)(cap_.bottom.y, cap_.top.y) - r;
-	const float minZ = (std::min)(cap_.bottom.z, cap_.top.z) - r;
-	const float maxX = (std::max)(cap_.bottom.x, cap_.top.x) + r;
-	const float maxY = (std::max)(cap_.bottom.y, cap_.top.y) + r;
-	const float maxZ = (std::max)(cap_.bottom.z, cap_.top.z) + r;
+	const float r = _cap.radius;
+	const float minX = (std::min)(_cap.bottom.x, _cap.top.x) - r;
+	const float minY = (std::min)(_cap.bottom.y, _cap.top.y) - r;
+	const float minZ = (std::min)(_cap.bottom.z, _cap.top.z) - r;
+	const float maxX = (std::max)(_cap.bottom.x, _cap.top.x) + r;
+	const float maxY = (std::max)(_cap.bottom.y, _cap.top.y) + r;
+	const float maxZ = (std::max)(_cap.bottom.z, _cap.top.z) + r;
 
 	_aabb.min = VGet(minX,minY,minZ);
 	_aabb.max = VGet(maxX,maxY,maxZ);
@@ -52,15 +48,11 @@ void CapsuleCollider::DrawDebug() {
 		col = DebugColor();
 	}
 
-	// 軸（中心線）
-	DrawLine3D(cap_.bottom, cap_.top, col);
+	DrawLine3D(_cap.bottom, _cap.top, col);
+	DrawSphere3D(_cap.bottom, _cap.radius,16, col, col, FALSE);
+	DrawSphere3D(_cap.top, _cap.radius,16, col, col, FALSE);
 
-	//端の球
-	DrawSphere3D(cap_.bottom, cap_.radius,16, col, col, FALSE);
-	DrawSphere3D(cap_.top, cap_.radius,16, col, col, FALSE);
-
-	// --- 外枠（球と球をつなぐ線：円筒部の母線） ---
-	VECTOR axis = VSub(cap_.top, cap_.bottom);
+	VECTOR axis = VSub(_cap.top, _cap.bottom);
 	axis = VNorm(axis);
 
 	VECTOR ref = (std::fabs(axis.y) <0.99f) ? VGet(0,1,0) : VGet(1,0,0);
@@ -69,9 +61,9 @@ void CapsuleCollider::DrawDebug() {
 	VECTOR forward = VCross(right, axis);
 	forward = VNorm(forward);
 
-	const float r = cap_.radius;
-	const VECTOR p = cap_.bottom;
-	const VECTOR q = cap_.top;
+	const float r = _cap.radius;
+	const VECTOR p = _cap.bottom;
+	const VECTOR q = _cap.top;
 
 	constexpr int kSideLines =16;
 	const float pi = DX_PI_F;
@@ -82,7 +74,7 @@ void CapsuleCollider::DrawDebug() {
 		DrawLine3D(VAdd(p, off), VAdd(q, off), col);
 	}
 
-	DrawSphere3D(cap_.center,0.05f,8, col, col, TRUE);
+	DrawSphere3D(_cap.center,0.05f,8, col, col, TRUE);
 }
 
 void CapsuleCollider::DrawDebugAABB() {

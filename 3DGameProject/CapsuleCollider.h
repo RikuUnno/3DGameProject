@@ -9,12 +9,12 @@ public:
 public:
 	Kind GetKind() const override { return Kind::Capsule; }
 	const AABB& GetAABB() const override { return _aabb; }
-	VECTOR GetCenter() const override { return cap_.center; }
+	VECTOR GetCenter() const override { return _cap.center; }
 	void UpdateShape() override;
 
 public:
 	// 設定値（ワールド）
-	Capsule cap_{};
+	Capsule _cap{};
 
 public:
 	void DrawDebug() override;

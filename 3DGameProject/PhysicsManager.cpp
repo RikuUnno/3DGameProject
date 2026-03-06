@@ -59,10 +59,10 @@ void PhysicsManager::Update(float dt) {
 	}
 
 	// コライダー更新（押し戻しは ColliderManager 側で行う）
-	ColliderManager::GetInstance().Update();
+	ColliderManager::Instance().Update();
 
 	// 接触情報に基づく速度修正（簡易インパルス）
-	const auto& contacts = ColliderManager::GetInstance().GetContacts();
+	const auto& contacts = ColliderManager::Instance().GetContacts();
 	if (!contacts.empty()) {
 		auto FindBodyByOwner = [&](GameObject* owner) -> PhysicsBody* {
 			for (auto* b : _bodies) {

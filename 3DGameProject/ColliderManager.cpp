@@ -36,6 +36,17 @@ namespace {
 	// 内積の絶対値。
 	// SAT で各軸への投影半径を求める時に使う。
 	inline float AbsDot3(const VECTOR& a, const VECTOR& b) noexcept { return std::fabs(Dot3(a, b)); }
+
+	// 子Colliderの owner から、その親Transformに紐づく GameObject を取り出す。
+	// bubbleEventsToParentOwner が true の時だけ、owner に加えて親GameObject にもイベントを送る。
+	inline GameObject* GetParentOwner(Collider* c) noexcept {
+		if (!c || !c->bubbleEventsToParentOwner || !c->owner) return nullptr;
+		Transform* parentTf = c->owner->transform.Parent();
+		if (!parentTf) return nullptr;
+		GameObject* parentOwner = parentTf->Owner();
+		if (!parentOwner || parentOwner == c->owner) return nullptr;
+		return parentOwner;
+	}
 }
 
 // 明示終了。
@@ -59,12 +70,16 @@ void ColliderManager::DispatchEnter(Collider* a, Collider* b) {
 	if (a->isTrigger || b->isTrigger) {
 		if (a->sendEventsToOwner && a->owner) a->owner->OnTriggerEnter(a, b);
 		if (b->sendEventsToOwner && b->owner) b->owner->OnTriggerEnter(b, a);
+		if (GameObject* p = GetParentOwner(a)) p->OnTriggerEnter(a, b);
+		if (GameObject* p = GetParentOwner(b)) p->OnTriggerEnter(b, a);
 		a->OnTriggerEnter(b);
 		b->OnTriggerEnter(a);
 	}
 	else {
 		if (a->sendEventsToOwner && a->owner) a->owner->OnCollisionEnter(a, b);
 		if (b->sendEventsToOwner && b->owner) b->owner->OnCollisionEnter(b, a);
+		if (GameObject* p = GetParentOwner(a)) p->OnCollisionEnter(a, b);
+		if (GameObject* p = GetParentOwner(b)) p->OnCollisionEnter(b, a);
 		a->OnCollisionEnter(b);
 		b->OnCollisionEnter(a);
 	}
@@ -76,12 +91,16 @@ void ColliderManager::DispatchStay(Collider* a, Collider* b) {
 	if (a->isTrigger || b->isTrigger) {
 		if (a->sendEventsToOwner && a->owner) a->owner->OnTriggerStay(a, b);
 		if (b->sendEventsToOwner && b->owner) b->owner->OnTriggerStay(b, a);
+		if (GameObject* p = GetParentOwner(a)) p->OnTriggerStay(a, b);
+		if (GameObject* p = GetParentOwner(b)) p->OnTriggerStay(b, a);
 		a->OnTriggerStay(b);
 		b->OnTriggerStay(a);
 	}
 	else {
 		if (a->sendEventsToOwner && a->owner) a->owner->OnCollisionStay(a, b);
 		if (b->sendEventsToOwner && b->owner) b->owner->OnCollisionStay(b, a);
+		if (GameObject* p = GetParentOwner(a)) p->OnCollisionStay(a, b);
+		if (GameObject* p = GetParentOwner(b)) p->OnCollisionStay(b, a);
 		a->OnCollisionStay(b);
 		b->OnCollisionStay(a);
 	}
@@ -93,12 +112,16 @@ void ColliderManager::DispatchExit(Collider* a, Collider* b) {
 	if (a->isTrigger || b->isTrigger) {
 		if (a->sendEventsToOwner && a->owner) a->owner->OnTriggerExit(a, b);
 		if (b->sendEventsToOwner && b->owner) b->owner->OnTriggerExit(b, a);
+		if (GameObject* p = GetParentOwner(a)) p->OnTriggerExit(a, b);
+		if (GameObject* p = GetParentOwner(b)) p->OnTriggerExit(b, a);
 		a->OnTriggerExit(b);
 		b->OnTriggerExit(a);
 	}
 	else {
 		if (a->sendEventsToOwner && a->owner) a->owner->OnCollisionExit(a, b);
 		if (b->sendEventsToOwner && b->owner) b->owner->OnCollisionExit(b, a);
+		if (GameObject* p = GetParentOwner(a)) p->OnCollisionExit(a, b);
+		if (GameObject* p = GetParentOwner(b)) p->OnCollisionExit(b, a);
 		a->OnCollisionExit(b);
 		b->OnCollisionExit(a);
 	}

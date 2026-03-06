@@ -4,6 +4,8 @@
 #include "Math/Quaternion.h"
 #include <vector>
 
+class GameObject;
+
 // Transform
 // - 回転の保持は Quaternion を正とする（姿勢・補間に有利）
 // - Euler（ラジアン）は「編集/デバッグ表示用」として提供する
@@ -13,6 +15,9 @@ class Transform {
 public:
 	Transform();
 	~Transform();
+
+	void SetOwner(GameObject* owner) noexcept { _owner = owner; }
+	GameObject* Owner() const noexcept { return _owner; }
 
 	// ローカル変換要素の取得・設定
 	const VECTOR& LocalPosition() const noexcept { return _localPosition; }
@@ -56,6 +61,7 @@ private:
 	void RemoveChild(Transform* child) noexcept;
 	void PropagateDirtyToChildren() noexcept;
 
+	GameObject* _owner = nullptr;
 	VECTOR _localPosition{};
 	Quaternion _localRotation{}; // 回転（内部表現）
 	VECTOR _localScale{};

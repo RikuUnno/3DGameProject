@@ -94,7 +94,8 @@ void MenuScene::Start() {
 	// 親子付け（親=Player）
 	if (g_debugPlayer && g_debugHat) {
 		g_debugHat->transform.SetParent(&g_debugPlayer->transform);
-		g_debugHat->transform.SetLocalPosition(VGet(0.0f,1.0f,0.0f));
+		// 真上だと回転追従が分かりにくいので、少し前方右寄りにずらす
+		g_debugHat->transform.SetLocalPosition(VGet(0.35f,1.0f,0.35f));
 	}
 }
 
@@ -108,15 +109,42 @@ void MenuScene::Update() {
 
 	// DebugPlayer 移動
 	if (g_debugPlayer) {
-		VECTOR p = g_debugPlayer->transform.LocalPosition();
-		const float spd =0.08f;
-		if (CheckHitKey(KEY_INPUT_J)) p.x -= spd;
-		if (CheckHitKey(KEY_INPUT_L)) p.x += spd;
-		if (CheckHitKey(KEY_INPUT_I)) p.z += spd;
-		if (CheckHitKey(KEY_INPUT_K)) p.z -= spd;
-		if (CheckHitKey(KEY_INPUT_U)) p.y += spd;
-		if (CheckHitKey(KEY_INPUT_O)) p.y -= spd;
-		g_debugPlayer->transform.SetLocalPosition(p);
+		PhysicsBody* body = g_debugPlayer->GetPhysicsBody();
+		if (body) {
+			const float moveSpeed =4.8f;
+			const float verticalSpeed =4.0f;
+			VECTOR input = VGet(0.0f,0.0f,0.0f);
+			if (CheckHitKey(KEY_INPUT_J)) input.x -= 1.0f;
+			if (CheckHitKey(KEY_INPUT_L)) input.x += 1.0f;
+			if (CheckHitKey(KEY_INPUT_I)) input.z += 1.0f;
+			if (CheckHitKey(KEY_INPUT_K)) input.z -= 1.0f;
+			if (CheckHitKey(KEY_INPUT_U)) input.y += 1.0f;
+			if (CheckHitKey(KEY_INPUT_O)) input.y -= 1.0f;
+
+			const VECTOR horizontalInput = VGet(input.x,0.0f,input.z);
+			const float horizontalLenSq = horizontalInput.x * horizontalInput.x + horizontalInput.z * horizontalInput.z;
+
+			VECTOR newVelocity = body->_velocity;
+			newVelocity.x = 0.0f;
+			newVelocity.z = 0.0f;
+			if (horizontalLenSq > 1e-6f) {
+				const float invLen = 1.0f / std::sqrt(horizontalLenSq);
+				newVelocity.x = horizontalInput.x * invLen * moveSpeed;
+				newVelocity.z = horizontalInput.z * invLen * moveSpeed;
+
+				// 水平方向の入力がある時は進行方向を向かせる。
+				// 子オブジェクト(DebugHat)が親の回転に追従しているか確認しやすくするため。
+				const float yaw = std::atan2(horizontalInput.x, horizontalInput.z);
+				g_debugPlayer->transform.SetLocalEulerRad(VGet(0.0f, yaw, 0.0f));
+			}
+
+			// y は入力がある時だけ速度を与える。
+			// 入力が無い時に 0 を入れると、重力で増えた落下速度まで打ち消してしまう。
+			if (input.y != 0.0f) {
+				newVelocity.y = input.y * verticalSpeed;
+			}
+			body->_velocity = newVelocity;
+		}
 	}
 
 	// カメラ切替入力
@@ -162,5 +190,8 @@ void MenuScene::Draw() {
 
 	DrawString(10, 10, "MenuScene - Spaceで戻る", GetColor(255, 255, 255));
 	DrawString(10, 30, "[操作] J/L:I/K:U/Oで DebugPlayer を移動", GetColor(255, 255, 120));
-	DrawString(10, 50, "[カメラ]1:Debug2:Game B:Blend ON/OFF", GetColor(180, 180, 255));
+	DrawString(10, 50, "       入力は PhysicsBody の速度へ反映", GetColor(255, 220, 120));
+	DrawString(10, 70, "       斜め移動は正規化 / 帽子は斜め前に配置", GetColor(255, 220, 120));
+	DrawString(10, 90, "       水平移動時は進行方向へ自動回転", GetColor(255, 220, 120));
+	DrawString(10, 110, "[カメラ]1:Debug2:Game B:Blend ON/OFF", GetColor(180, 180, 255));
 }

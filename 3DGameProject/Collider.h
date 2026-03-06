@@ -1,13 +1,13 @@
 // Colliderの基底クラス
-//これを継承したクラスで各種コリジョン判定を実装する
-// 移動回転拡縮は持たない
-// GameObjectのTransformに依存する
+// 派生先で具体的な形状・判定情報を持つ
+// 移動/回転/拡縮は自身では行わない
+// GameObjectのTransformに依存している
 #pragma once
 #include "DXLib.h"
 #include "ColliderType.h"
 #include "LayerMask.h"
 
-// 前方宣言（必要なら後で GameObject と接続）
+// 前方宣言（必要なときに GameObject と接続）
 class GameObject;
 
 class Collider {
@@ -19,16 +19,21 @@ public:
 	// 所有者（Transform参照/Active判定用）
 	GameObject* owner = nullptr;
 
-	// 子Colliderのイベントを owner(親側) に伝播するか
-	// - true: 従来通り owner->OnCollisionXXX / OnTriggerXXX が呼ばれる
-	// - false: Collider自身の OnCollisionXXX / OnTriggerXXX のみ呼ばれる（独立処理）
+	// 子Colliderのイベントを owner に送るか
+	// - true: 従来通り owner->OnCollisionXXX / OnTriggerXXX を呼ぶ
+	// - false: Collider自身の OnCollisionXXX / OnTriggerXXX のみ呼ぶ（独立運用向け）
 	bool sendEventsToOwner = true;
+
+	// 子Colliderのイベントを owner の親GameObject にも伝えるか
+	// - true: owner の Transform に親がある場合、その親GameObject にもイベントを送る
+	// - false: owner までで止める
+	bool bubbleEventsToParentOwner = false;
 
 	// コライダー有効/スリープ（プール待機中・非アクティブ中は false にする想定）
 	bool IsEnabled() const noexcept { return _enabled; }
 	void SetEnabled(bool enabled) noexcept { _enabled = enabled; }
 
-	// Trigger（物理反応なし）
+	// Trigger（押し戻しはしない）
 	bool isTrigger = false;
 
 	// Layer/Mask（LayerMask.h の定義を使用）
@@ -41,15 +46,15 @@ public:
 
 public:
 	// --- CCD / 高速移動検出設定 ---
-	// enableCCD: true のときは常にスイープAABBを使用（連続衝突検出を有効にする）
+	// enableCCD: true のときは常にスイープAABBを使用（広義の衝突検出を有効にする）
 	// ccdDistanceThreshold: フレーム間の速度（ワールド単位/秒）がこの値を超える場合にスイープを使う
-	// 判定には Time::Instance().GetDeltaTime() を用いて、
+	// 具体的には Time::Instance().GetDeltaTime() を用いて、
 	// speed = (center displacement) / deltaTime として比較します。
 	bool enableCCD = false;
-	float ccdDistanceThreshold = 1.0f; // 単位: ワールド長さ/秒 (速度)
+	float ccdDistanceThreshold = 1.0f; // 単位: ワールド距離/秒 (速度)
 
 public:
-	// コライダー種別
+	// コライダー種
 	enum class Kind {
 		AABB,
 		Sphere,
@@ -66,19 +71,19 @@ public:
 	// 中心点（ワールド）
 	virtual VECTOR GetCenter() const =0;
 
-	// 更新(形状変更時に呼び出す)
+	// 更新(Transform変更時に呼び出す)
 	virtual void UpdateShape() =0;
 
-	// AABB設定（派生クラスで実装）
+	// AABB設定（各クラスで実装）
 	virtual void SetAABB() {}
 
 public:
-	// 当たり判定イベント(反発アリ)
+	// 衝突判定イベント(実体、押し戻しあり)
 	virtual void OnCollisionEnter(Collider* other) {}
 	virtual void OnCollisionStay(Collider* other) {}
 	virtual void OnCollisionExit(Collider* other) {}
 
-	// トリガーイベント(反発ナシ)
+	// トリガーイベント(実体なし)
 	virtual void OnTriggerEnter(Collider* other) {}
 	virtual void OnTriggerStay(Collider* other) {}
 	virtual void OnTriggerExit(Collider* other) {}

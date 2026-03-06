@@ -6,6 +6,7 @@
 #include "SceneManager.h"
 #include "LayerMask.h"
 #include "PhysicsManager.h"
+#include "Time.h"
 
 // ---------------- DebugHat ----------------
 
@@ -13,9 +14,9 @@ DebugHat::DebugHat() {
 	_ownerSceneId = SceneManager::Instance().CurrentSceneId();
 	collider_ = std::make_unique<BoxCollider>();
 	collider_->owner = this;
-	// Debug用途: プレイヤーと同じレイヤー（必要なら専用に）
+	// Debug用途: 親Playerとは当てず、他とは必要に応じて当てる
 	collider_->layer = layerMask::PLAYER;
-	collider_->mask = mask::ALL;
+	collider_->mask = mask::ENEMY | layerMask::ENVIRONMENT | layerMask::TRIGGER;
 
 	// 帽子サイズ
 	collider_->_box.halfExtents = VGet(0.25f,0.15f,0.25f);
@@ -37,7 +38,26 @@ DebugHat::~DebugHat() {
 
 void DebugHat::Awake() {}
 void DebugHat::Start() {}
-void DebugHat::Update() {}
+void DebugHat::Update() {
+	// 約2秒で1周するように、親基準のローカル位置をY軸回転させる
+	const float angularSpeed = DX_PI_F;
+	const float dt = static_cast<float>(Time::Instance().GetDeltaTime());
+	const float angle = angularSpeed * dt;
+
+	VECTOR localPos = transform.LocalPosition();
+	const float c = std::cos(angle);
+	const float s = std::sin(angle);
+	const float x = localPos.x * c - localPos.z * s;
+	const float z = localPos.x * s + localPos.z * c;
+	localPos.x = x;
+	localPos.z = z;
+	transform.SetLocalPosition(localPos);
+
+	// 帽子自体も少し回しておくと見た目で追いやすい
+	VECTOR euler = transform.LocalEulerRad();
+	euler.y += angle;
+	transform.SetLocalEulerRad(euler);
+}
 
 void DebugHat::Draw() {
 	if (collider_) collider_->DrawDebug();
@@ -100,9 +120,9 @@ DebugGround::DebugGround() {
 	collider_ = std::make_unique<BoxCollider>();
 	collider_->owner = this;
 
-	// 床は「全レイヤーと当たる」
-	collider_->layer = layerMask::DEFAULT;
-	collider_->mask = mask::ALL;
+	// 床は Ground レイヤーにして、必要な相手とだけ当たる
+	collider_->layer = layerMask::GROUND;
+	collider_->mask = mask::GROUND;
 
 	// グリッドの少し下に置く床（大きめ）
 	// ※中心は Transformから同期されるので、ここはサイズだけ設定
@@ -233,19 +253,23 @@ CapsuleCollider* DebugPlayer::GetCollider() const noexcept {
 	return collider_.get();
 }
 
-void DebugPlayer::OnCollisionEnter(Collider* /*self*/, Collider* /*other*/) {
+void DebugPlayer::OnCollisionEnter(Collider* self, Collider* other) {
+	if (!self || !other) return;
+	if (other->layer == layerMask::GROUND) return;
 	_isColliding = true;
 }
 
-void DebugPlayer::OnCollisionStay(Collider* self, Collider* /*other*/) {
+void DebugPlayer::OnCollisionStay(Collider* self, Collider* other) {
+	if (!self || !other) return;
+	if (other->layer == layerMask::GROUND) return;
 	_isColliding = true;
-	if (!self) return;
 	self->SetDebugColor(GetColor(255,80,80));
 }
 
-void DebugPlayer::OnCollisionExit(Collider* self, Collider* /*other*/) {
-	_isColliding = false;
+void DebugPlayer::OnCollisionExit(Collider* self, Collider* other) {
 	if (!self) return;
+	if (other && other->layer == layerMask::GROUND) return;
+	_isColliding = false;
 	self->ClearDebugColor();
 }
 

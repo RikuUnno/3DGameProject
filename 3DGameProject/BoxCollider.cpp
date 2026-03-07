@@ -84,7 +84,8 @@ void BoxCollider::UpdateShape() {
 }
 
 void BoxCollider::DrawDebug() {
-	const unsigned int col = isTrigger ? GetColor(255,220,80) : GetColor(80,200,200);
+	const unsigned int defaultCol = isTrigger ? GetColor(255,220,80) : GetColor(80,200,200);
+	const unsigned int col = DebugColor() != 0 ? DebugColor() : defaultCol;
 
 	auto Corner = [&](float sx, float sy, float sz) {
 		VECTOR p = _center;

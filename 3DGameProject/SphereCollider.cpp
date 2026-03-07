@@ -35,7 +35,8 @@ void SphereCollider::UpdateShape() {
 }
 
 void SphereCollider::DrawDebug() {
-	const unsigned int col = isTrigger ? GetColor(255,220,80) : GetColor(80,200,200);
+	const unsigned int defaultCol = isTrigger ? GetColor(255,220,80) : GetColor(80,200,200);
+	const unsigned int col = DebugColor() != 0 ? DebugColor() : defaultCol;
 	DrawSphere3D(_center, _radius,20, col, col, FALSE);
 	DrawSphere3D(_center,0.05f,8, col, col, TRUE);
 }

@@ -56,7 +56,6 @@ public:
 
 public:
 	// XV
-	void Update();
 	void Update(float dtSec);
 
 public:

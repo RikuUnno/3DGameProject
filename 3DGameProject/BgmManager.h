@@ -20,8 +20,7 @@ public:
 
 	// ボリューム調整が必要ならここに追加
 
-	void Update() override {}
-	void Update(float dt) override { (void)dt; Update(); }
+	void Update(float dt) override { (void)dt; }
 
 private:
 	BgmManager() = default;

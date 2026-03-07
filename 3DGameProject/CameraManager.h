@@ -35,9 +35,6 @@ public:
 	bool IsBlending() const noexcept { return _blend.active; }
 	void Update(float dtSec) override;
 
-	// Manager
-	void Update() override { /* no-op: CameraManager の更新は dt付き側で使う */ }
-
 	void ApplyRenderCameraToDxLib(int screenW, int screenH);
 
 private:

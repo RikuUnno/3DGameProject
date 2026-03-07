@@ -11,6 +11,5 @@ public:
 	// ”CˆÓBg‚í‚È‚¯‚ê‚Î‹ó‚Å‚æ‚¢
 	virtual void Initialize() {}
 	virtual void Shutdown() {}
-	virtual void Update() {}
-	virtual void Update(float /*dt*/) { Update(); }
+	virtual void Update(float /*dt*/) {}
 };

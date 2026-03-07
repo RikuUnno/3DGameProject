@@ -15,7 +15,7 @@ void SeManager::ApplyListener_() {
 	if (!_listener) return;
 
 	const VECTOR pos = _listener->WorldPosition();
-	// forward/up は Transform のローカル軸ヘルパーがワールド向きで返る
+	// forward/up は Transform のローカル軸ヘルパからワールド方向で返る
 	const VECTOR forward = _listener->Forward();
 	const VECTOR up = _listener->Up();
 	const VECTOR frontPos = VAdd(pos, forward);
@@ -31,7 +31,7 @@ void SeManager::PlayInternal_(
 	auto se = _pool.AcquireSe();
 	if (!se) return;
 
-	//既存インスタンスが別モード/別パスならロードし直す
+	//同一インスタンスでも別ロード/別パスならロードし直す
 	const bool needReload = (se->Path() != filePath);
 	if (needReload) {
 		bool ok = false;
@@ -40,7 +40,7 @@ void SeManager::PlayInternal_(
 		if (!ok) return;
 	}
 
-	// リスナーを更新してから再生（3D定位が効く）
+	// リスナーを更新してから再生（3D/通常どちらでもよい）
 	ApplyListener_();
 
 	if (playFn) playFn(se.get());
@@ -64,8 +64,8 @@ void SeManager::Play3DAt(const std::string& filePath, const Transform& emitter, 
 	PlayInternal_(filePath, true, [&emitter, radius, top](Se* se) { se->Play3DAt(emitter, radius, top); });
 }
 
-void SeManager::Update() {
-	// 毎フレーム listener を反映（音源が動的に定位する）
+void SeManager::Update(float /*dt*/) {
+	// 毎フレーム listener を反映（移動に追随させる）
 	ApplyListener_();
 
 	auto it = _playing.begin();

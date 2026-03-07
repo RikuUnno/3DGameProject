@@ -29,7 +29,6 @@ public:
 	void Release(GameObject* obj);
 	void ReleaseAll();
 
-	void UpdateAll();
 	void UpdateAll(float dtSec);
 	void DrawAll();
 

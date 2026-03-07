@@ -8,10 +8,6 @@ SceneManager& SceneManager::Instance() noexcept {
 	return inst;
 }
 
-void SceneManager::Update() {
-	Update(0.0f);
-}
-
 void SceneManager::Update(float dtSec) {
 	if (!_stack.empty()) {
 		_stack.back()->Update(dtSec);

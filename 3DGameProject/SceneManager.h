@@ -16,7 +16,6 @@ public:
 	static SceneManager& Instance() noexcept;
 
 	// ƒtƒŒ[ƒ€‚²‚Æ‚ÌŒÄ‚Ño‚µ
-	void Update();
 	void Update(float dtSec);
 	void Draw();
 

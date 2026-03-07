@@ -37,10 +37,6 @@ void ObjectController::ReleaseAll() {
 	_objects.clear();
 }
 
-void ObjectController::UpdateAll() {
-	UpdateAll(0.0f);
-}
-
 void ObjectController::UpdateAll(float dtSec) {
 	for (auto it = _objects.begin(); it != _objects.end();) {
 		GameObject* obj = *it;

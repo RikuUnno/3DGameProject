@@ -42,8 +42,7 @@ public:
 	const Transform* Listener() const noexcept { return _listener; }
 
 	// 再生終了したインスタンスをプールへ戻す
-	void Update() override;
-	void Update(float dt) override { (void)dt; Update(); }
+	void Update(float dt) override;
 
 	// 全停止（再生中をすべて止め、プールへ戻す）
 	void StopAll();

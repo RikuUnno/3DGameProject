@@ -222,10 +222,6 @@ bool ObjectManager::UnregisterPool(const std::string& key) {
 	return true;
 }
 
-void ObjectManager::UpdateAll() {
-	UpdateAll(0.0f);
-}
-
 void ObjectManager::UpdateAll(float dtSec) {
 	std::lock_guard lk(_mtx);
 	for (auto& up : _objects) {

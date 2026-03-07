@@ -48,7 +48,7 @@ public:
 	// --- CCD / 高速移動検出設定 ---
 	// enableCCD: true のときは常にスイープAABBを使用（広義の衝突検出を有効にする）
 	// ccdDistanceThreshold: フレーム間の速度（ワールド単位/秒）がこの値を超える場合にスイープを使う
-	// 具体的には Time::Instance().GetDeltaTime() を用いて、
+	// 具体的には ColliderManager::Update(dt) で渡された dt を用いて、
 	// speed = (center displacement) / deltaTime として比較します。
 	bool enableCCD = false;
 	float ccdDistanceThreshold = 1.0f; // 単位: ワールド距離/秒 (速度)

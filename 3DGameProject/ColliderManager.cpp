@@ -979,10 +979,6 @@ void ColliderManager::PushOutBoxCapsule(Collider* a, Collider* b) {
 }
 
 // 1フレームぶんのコライダ更新入口。
-void ColliderManager::Update() {
-	Update(_deltaTimeSec);
-}
-
 void ColliderManager::Update(float dtSec) {
 	if (IsShuttingDown()) {
 		return;

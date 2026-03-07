@@ -7,6 +7,7 @@
 
 class PhysicsController;
 class PhysicsBody;
+class GameObject;
 
 // PhysicsManager
 // -物理(剛体/積分/衝突解決)の全体管理を担当
@@ -51,6 +52,21 @@ public:
 	void SetGroundPlaneY(float y) noexcept { _groundPlaneY = y; }
 	float GroundPlaneY() const noexcept { return _groundPlaneY; }
 
+	void SetFixedDeltaTime(float fixedDeltaTime) noexcept;
+	float FixedDeltaTime() const noexcept { return _fixedDeltaTime; }
+	void SetMaxSubSteps(int maxSubSteps) noexcept;
+	int MaxSubSteps() const noexcept { return _maxSubSteps; }
+	void SetSolverIterations(int solverIterations) noexcept;
+	int SolverIterations() const noexcept { return _solverIterations; }
+
+private:
+	void StepSimulation(float stepDt);
+	void IntegrateBodies(float stepDt);
+	void SolveContacts(float stepDt);
+	void UpdateSleepState(PhysicsBody* body, float stepDt);
+	void ApplyBodyConstraints(PhysicsBody* body) const;
+	PhysicsBody* FindBodyByOwner(GameObject* owner) const;
+
 private:
 	std::atomic_bool _shuttingDown{ false }; 		// 終了処理ガード：終了中は Update/Register/Unregister を no-op にする
 	std::vector<PhysicsController*> _controllers{}; 	// 登録された Controller のリスト
@@ -65,4 +81,9 @@ private:
 	// デフォルトでは無効にして、接触情報に基づく速度修正を行う。
 	bool _groundPlaneEnabled = false;
 	float _groundPlaneY =0.0f;
+
+	float _fixedDeltaTime = 1.0f / 120.0f;
+	int _maxSubSteps = 8;
+	int _solverIterations = 6;
+	float _accumulator = 0.0f;
 };

@@ -1,5 +1,6 @@
 #include "TitleScene.h"
 #include "MenuScene.h"
+#include "PhysicsScene.h"
 #include "SceneManager.h"
 #include "SceneTransition.h"
 #include "Time.h"
@@ -24,8 +25,19 @@ void TitleScene::Update(float /*dt*/) {
 
 		SceneTransition::Instance().Start(std::make_unique<MenuScene>(), p, 0.5f);
 	}
+
+	if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_P)) {
+		SceneTransition::Params p;
+		p.mode = SceneTransition::Mode::MaskImage;
+		p.durationSec = 0.6;
+		p.maskGraphPath = "Data/Transition/mask.png";
+		p.pixelShaderPath = "Data/Transition/mask_transition.pso";
+
+		SceneTransition::Instance().Start(std::make_unique<PhysicsScene>(), p, 0.5f);
+	}
 }
 
 void TitleScene::Draw() {
 	DrawString(10, 10, "Title Scene - Press Enter", GetColor(255, 255, 255));
+	DrawString(10, 30, "Press P : Physics Scene", GetColor(180, 255, 180));
 }

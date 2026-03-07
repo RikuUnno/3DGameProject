@@ -158,7 +158,9 @@
     <ClCompile Include="ObjectManager.cpp" />
     <ClCompile Include="ObjectPool.cpp" />
     <ClCompile Include="PhysicsBody.cpp" />
+    <ClCompile Include="PhysicsDebugClass.cpp" />
     <ClCompile Include="PhysicsManager.cpp" />
+    <ClCompile Include="PhysicsScene.cpp" />
     <ClCompile Include="SceneManager.cpp" />
     <ClCompile Include="SceneTransition.cpp" />
     <ClCompile Include="Se.cpp" />
@@ -197,7 +199,9 @@
     <ClInclude Include="ObjectPool.h" />
     <ClInclude Include="PhysicsBody.h" />
     <ClInclude Include="PhysicsController.h" />
+    <ClInclude Include="PhysicsDebugClass.h" />
     <ClInclude Include="PhysicsManager.h" />
+    <ClInclude Include="PhysicsScene.h" />
     <ClInclude Include="Pool.h" />
     <ClInclude Include="SceneManager.h" />
     <ClInclude Include="SceneTpl.h" />

@@ -1,5 +1,6 @@
 #include "MenuScene.h"
 #include "TitleScene.h"
+#include "PhysicsScene.h"
 #include "DxLib.h"
 #include "KeyInput.h"
 #include "SceneManager.h"
@@ -181,6 +182,24 @@ void MenuScene::Update(float dtSec) {
 
 		SceneTransition::Instance().Start(std::make_unique<TitleScene>(), p,0.5f);
 	}
+	if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_P)) {
+		if (g_debugHat) {
+			g_debugHat->transform.SetParent(nullptr);
+			ObjectManager::Instance().Release(g_debugHat);
+			g_debugHat = nullptr;
+		}
+		if (g_debugGround) { ObjectManager::Instance().Release(g_debugGround); g_debugGround = nullptr; }
+		if (g_debugPlayer) { ObjectManager::Instance().Release(g_debugPlayer); g_debugPlayer = nullptr; }
+		if (g_debugEnemy) { ObjectManager::Instance().Release(g_debugEnemy); g_debugEnemy = nullptr; }
+
+		SceneTransition::Params p;
+		p.mode = SceneTransition::Mode::MaskImage;
+		p.durationSec = 0.6;
+		p.maskGraphPath = "Data/Transition/mask.png";
+		p.pixelShaderPath = "Data/Transition/mask_transition.pso";
+
+		SceneTransition::Instance().Start(std::make_unique<PhysicsScene>(), p, 0.5f);
+	}
 }
 
 void MenuScene::Draw() {
@@ -194,4 +213,5 @@ void MenuScene::Draw() {
 	DrawString(10, 70, "       斜め移動は正規化 / 帽子は斜め前に配置", GetColor(255, 220, 120));
 	DrawString(10, 90, "       水平移動時は進行方向へ自動回転", GetColor(255, 220, 120));
 	DrawString(10, 110, "[カメラ]1:Debug2:Game B:Blend ON/OFF", GetColor(180, 180, 255));
+	DrawString(10, 130, "P : Physics Scene", GetColor(180, 255, 180));
 }

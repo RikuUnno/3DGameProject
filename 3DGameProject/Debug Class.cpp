@@ -17,7 +17,7 @@ DebugHat::DebugHat() {
 	collider_->owner = this;
 	// Debug用途: 親Playerとは当てず、他とは必要に応じて当てる
 	collider_->layer = layerMask::PLAYER;
-	collider_->mask = mask::ENEMY | layerMask::ENVIRONMENT | layerMask::TRIGGER;
+	collider_->mask = layerMask::ENEMY | layerMask::ENVIRONMENT | layerMask::TRIGGER;
 
 	// 帽子サイズ
 	collider_->_box.halfExtents = VGet(0.25f,0.15f,0.25f);
@@ -25,8 +25,8 @@ DebugHat::DebugHat() {
 	// 親子追従の見た目用。押し戻しで位置を変えないようにする
 	isStatic = true;
 
-	_physicsBody._owner = this;
-	_physicsBody._enabled = false;
+	_physicsBody._owner = this;		// 物理ボディの所有者をセット（Colliderと同じGameObjectを指す）
+	_physicsBody._enabled = true;	// 今回は物理挙動なしで、Colliderだけ使うので false にしておく
 }
 
 DebugHat::~DebugHat() {
@@ -103,13 +103,17 @@ BoxCollider* DebugHat::GetCollider() const noexcept {
 	return collider_.get();
 }
 
-void DebugHat::OnCollisionStay(Collider* self, Collider* /*other*/) {
-	if (!self) return;
-	self->SetDebugColor(GetColor(255,0,255));
+void DebugHat::OnCollisionStay(Collider* self, Collider* other) {
+	if (!self || !other) return;
+	if (other->layer == layerMask::GROUND) return;
+	_isColliding = true;
+	self->SetDebugColor(GetColor(255, 80, 80));
 }
 
-void DebugHat::OnCollisionExit(Collider* self, Collider* /*other*/) {
-	if (!self) return;
+void DebugHat::OnCollisionExit(Collider* self, Collider* other) {
+	if (!self || !other) return;
+	if (other->layer == layerMask::GROUND) return;
+	_isColliding = false;
 	self->ClearDebugColor();
 }
 
@@ -292,7 +296,7 @@ DebugEnemy::DebugEnemy() {
 	collider_->layer = layerMask::ENEMY;
 	collider_->mask = mask::ALL;
 
-	// 押し戻しで動かさない
+	// 押し戻しは受ける
 	// isStatic = true;
 
 	_physicsBody._owner = this;

@@ -35,6 +35,7 @@ private:
 	std::unique_ptr<BoxCollider> collider_;
 	PhysicsBody _physicsBody{};
 	bool registeredToColliderMgr_ = false;
+	bool _isColliding = true;
 };
 
 // Ground を疑似再現するデバッグ用クラス（BoxColliderで床を作る）

@@ -21,28 +21,28 @@ ObjectPool::ObjectPool(Creator creator, size_t maxSize)
 }
 
 // Acquire: プールからオブジェクトを取得する。
-ObjectPool::UniquePtr ObjectPool::Acquire() {
+ObjectPool::UniquePtr ObjectPool::Acquire(bool* wasCreated) {
 	std::lock_guard lk(_mtx);
 	if (!_freeList.empty()) {
-		GameObject* p = _freeList.back().obj; // プール末尾から取り出す
+		if (wasCreated) *wasCreated = false;
+		GameObject* p = _freeList.back().obj;
 		_freeList.pop_back();
-		// 返却時にこのプールに戻すデリータを作成
 		Deleter del = [this](GameObject* obj) { this->Release(obj); };
-		return UniquePtr(p, del); // カスタムデリータ付き unique_ptr を返す
+		return UniquePtr(p, del);
 	}
-	// プールに余裕がなければ creator_ で新規生成
 	if (_creator) {
-		auto up = _creator();        // std::unique_ptr<GameObject>
-		GameObject* raw = up.release(); // 生ポインタを取り出す
+		if (wasCreated) *wasCreated = true;
+		auto up = _creator();
+		GameObject* raw = up.release();
 		Deleter del = [this](GameObject* obj) { this->Release(obj); };
-		return UniquePtr(raw, del); // 新規オブジェクトも同様にプールへ返却されるようにする
+		return UniquePtr(raw, del);
 	}
-	// 生成方法が無ければ nullptr を返す
+	if (wasCreated) *wasCreated = false;
 	return nullptr;
 }
 
 // Release: プールへオブジェクトを返却する
-// - プールが満杯(maxSize_) の場合はオブジェクトを破棄する
+// - プール満杯(maxSize_) の場合はオブジェクトを破棄する
 // - そうでなければ freeList_ に追加して再利用可能にする
 void ObjectPool::Release(GameObject* obj) {
 	if (!obj) return;

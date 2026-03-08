@@ -207,15 +207,12 @@ void CameraController::UpdateFreeMoveMouse(float moveSpeed, float rotSpeed, floa
 
 	Quaternion q = cam->transform.LocalRotation();
 
-	//右ボタン押下中のみ回転
 	const int mbtn = GetMouseInput();
 	const bool rotating = (mbtn & MOUSE_INPUT_RIGHT) !=0;
 	if (rotating) {
-		// yaw: ワールド上方向
 		const float yaw = -mdx * rotSpeed * dt;
 		q = Quaternion::FromAxisAngleRad(VGet(0,1,0), yaw) * q;
 
-		// pitch: 現在の右方向
 		const VECTOR right = VNorm(q.RotateVector(VGet(1,0,0)));
 		const float pitch = -mdy * rotSpeed * dt;
 		q = Quaternion::FromAxisAngleRad(right, pitch) * q;
@@ -223,7 +220,6 @@ void CameraController::UpdateFreeMoveMouse(float moveSpeed, float rotSpeed, floa
 		cam->transform.SetLocalRotation(q);
 	}
 
-	// 移動
 	VECTOR p = cam->transform.LocalPosition();
 	const VECTOR f = cam->transform.Forward();
 	const VECTOR r = cam->transform.Right();
@@ -236,10 +232,8 @@ void CameraController::UpdateFreeMoveMouse(float moveSpeed, float rotSpeed, floa
 	if (KeyInput::Instance().IsKeyInputHeld(KEY_INPUT_E)) p = VAdd(p, VScale(u, moveSpeed * dt));
 	if (KeyInput::Instance().IsKeyInputHeld(KEY_INPUT_Q)) p = VAdd(p, VScale(u, -moveSpeed * dt));
 
-	// ホイール前後
 	const int wheel = GetMouseWheelRotVol();
 	if (wheel !=0) {
-		// wheelは多くの環境で1 notch =120
 		const float w = (float)wheel /120.0f;
 		p = VAdd(p, VScale(f, w * wheelMoveSpeed));
 	}

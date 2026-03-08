@@ -69,7 +69,8 @@ private:
 
 #ifdef _DEBUG
 	// デバッグ用カウント
-	size_t _debugTotalSpawn = 0;
+	size_t _debugTotalAcquire = 0;
+	size_t _debugTotalCreated = 0;
 	size_t _debugTotalDeleted = 0;
 #endif
 };

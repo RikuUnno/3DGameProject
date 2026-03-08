@@ -280,6 +280,48 @@
     <Filter Include="ヘッダー ファイル\System\Physics\Controller">
       <UniqueIdentifier>{872021c7-169d-4368-9b87-87fc43a60b4f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ヘッダー ファイル\Debug\Camera">
+      <UniqueIdentifier>{650d5627-6884-41ae-9af5-993c35f94c1f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Debug\Collision">
+      <UniqueIdentifier>{90c5d789-0a9b-4a4a-a511-314b8898ccfb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Debug\ObjectPool">
+      <UniqueIdentifier>{98debd39-5170-459e-bf93-f294c0eb17da}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Scenes\Debug">
+      <UniqueIdentifier>{740aef12-3e0b-46f7-92e3-b7c8de3c545d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Scenes\Debug\Camera">
+      <UniqueIdentifier>{690257a2-6487-47dd-88b0-4750500767c6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Scenes\Debug\Collision">
+      <UniqueIdentifier>{236c95a4-a833-4ca0-bc7d-f1fcf7d25190}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Scenes\Debug\ObjectPool">
+      <UniqueIdentifier>{16fc2162-f691-4e2b-b2f7-4b4058a13b18}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Scenes\Debug\Physics">
+      <UniqueIdentifier>{b76382f3-e1fd-40b9-9059-df3615d1e159}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Debug\Physics">
+      <UniqueIdentifier>{26dbeffc-d1d2-4895-bfaf-98b4c6047e96}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Scenes\Debug">
+      <UniqueIdentifier>{a9977dbe-05a0-4372-b25f-efba25d48800}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Scenes\Debug\Physics">
+      <UniqueIdentifier>{7d0c7e81-f6f8-4ec7-81ad-4398e6515afe}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Debug\Physics">
+      <UniqueIdentifier>{22b25790-46bc-4850-a93b-5bd5c6281021}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Scenes\Debug\Transform">
+      <UniqueIdentifier>{e0b935cb-a0b6-4b71-99fc-e37bede14418}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Debug\Transform">
+      <UniqueIdentifier>{3febb48f-87f6-46bb-9ff9-b69d9dfcf0e1}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -366,11 +408,11 @@
     <ClCompile Include="PhysicsManager.cpp">
       <Filter>ソース ファイル\System\Physics\Manager</Filter>
     </ClCompile>
-    <ClCompile Include="PhysicsDebugClass.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
     <ClCompile Include="PhysicsScene.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>ソース ファイル\Scene\Scenes\Debug\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="PhysicsDebugClass.cpp">
+      <Filter>ソース ファイル\Debug\Physics</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -494,10 +536,37 @@
     <ClInclude Include="PhysicsBody.h">
       <Filter>ヘッダー ファイル\System\Physics\Physics</Filter>
     </ClInclude>
-    <ClInclude Include="PhysicsDebugClass.h">
-      <Filter>ヘッダー ファイル</Filter>
+    <ClInclude Include="ObjectPoolDebugClass.h">
+      <Filter>ヘッダー ファイル\Debug\ObjectPool</Filter>
+    </ClInclude>
+    <ClInclude Include="CollisionDebugClass.h">
+      <Filter>ヘッダー ファイル\Debug\Collision</Filter>
+    </ClInclude>
+    <ClInclude Include="CameraDebugClass.h">
+      <Filter>ヘッダー ファイル\Debug\Camera</Filter>
+    </ClInclude>
+    <ClInclude Include="CameraScene.h">
+      <Filter>ヘッダー ファイル\Scene\Scenes\Debug\Camera</Filter>
+    </ClInclude>
+    <ClInclude Include="CollisionScene.h">
+      <Filter>ヘッダー ファイル\Scene\Scenes\Debug\Collision</Filter>
     </ClInclude>
     <ClInclude Include="PhysicsScene.h">
+      <Filter>ヘッダー ファイル\Scene\Scenes\Debug\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="ObjectPoolScene.h">
+      <Filter>ヘッダー ファイル\Scene\Scenes\Debug\ObjectPool</Filter>
+    </ClInclude>
+    <ClInclude Include="PhysicsDebugClass.h">
+      <Filter>ヘッダー ファイル\Debug\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="TransformScene.h">
+      <Filter>ヘッダー ファイル\Scene\Scenes\Debug\Transform</Filter>
+    </ClInclude>
+    <ClInclude Include="TransformDebugClass.h">
+      <Filter>ヘッダー ファイル\Debug\Transform</Filter>
+    </ClInclude>
+    <ClInclude Include="CcdScene.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
   </ItemGroup>

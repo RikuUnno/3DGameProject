@@ -9,7 +9,7 @@
 #include "CameraTags.h"
 #include "DxLib.h"
 #include "KeyInput.h"
-#include "MenuScene.h"
+#include "TitleScene.h"
 #include "ObjectFactory.h"
 #include "ObjectManager.h"
 #include "PhysicsDebugClass.h"
@@ -111,6 +111,7 @@ namespace {
 			{"px", "-8.0"}, {"py", "0.2"}, {"pz", "-6.0"},
 			{"hx", "3.0"}, {"hy", "0.4"}, {"hz", "6.0"},
 			{"friction", "0.0"},
+			{"restitution", "0.0"},
 			{"color", std::to_string(GetColor(255, 210, 120))}
 		});
 		if (ramp) {
@@ -138,19 +139,6 @@ namespace {
 				{"mass", "0.8"}, {"friction", "0.35"}, {"restitution", "0.55"},
 				{"ccd", "true"}
 			});
-		}
-
-		for (int i = 0; i < 5; ++i) {
-			auto* capsule = SpawnPhysicsCapsule({
-				{"px", std::to_string(8.0f)},
-				{"py", std::to_string(1.2f + i * 1.9f)},
-				{"pz", std::to_string(-2.0f + i * 0.2f)},
-				{"radius", "0.38"}, {"halfHeight", "0.7"},
-				{"mass", "1.0"}, {"friction", "0.6"}, {"restitution", "0.15"}
-			});
-			if (capsule) {
-				capsule->transform.SetLocalEulerRad(VGet(0.0f, 0.2f * i, 0.1f * i));
-			}
 		}
 
 		_isSpawningArena = false;
@@ -266,22 +254,22 @@ void PhysicsScene::Update(float dtSec) {
 	if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_R)) {
 		SceneManager::Instance().RequestChange(std::make_unique<PhysicsScene>());
 	}
-	if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_M)) {
+	if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_T)) {
 		SceneTransition::Params params;
 		params.mode = SceneTransition::Mode::MaskImage;
 		params.durationSec = 0.4;
 		params.maskGraphPath = "Data/Transition/mask.png";
 		params.pixelShaderPath = "Data/Transition/mask_transition.pso";
-		SceneTransition::Instance().Start(std::make_unique<MenuScene>(), params, 0.5f);
+		SceneTransition::Instance().Start(std::make_unique<TitleScene>(), params, 0.5f);
 	}
 }
 
 void PhysicsScene::Draw() {
 	ObjectManager::Instance().DrawAll();
 
-	DrawString(10, 10, "PhysicsScene - R:Reset M:Menu", GetColor(255, 255, 255));
-	DrawString(10, 30, "MouseRight+WASDQE : Free Camera", GetColor(200, 220, 255));
-	DrawString(10, 50, "1:Box 2:Sphere 3:Capsule Drop", GetColor(255, 220, 140));
-	DrawString(10, 70, "F : Fire sphere projectile", GetColor(255, 180, 180));
-	DrawString(10, 90, "Sphere:30 Box:20 Capsule:20 / Oldest is pooled", GetColor(180, 255, 180));
+	DrawString(10, 10, "PhysicsScene - R:リセット T:タイトル", GetColor(255, 255, 255));
+	DrawString(10, 30, "右クリック+WASDQE : フリーカメラ操作", GetColor(200, 220, 255));
+	DrawString(10, 50, "1:箱 2:球 3:カプセル を前方に落とす", GetColor(255, 220, 140));
+	DrawString(10, 70, "F : 球体を前方へ発射", GetColor(255, 180, 180));
+	DrawString(10, 90, "球:30 箱:20 カプセル:20 / 古いものからプールへ戻す", GetColor(180, 255, 180));
 }

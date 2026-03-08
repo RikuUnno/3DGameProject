@@ -36,6 +36,85 @@ namespace {
 	// SAT で各軸への投影半径を求める時に使う。
 	inline float AbsDot3(const VECTOR& a, const VECTOR& b) noexcept { return std::fabs(Dot3(a, b)); }
 
+	inline VECTOR ToObbLocal(const VECTOR& worldPoint, const BoxCollider* box) noexcept {
+		const VECTOR d = VSub(worldPoint, box->GetCenter());
+		return VGet(
+			Dot3(d, box->GetAxisX()),
+			Dot3(d, box->GetAxisY()),
+			Dot3(d, box->GetAxisZ())
+		);
+	}
+
+	inline VECTOR FromObbLocalVector(const VECTOR& localVector, const BoxCollider* box) noexcept {
+		VECTOR v = VGet(0, 0, 0);
+		v = VAdd(v, VScale(box->GetAxisX(), localVector.x));
+		v = VAdd(v, VScale(box->GetAxisY(), localVector.y));
+		v = VAdd(v, VScale(box->GetAxisZ(), localVector.z));
+		return v;
+	}
+
+	inline bool SweepSphereAgainstBox(
+		const VECTOR& prevCenter,
+		const VECTOR& currCenter,
+		float radius,
+		const BoxCollider* box,
+		float* outHitT,
+		VECTOR* outNormalWorld,
+		VECTOR* outHitCenterWorld) noexcept {
+		if (!box) return false;
+
+		const VECTOR p0 = ToObbLocal(prevCenter, box);
+		const VECTOR p1 = ToObbLocal(currCenter, box);
+		const VECTOR d = VSub(p1, p0);
+		const VECTOR e = VAdd(box->GetHalfExtents(), VGet(radius, radius, radius));
+
+		float tMin = 0.0f;
+		float tMax = 1.0f;
+		VECTOR hitNormalLocal = VGet(0, 0, 0);
+		const float p0Arr[3] = { p0.x, p0.y, p0.z };
+		const float dArr[3] = { d.x, d.y, d.z };
+		const float eArr[3] = { e.x, e.y, e.z };
+
+		for (int axis = 0; axis < 3; ++axis) {
+			const float origin = p0Arr[axis];
+			const float dir = dArr[axis];
+			const float extent = eArr[axis];
+
+			if (std::fabs(dir) < 1e-6f) {
+				if (origin < -extent || origin > extent) {
+					return false;
+				}
+				continue;
+			}
+
+			float t1 = (-extent - origin) / dir;
+			float t2 = (extent - origin) / dir;
+			VECTOR nearNormal = VGet(0, 0, 0);
+			if (axis == 0) nearNormal.x = (t1 <= t2) ? -1.0f : 1.0f;
+			else if (axis == 1) nearNormal.y = (t1 <= t2) ? -1.0f : 1.0f;
+			else nearNormal.z = (t1 <= t2) ? -1.0f : 1.0f;
+
+			if (t1 > t2) std::swap(t1, t2);
+			if (t1 > tMin) {
+				tMin = t1;
+				hitNormalLocal = nearNormal;
+			}
+			tMax = (std::min)(tMax, t2);
+			if (tMin > tMax) {
+				return false;
+			}
+		}
+
+		if (tMin < 0.0f || tMin > 1.0f) {
+			return false;
+		}
+
+		if (outHitT) *outHitT = tMin;
+		if (outNormalWorld) *outNormalWorld = SafeNorm(FromObbLocalVector(hitNormalLocal, box), VGet(1, 0, 0));
+		if (outHitCenterWorld) *outHitCenterWorld = VAdd(prevCenter, VScale(VSub(currCenter, prevCenter), tMin));
+		return true;
+	}
+
 	// 子Colliderの owner から、その親Transformに紐づく GameObject を取り出す。
 	// bubbleEventsToParentOwner が true の時だけ、owner に加えて親GameObject にもイベントを送る。
 	inline GameObject* GetParentOwner(Collider* c) noexcept {
@@ -433,6 +512,7 @@ void ColliderManager::PushOutSphereBox(Collider* a, Collider* b) {
 	GameObject* os = static_cast<Collider*>(s)->owner;
 	GameObject* obox = static_cast<Collider*>(box)->owner;
 	if (!os || os->isStatic) return;
+	if (obox && os == obox) return;
 
 	const VECTOR c = s->GetCenter();
 	const VECTOR d = VSub(c, box->GetCenter());
@@ -450,10 +530,44 @@ void ColliderManager::PushOutSphereBox(Collider* a, Collider* b) {
 	VECTOR diff = VSub(c, closest);
 	float dist = std::sqrt((std::max)(LenSq(diff), 1e-8f));
 	float pen = s->GetRadius() - dist;
-	if (pen <= 0.0f) return;
+	VECTOR n = VGet(0, 0, 0);
+	bool ccdResolved = false;
 
-	VECTOR n = VScale(diff, 1.0f / dist);
-	if (obox && os == obox) return;
+	if (pen > 0.0f) {
+		n = VScale(diff, 1.0f / dist);
+	}
+	else {
+		auto prevIt = _prevAABBs.find(s);
+		if (prevIt == _prevAABBs.end()) return;
+
+		const VECTOR prevCenter = prevIt->second.center;
+		const VECTOR move = VSub(c, prevCenter);
+		const float distSq = LenSq(move);
+		float dt = _deltaTimeSec;
+		if (dt < 1e-6f) dt = 1e-6f;
+		const float speedSq = distSq / (dt * dt);
+		const float thr = s->ccdDistanceThreshold;
+		const bool useSweep = s->enableCCD || box->enableCCD || speedSq > thr * thr;
+		if (!useSweep) return;
+
+		float hitT = 0.0f;
+		VECTOR hitNormal = VGet(0, 0, 0);
+		VECTOR hitCenter = VGet(0, 0, 0);
+		if (!SweepSphereAgainstBox(prevCenter, c, s->GetRadius(), box, &hitT, &hitNormal, &hitCenter)) return;
+
+		n = SafeNorm(hitNormal, VGet(1, 0, 0));
+		const VECTOR targetCenter = VAdd(hitCenter, VScale(n, 1e-4f));
+		const VECTOR centerDelta = VSub(targetCenter, c);
+		pen = Len3(centerDelta);
+		if (pen < 1e-4f) pen = 1e-4f;
+
+		VECTOR p = os->transform.LocalPosition();
+		p = VAdd(p, centerDelta);
+		os->transform.SetLocalPosition(p);
+		s->UpdateShape();
+		box->UpdateShape();
+		ccdResolved = true;
+	}
 
 	Contact ct;
 	ct.a = box;
@@ -461,6 +575,10 @@ void ColliderManager::PushOutSphereBox(Collider* a, Collider* b) {
 	ct.normal = n;
 	ct.penetration = pen;
 	_contacts.push_back(ct);
+
+	if (ccdResolved) {
+		return;
+	}
 
 	VECTOR p = os->transform.LocalPosition();
 	p = VAdd(p, VScale(n, pen));
@@ -1037,6 +1155,22 @@ void ColliderManager::CheckSphereBox(Collider* a, Collider* b) {
 
 	const VECTOR diff = VSub(c, closest);
 	_narrowHit = (LenSq(diff) <= r * r);
+	if (_narrowHit) return;
+
+	auto prevIt = _prevAABBs.find(s);
+	if (prevIt == _prevAABBs.end()) return;
+
+	const VECTOR prevCenter = prevIt->second.center;
+	const VECTOR move = VSub(c, prevCenter);
+	const float distSq = LenSq(move);
+	float dt = _deltaTimeSec;
+	if (dt < 1e-6f) dt = 1e-6f;
+	const float speedSq = distSq / (dt * dt);
+	const float thr = s->ccdDistanceThreshold;
+	const bool useSweep = s->enableCCD || box->enableCCD || speedSq > thr * thr;
+	if (!useSweep) return;
+
+	_narrowHit = SweepSphereAgainstBox(prevCenter, c, r, box, nullptr, nullptr, nullptr);
 }
 
 // Box-Box 詳細判定。
@@ -1383,5 +1517,6 @@ bool ColliderManager::CheckAABBCollisions(Collider* a, Collider* b) {
 bool ColliderManager::CheckAABBCollisionsSwept(Collider* a, Collider* b) {
 	return !IntersectAABBWorld(GetSweptAABB(a), GetSweptAABB(b));
 }
+
 
 

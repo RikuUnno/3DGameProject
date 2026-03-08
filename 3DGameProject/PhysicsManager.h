@@ -3,6 +3,7 @@
 #include <vector>
 #include <atomic>
 
+#include "DxLib.h"
 #include "Manager.h"
 
 class PhysicsController;
@@ -31,7 +32,7 @@ public:
 	PhysicsManager& operator=(const PhysicsManager&) = delete;
 
 	// Manager
-	void Initialize() override {}	// 初期化
+	void Initialize() override {}
 	void Shutdown() override; 			// 明示的終了（Main終了時の安全化）
 	void Update(float dt) override; // 毎フレーム呼ばれる
 
@@ -75,12 +76,9 @@ private:
 	// 重力（ワールド）
 	float _gravityY = -9.8f;
 
-	// --- temporary stabilization ---
-	// ColliderManager の押し戻しは Transform を直すが、速度は直さないため
-	// とりあえず落下しっぱなしを防ぐ簡易地面を用意する。
-	// デフォルトでは無効にして、接触情報に基づく速度修正を行う。
+	// 簡易地面（ワールドY平面）
 	bool _groundPlaneEnabled = false;
-	float _groundPlaneY =0.0f;
+	float _groundPlaneY = 0.0f;
 
 	float _fixedDeltaTime = 1.0f / 120.0f;
 	int _maxSubSteps = 8;

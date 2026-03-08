@@ -93,7 +93,8 @@ GameObject* ObjectManager::Spawn(const std::string& key, const VariantMap& param
 		std::lock_guard lk(_mtx);
 		auto pit = _pools.find(key);
 		if (pit != _pools.end()) {
-			auto u = pit->second->Acquire();
+			bool wasCreated = false;
+			auto u = pit->second->Acquire(&wasCreated);
 			if (u) {
 				GameObject* raw = u.get();
 				raw->SetActive(true);
@@ -102,7 +103,10 @@ GameObject* ObjectManager::Spawn(const std::string& key, const VariantMap& param
 				raw->OnAcquire(params);
 				_objects.push_back(std::move(u));
 #ifdef _DEBUG
-				++_debugTotalSpawn;
+				++_debugTotalAcquire;
+				if (wasCreated) {
+					++_debugTotalCreated;
+				}
 #endif
 				return raw;
 			}
@@ -127,7 +131,8 @@ GameObject* ObjectManager::Spawn(const std::string& key, const VariantMap& param
 			)
 		);
 #ifdef _DEBUG
-		++_debugTotalSpawn;
+		++_debugTotalAcquire;
+		++_debugTotalCreated;
 #endif
 	}
 	return raw;
@@ -253,21 +258,30 @@ GameObject* ObjectManager::FindById(int id) const {
 void ObjectManager::DebugDraw(int x, int y) const {
 	std::lock_guard lk(_mtx);
 
-	DrawFormatString(x, y, GetColor(255, 255, 0), "[ObjectManager] 現在オブジェクト数: %d", (int)_objects.size());
-	y += 16;
-	DrawFormatString(x, y, GetColor(255, 255, 0), "[ObjectManager] 総生成数(取得回数): %d", (int)_debugTotalSpawn);
-	y += 16;
-	DrawFormatString(x, y, GetColor(255, 255, 0), "[ObjectManager] 総削除数(破棄回数): %d", (int)_debugTotalDeleted);
-	y += 16;
-	DrawFormatString(x, y, GetColor(255, 255, 0), "[ObjectManager] 現在SceneId: %d", _currentSceneId);
-	y += 16;
-	DrawFormatString(x, y, GetColor(255, 255, 0), "[ObjectManager] プール数: %d", (int)_pools.size());
-	y += 16;
+	const int leftX = x;
+	const int rightX = x + 360;
+	const int lineH = 16;
+	int leftY = y;
+	int rightY = y;
 
+	DrawFormatString(leftX, leftY, GetColor(255, 255, 0), "[ObjectManager] 現在オブジェクト数: %d", (int)_objects.size());
+	leftY += lineH;
+	DrawFormatString(leftX, leftY, GetColor(255, 255, 0), "[ObjectManager] 取得数(現状): %d", (int)_debugTotalAcquire);
+	leftY += lineH;
+	DrawFormatString(leftX, leftY, GetColor(255, 255, 0), "[ObjectManager] 生成数(Factory): %d", (int)_debugTotalCreated);
+	leftY += lineH;
+	DrawFormatString(leftX, leftY, GetColor(255, 255, 0), "[ObjectManager] 累計削除数(破棄数): %d", (int)_debugTotalDeleted);
+	leftY += lineH;
+	DrawFormatString(leftX, leftY, GetColor(255, 255, 0), "[ObjectManager] 現在SceneId: %d", _currentSceneId);
+	leftY += lineH;
+	DrawFormatString(leftX, leftY, GetColor(255, 255, 0), "[ObjectManager] プール数: %d", (int)_pools.size());
+
+	DrawFormatString(rightX, rightY, GetColor(255, 255, 0), "[Pool] 未使用ストック");
+	rightY += lineH;
 	for (const auto& [key, pool] : _pools) {
 		const size_t freeCount = pool ? pool->Size() : 0;
-		DrawFormatString(x, y, GetColor(200, 255, 200), "- %s 未使用ストック: %d", key.c_str(), (int)freeCount);
-		y += 16;
+		DrawFormatString(rightX, rightY, GetColor(200, 255, 200), "%s : %d", key.c_str(), (int)freeCount);
+		rightY += lineH;
 	}
 }
 #endif

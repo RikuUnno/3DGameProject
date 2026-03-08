@@ -129,13 +129,23 @@ void CameraManager::Update(float dtSec) {
 	_blend.t += dtSec;
 	const float a = Clamp01(_blend.t / _blend.duration);
 
-	_blend.scratch->transform.SetLocalPosition(LerpVec(from->transform.LocalPosition(), to->transform.LocalPosition(), a));
+	const VECTOR fromEye = from->transform.LocalPosition();
+	const VECTOR toEye = to->transform.LocalPosition();
+	const VECTOR eye = LerpVec(fromEye, toEye, a);
+	_blend.scratch->transform.SetLocalPosition(eye);
+
 	const Quaternion rq = Quaternion::Slerp(from->transform.LocalRotation(), to->transform.LocalRotation(), a);
 	_blend.scratch->transform.SetLocalRotation(rq);
 
 	_blend.scratch->_fovYRad = LerpF(from->_fovYRad, to->_fovYRad, a);
 	_blend.scratch->_nearZ = LerpF(from->_nearZ, to->_nearZ, a);
 	_blend.scratch->_farZ = LerpF(from->_farZ, to->_farZ, a);
+
+	const VECTOR fromTarget = from->HasLookAt() ? from->LookAtTarget() : VAdd(fromEye, from->transform.Forward());
+	const VECTOR toTarget = to->HasLookAt() ? to->LookAtTarget() : VAdd(toEye, to->transform.Forward());
+	const VECTOR fromUp = from->HasLookAt() ? from->LookAtUp() : VGet(0, 1, 0);
+	const VECTOR toUp = to->HasLookAt() ? to->LookAtUp() : VGet(0, 1, 0);
+	_blend.scratch->LookAt(LerpVec(fromEye, toEye, a), LerpVec(fromTarget, toTarget, a), LerpVec(fromUp, toUp, a));
 
 	_blend.scratch->MarkDirty();
 

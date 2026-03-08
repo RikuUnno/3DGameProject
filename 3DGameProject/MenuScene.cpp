@@ -1,6 +1,11 @@
 #include "MenuScene.h"
 #include "TitleScene.h"
 #include "PhysicsScene.h"
+#include "CameraScene.h"
+#include "CollisionScene.h"
+#include "ObjectPoolScene.h"
+#include "TransformScene.h"
+#include "CcdScene.h"
 #include "DxLib.h"
 #include "KeyInput.h"
 #include "SceneManager.h"
@@ -20,7 +25,8 @@
 
 namespace {
 	// カメラ
-	CameraController g_camCtrl;
+	CameraController g_debugCamCtrl;
+	CameraController g_gameCamCtrl;
 	CameraController::CameraId g_debugCamId =0;
 	CameraController::CameraId g_gameCamId =0;
 	CameraController::CameraId g_currentCamId =0;
@@ -42,7 +48,6 @@ namespace {
 			const float z = i * step;
 			DrawLine3D(VGet(-halfCells * step, y, z), VGet(halfCells * step, y, z), colGrid);
 		}
-		// axis
 		DrawLine3D(VGet(0, y,0), VGet(2, y,0), GetColor(255,80,80));
 		DrawLine3D(VGet(0, y,0), VGet(0, y +2,0), GetColor(80,255,80));
 		DrawLine3D(VGet(0, y,0), VGet(0, y,2), GetColor(80,80,255));
@@ -55,12 +60,11 @@ void MenuScene::Start() {
 
 	// 自由カメラ（デバッグ用）
 	if (g_debugCamId ==0 || camMgr.Get(g_debugCamId) == nullptr) {
-		g_debugCamId = g_camCtrl.SpawnAuto(sceneId, CameraTag::Debug, VGet(0.0f,2.0f, -8.0f), VGet(0.0f,0.0f,0.0f));
+		g_debugCamId = g_debugCamCtrl.SpawnAuto(sceneId, CameraTag::Debug, VGet(0.0f,2.0f, -8.0f), VGet(0.0f,0.0f,0.0f));
 	}
 	// 固定カメラ（ゲーム用）
 	if (g_gameCamId ==0 || camMgr.Get(g_gameCamId) == nullptr) {
-		g_camCtrl.SetCamera(0);
-		g_gameCamId = g_camCtrl.SpawnAuto(sceneId, CameraTag::Game, VGet(6.0f,3.0f, -6.0f), VGet(0.0f,0.8f,0.0f));
+		g_gameCamId = g_gameCamCtrl.SpawnAuto(sceneId, CameraTag::Game, VGet(6.0f,3.0f, -6.0f), VGet(0.0f,0.8f,0.0f));
 	}
 
 	g_currentCamId = g_debugCamId;
@@ -105,8 +109,8 @@ void MenuScene::Update(float dtSec) {
 	ObjectManager::Instance().UpdateAll(dtSec);
 
 	// カメラ操作（デバッグカメラのみ入力）
-	g_camCtrl.SetCamera(g_debugCamId);
-	g_camCtrl.UpdateFreeMoveMouse(8.0f,0.4f,10.0f, dtSec);
+	g_debugCamCtrl.SetCamera(g_debugCamId);
+	g_debugCamCtrl.UpdateFreeMoveMouse(8.0f,0.4f,10.0f, dtSec);
 
 	// DebugPlayer 移動
 	if (g_debugPlayer) {
@@ -200,12 +204,101 @@ void MenuScene::Update(float dtSec) {
 
 		SceneTransition::Instance().Start(std::make_unique<PhysicsScene>(), p, 0.5f);
 	}
+	if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_C)) {
+		if (g_debugHat) {
+			g_debugHat->transform.SetParent(nullptr);
+			ObjectManager::Instance().Release(g_debugHat);
+			g_debugHat = nullptr;
+		}
+		if (g_debugGround) { ObjectManager::Instance().Release(g_debugGround); g_debugGround = nullptr; }
+		if (g_debugPlayer) { ObjectManager::Instance().Release(g_debugPlayer); g_debugPlayer = nullptr; }
+		if (g_debugEnemy) { ObjectManager::Instance().Release(g_debugEnemy); g_debugEnemy = nullptr; }
+
+		SceneTransition::Params p;
+		p.mode = SceneTransition::Mode::MaskImage;
+		p.durationSec = 0.6;
+		p.maskGraphPath = "Data/Transition/mask.png";
+		p.pixelShaderPath = "Data/Transition/mask_transition.pso";
+
+		SceneTransition::Instance().Start(std::make_unique<CameraScene>(), p, 0.5f);
+	}
+	if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_H)) {
+		if (g_debugHat) {
+			g_debugHat->transform.SetParent(nullptr);
+			ObjectManager::Instance().Release(g_debugHat);
+			g_debugHat = nullptr;
+		}
+		if (g_debugGround) { ObjectManager::Instance().Release(g_debugGround); g_debugGround = nullptr; }
+		if (g_debugPlayer) { ObjectManager::Instance().Release(g_debugPlayer); g_debugPlayer = nullptr; }
+		if (g_debugEnemy) { ObjectManager::Instance().Release(g_debugEnemy); g_debugEnemy = nullptr; }
+
+		SceneTransition::Params p;
+		p.mode = SceneTransition::Mode::MaskImage;
+		p.durationSec = 0.6;
+		p.maskGraphPath = "Data/Transition/mask.png";
+		p.pixelShaderPath = "Data/Transition/mask_transition.pso";
+
+		SceneTransition::Instance().Start(std::make_unique<CollisionScene>(), p, 0.5f);
+	}
+	if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_O)) {
+		if (g_debugHat) {
+			g_debugHat->transform.SetParent(nullptr);
+			ObjectManager::Instance().Release(g_debugHat);
+			g_debugHat = nullptr;
+		}
+		if (g_debugGround) { ObjectManager::Instance().Release(g_debugGround); g_debugGround = nullptr; }
+		if (g_debugPlayer) { ObjectManager::Instance().Release(g_debugPlayer); g_debugPlayer = nullptr; }
+		if (g_debugEnemy) { ObjectManager::Instance().Release(g_debugEnemy); g_debugEnemy = nullptr; }
+
+		SceneTransition::Params p;
+		p.mode = SceneTransition::Mode::MaskImage;
+		p.durationSec = 0.6;
+		p.maskGraphPath = "Data/Transition/mask.png";
+		p.pixelShaderPath = "Data/Transition/mask_transition.pso";
+
+		SceneTransition::Instance().Start(std::make_unique<ObjectPoolScene>(), p, 0.5f);
+	}
+	if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_V)) {
+		if (g_debugHat) {
+			g_debugHat->transform.SetParent(nullptr);
+			ObjectManager::Instance().Release(g_debugHat);
+			g_debugHat = nullptr;
+		}
+		if (g_debugGround) { ObjectManager::Instance().Release(g_debugGround); g_debugGround = nullptr; }
+		if (g_debugPlayer) { ObjectManager::Instance().Release(g_debugPlayer); g_debugPlayer = nullptr; }
+		if (g_debugEnemy) { ObjectManager::Instance().Release(g_debugEnemy); g_debugEnemy = nullptr; }
+
+		SceneTransition::Params p;
+		p.mode = SceneTransition::Mode::MaskImage;
+		p.durationSec = 0.6;
+		p.maskGraphPath = "Data/Transition/mask.png";
+		p.pixelShaderPath = "Data/Transition/mask_transition.pso";
+
+		SceneTransition::Instance().Start(std::make_unique<TransformScene>(), p, 0.5f);
+	}
+	if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_X)) {
+		if (g_debugHat) {
+			g_debugHat->transform.SetParent(nullptr);
+			ObjectManager::Instance().Release(g_debugHat);
+			g_debugHat = nullptr;
+		}
+		if (g_debugGround) { ObjectManager::Instance().Release(g_debugGround); g_debugGround = nullptr; }
+		if (g_debugPlayer) { ObjectManager::Instance().Release(g_debugPlayer); g_debugPlayer = nullptr; }
+		if (g_debugEnemy) { ObjectManager::Instance().Release(g_debugEnemy); g_debugEnemy = nullptr; }
+
+		SceneTransition::Params p;
+		p.mode = SceneTransition::Mode::MaskImage;
+		p.durationSec = 0.6;
+		p.maskGraphPath = "Data/Transition/mask.png";
+		p.pixelShaderPath = "Data/Transition/mask_transition.pso";
+
+		SceneTransition::Instance().Start(std::make_unique<CcdScene>(), p, 0.5f);
+	}
 }
 
 void MenuScene::Draw() {
-	DrawGridFloor(0.0f, 10, 1.0f);	// グリッド床描画
-
-	ObjectManager::Instance().DrawAll();	// 全オブジェクト描画
+	DrawGridFloor(0.0f, 10, 1.0f);
+	ObjectManager::Instance().DrawAll();
 
 	DrawString(10, 10, "MenuScene - Spaceで戻る", GetColor(255, 255, 255));
 	DrawString(10, 30, "[操作] J/L:I/K:U/Oで DebugPlayer を移動", GetColor(255, 255, 120));
@@ -214,4 +307,9 @@ void MenuScene::Draw() {
 	DrawString(10, 90, "       水平移動時は進行方向へ自動回転", GetColor(255, 220, 120));
 	DrawString(10, 110, "[カメラ]1:Debug2:Game B:Blend ON/OFF", GetColor(180, 180, 255));
 	DrawString(10, 130, "P : Physics Scene", GetColor(180, 255, 180));
+	DrawString(10, 150, "C : Camera Scene", GetColor(180, 220, 255));
+	DrawString(10, 170, "H : Collision Scene", GetColor(255, 220, 180));
+	DrawString(10, 190, "O : ObjectPool Scene", GetColor(220, 255, 180));
+	DrawString(10, 210, "V : Transform Scene", GetColor(220, 200, 255));
+	DrawString(10, 230, "X : CCD Scene", GetColor(255, 200, 200));
 }

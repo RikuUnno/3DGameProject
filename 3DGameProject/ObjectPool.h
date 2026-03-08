@@ -17,7 +17,7 @@ public:
 	explicit ObjectPool(Creator creator, size_t maxSize = 64); // コンストラクタ
 
 	// Acquire: プールにあれば取り出し、なければ creator で生成
-	UniquePtr Acquire();
+	UniquePtr Acquire(bool* wasCreated = nullptr);
 
 	// Release: 生ポインタを pool に戻す（Deleter を介して呼ばれる）
 	void Release(GameObject* obj);

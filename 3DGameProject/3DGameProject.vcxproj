@@ -178,13 +178,18 @@
     <ClInclude Include="BoxCollider.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="CameraController.h" />
+    <ClInclude Include="CameraDebugClass.h" />
     <ClInclude Include="CameraManager.h" />
     <ClInclude Include="CameraPool.h" />
+    <ClInclude Include="CameraScene.h" />
     <ClInclude Include="CameraTags.h" />
     <ClInclude Include="CapsuleCollider.h" />
+    <ClInclude Include="CcdScene.h" />
     <ClInclude Include="Collider.h" />
     <ClInclude Include="ColliderManager.h" />
     <ClInclude Include="ColliderType.h" />
+    <ClInclude Include="CollisionDebugClass.h" />
+    <ClInclude Include="CollisionScene.h" />
     <ClInclude Include="Debug Class.h" />
     <ClInclude Include="LayerMask.h" />
     <ClInclude Include="Manager.h" />
@@ -197,6 +202,8 @@
     <ClInclude Include="MenuScene.h" />
     <ClInclude Include="ObjectManager.h" />
     <ClInclude Include="ObjectPool.h" />
+    <ClInclude Include="ObjectPoolDebugClass.h" />
+    <ClInclude Include="ObjectPoolScene.h" />
     <ClInclude Include="PhysicsBody.h" />
     <ClInclude Include="PhysicsController.h" />
     <ClInclude Include="PhysicsDebugClass.h" />
@@ -213,6 +220,8 @@
     <ClInclude Include="Time.h" />
     <ClInclude Include="TitleScene.h" />
     <ClInclude Include="Transform.h" />
+    <ClInclude Include="TransformDebugClass.h" />
+    <ClInclude Include="TransformScene.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="Camera_Manual_Reference.txt" />

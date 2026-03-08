@@ -345,80 +345,27 @@ void ColliderManager::ResolvePushOut(Collider* a, Collider* b) {
 
 	const auto ka = a->GetKind();
 	const auto kb = b->GetKind();
-	if (!aFixed && !bFixed) {
-		if (IsPair(ka, kb, Collider::Kind::Sphere, Collider::Kind::Sphere)) {
-			PushOutSphereSphere(a, b);
-		}
-		else if (IsPair(ka, kb, Collider::Kind::Sphere, Collider::Kind::Box)) {
-			PushOutSphereBox(a, b);
-		}
-		else if (IsPair(ka, kb, Collider::Kind::Box, Collider::Kind::Box)) {
-			PushOutBoxBox(a, b);
-		}
-		else if (IsPair(ka, kb, Collider::Kind::Capsule, Collider::Kind::Capsule)) {
-			PushOutCapsuleCapsule(a, b);
-		}
-		else if (IsPair(ka, kb, Collider::Kind::Sphere, Collider::Kind::Capsule)) {
-			PushOutSphereCapsule(a, b);
-		}
-		else if (IsPair(ka, kb, Collider::Kind::Box, Collider::Kind::Capsule)) {
-			PushOutBoxCapsule(a, b);
-		}
-		else {
-			ASSERT_MSG(false, "未定義のコライダー組み合わせ: kindA=%d kindB=%d", static_cast<int>(ka), static_cast<int>(kb));
-		}
-		return;
+	if (IsPair(ka, kb, Collider::Kind::Sphere, Collider::Kind::Sphere)) {
+		PushOutSphereSphere(a, b);
 	}
-
-	GameObject* movable = nullptr;
-	Collider* movableCol = nullptr;
-	Collider* fixedCol = nullptr;
-
-	if (aFixed) {
-		movable = ob;
-		movableCol = b;
-		fixedCol = a;
+	else if (IsPair(ka, kb, Collider::Kind::Sphere, Collider::Kind::Box)) {
+		PushOutSphereBox(a, b);
 	}
-	else if (bFixed) {
-		movable = oa;
-		movableCol = a;
-		fixedCol = b;
+	else if (IsPair(ka, kb, Collider::Kind::Box, Collider::Kind::Box)) {
+		PushOutBoxBox(a, b);
 	}
-	if (!movable || !movableCol || !fixedCol) return;
-
-	const AABB& A = movableCol->GetAABB();
-	const AABB& B = fixedCol->GetAABB();
-	// 各軸の重なり量。
-	// 最小重なり軸を選ぶことで、最も短い移動量での押し戻しを行う。
-	const float ox = (std::min)(A.max.x, B.max.x) - (std::max)(A.min.x, B.min.x);
-	const float oy = (std::min)(A.max.y, B.max.y) - (std::max)(A.min.y, B.min.y);
-	const float oz = (std::min)(A.max.z, B.max.z) - (std::max)(A.min.z, B.min.z);
-	if (ox <=0.0f || oy <=0.0f || oz <=0.0f) return;
-
-	float pen = ox;
-	VECTOR n = VGet((movableCol->GetCenter().x >= fixedCol->GetCenter().x) ?1.0f : -1.0f,0,0);
-	if (oy < pen) {
-		pen = oy;
-		n = VGet(0, (movableCol->GetCenter().y >= fixedCol->GetCenter().y) ?1.0f : -1.0f,0);
+	else if (IsPair(ka, kb, Collider::Kind::Capsule, Collider::Kind::Capsule)) {
+		PushOutCapsuleCapsule(a, b);
 	}
-	if (oz < pen) {
-		pen = oz;
-		n = VGet(0,0, (movableCol->GetCenter().z >= fixedCol->GetCenter().z) ?1.0f : -1.0f);
+	else if (IsPair(ka, kb, Collider::Kind::Sphere, Collider::Kind::Capsule)) {
+		PushOutSphereCapsule(a, b);
 	}
-
-	Contact ct;
-	ct.a = fixedCol;
-	ct.b = movableCol;
-	ct.normal = n;
-	ct.penetration = pen;
-	_contacts.push_back(ct);
-
-	VECTOR p = movable->transform.LocalPosition();
-	p = VAdd(p, VScale(n, pen));
-	movable->transform.SetLocalPosition(p);
-
-	movableCol->UpdateShape();
-	fixedCol->UpdateShape();
+	else if (IsPair(ka, kb, Collider::Kind::Box, Collider::Kind::Capsule)) {
+		PushOutBoxCapsule(a, b);
+	}
+	else {
+		ASSERT_MSG(false, "未定義のコライダー組み合わせ: kindA=%d kindB=%d", static_cast<int>(ka), static_cast<int>(kb));
+	}
 }
 
 // Sphere-Sphere 押し戻し。
@@ -449,20 +396,20 @@ void ColliderManager::PushOutSphereSphere(Collider* a, Collider* b) {
 	ct.penetration = pen;
 	_contacts.push_back(ct);
 
-	const float wA = oa ? 1.0f : 0.0f;
-	const float wB = ob ? 1.0f : 0.0f;
+	const float wA = (oa && !oa->isStatic) ? 1.0f : 0.0f;
+	const float wB = (ob && !ob->isStatic) ? 1.0f : 0.0f;
 	const float wSum = wA + wB;
 	if (wSum <= 0.0f) return;
 
 	const float moveA = (wA / wSum) * pen;
 	const float moveB = (wB / wSum) * pen;
 
-	if (oa) {
+	if (oa && !oa->isStatic) {
 		VECTOR p = oa->transform.LocalPosition();
 		p = VSub(p, VScale(n, moveA));
 		oa->transform.SetLocalPosition(p);
 	}
-	if (ob) {
+	if (ob && !ob->isStatic) {
 		VECTOR p = ob->transform.LocalPosition();
 		p = VAdd(p, VScale(n, moveB));
 		ob->transform.SetLocalPosition(p);
@@ -484,7 +431,8 @@ void ColliderManager::PushOutSphereBox(Collider* a, Collider* b) {
 	if (!s || !box) return;
 
 	GameObject* os = static_cast<Collider*>(s)->owner;
-	if (!os) return;
+	GameObject* obox = static_cast<Collider*>(box)->owner;
+	if (!os || os->isStatic) return;
 
 	const VECTOR c = s->GetCenter();
 	const VECTOR d = VSub(c, box->GetCenter());
@@ -505,10 +453,11 @@ void ColliderManager::PushOutSphereBox(Collider* a, Collider* b) {
 	if (pen <= 0.0f) return;
 
 	VECTOR n = VScale(diff, 1.0f / dist);
+	if (obox && os == obox) return;
 
 	Contact ct;
-	ct.a = s;
-	ct.b = box;
+	ct.a = box;
+	ct.b = s;
 	ct.normal = n;
 	ct.penetration = pen;
 	_contacts.push_back(ct);
@@ -518,6 +467,7 @@ void ColliderManager::PushOutSphereBox(Collider* a, Collider* b) {
 	os->transform.SetLocalPosition(p);
 
 	s->UpdateShape();
+	box->UpdateShape();
 }
 
 // Box-Box 押し戻し。
@@ -712,20 +662,20 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 	ct.penetration = pen;
 	_contacts.push_back(ct);
 
-	const float wA = oa ?1.0f :0.0f;
-	const float wB = ob ?1.0f :0.0f;
+	const float wA = (oa && !oa->isStatic) ? 1.0f : 0.0f;
+	const float wB = (ob && !ob->isStatic) ? 1.0f : 0.0f;
 	const float wSum = wA + wB;
 	if (wSum <=0.0f) return;
 
 	const float moveA = (wA / wSum) * pen;
 	const float moveB = (wB / wSum) * pen;
 
-	if (oa) {
+	if (oa && !oa->isStatic) {
 		VECTOR p = oa->transform.LocalPosition();
 		p = VSub(p, VScale(n, moveA));
 		oa->transform.SetLocalPosition(p);
 	}
-	if (ob) {
+	if (ob && !ob->isStatic) {
 		VECTOR p = ob->transform.LocalPosition();
 		p = VAdd(p, VScale(n, moveB));
 		ob->transform.SetLocalPosition(p);
@@ -807,20 +757,20 @@ void ColliderManager::PushOutCapsuleCapsule(Collider* a, Collider* b) {
 	ct.penetration = pen;
 	_contacts.push_back(ct);
 
-	const float wA = oa ? 1.0f : 0.0f;
-	const float wB = ob ? 1.0f : 0.0f;
+	const float wA = (oa && !oa->isStatic) ? 1.0f : 0.0f;
+	const float wB = (ob && !ob->isStatic) ? 1.0f : 0.0f;
 	const float wSum = wA + wB;
 	if (wSum <= 0.0f) return;
 
 	const float moveA = (wA / wSum) * pen;
 	const float moveB = (wB / wSum) * pen;
 
-	if (oa) {
+	if (oa && !oa->isStatic) {
 		VECTOR p = oa->transform.LocalPosition();
 		p = VAdd(p, VScale(n, moveA));
 		oa->transform.SetLocalPosition(p);
 	}
-	if (ob) {
+	if (ob && !ob->isStatic) {
 		VECTOR p = ob->transform.LocalPosition();
 		p = VSub(p, VScale(n, moveB));
 		ob->transform.SetLocalPosition(p);
@@ -869,26 +819,26 @@ void ColliderManager::PushOutSphereCapsule(Collider* a, Collider* b) {
 	VECTOR n = VScale(diff, 1.0f / dist);
 
 	Contact ct;
-	ct.a = s;
-	ct.b = c;
+	ct.a = c;
+	ct.b = s;
 	ct.normal = n;
 	ct.penetration = pen;
 	_contacts.push_back(ct);
 
-	const float wS = os ? 1.0f : 0.0f;
-	const float wC = oc ? 1.0f : 0.0f;
+	const float wS = (os && !os->isStatic) ? 1.0f : 0.0f;
+	const float wC = (oc && !oc->isStatic) ? 1.0f : 0.0f;
 	const float wSum = wS + wC;
 	if (wSum <= 0.0f) return;
 
 	const float moveS = (wS / wSum) * pen;
 	const float moveC = (wC / wSum) * pen;
 
-	if (os) {
+	if (os && !os->isStatic) {
 		VECTOR p0 = os->transform.LocalPosition();
 		p0 = VAdd(p0, VScale(n, moveS));
 		os->transform.SetLocalPosition(p0);
 	}
-	if (oc) {
+	if (oc && !oc->isStatic) {
 		VECTOR p0 = oc->transform.LocalPosition();
 		p0 = VSub(p0, VScale(n, moveC));
 		oc->transform.SetLocalPosition(p0);
@@ -916,14 +866,7 @@ void ColliderManager::PushOutBoxCapsule(Collider* a, Collider* b) {
 	auto ToLocal = [&](const VECTOR& w) {
 		const VECTOR d = VSub(w, box->GetCenter());
 		return VGet(Dot3(d, box->GetAxisX()), Dot3(d, box->GetAxisY()), Dot3(d, box->GetAxisZ()));
-	 };
-	auto ToWorld = [&](const VECTOR& l) {
-		VECTOR w = box->GetCenter();
-		w = VAdd(w, VScale(box->GetAxisX(), l.x));
-		w = VAdd(w, VScale(box->GetAxisY(), l.y));
-		w = VAdd(w, VScale(box->GetAxisZ(), l.z));
-		return w;
-	 };
+	};
 
 	const VECTOR pL = ToLocal(cap->GetBottom());
 	const VECTOR qL = ToLocal(cap->GetTop());
@@ -941,41 +884,99 @@ void ColliderManager::PushOutBoxCapsule(Collider* a, Collider* b) {
 		);
 	};
 
-	float best = FLT_MAX;
+	float bestDistSq = FLT_MAX;
+	VECTOR bestSegPointL = pL;
+	VECTOR bestBoxPointL = ClampPointToAABB(pL);
 
 	auto DistSq = [&](const VECTOR& u, const VECTOR& v) {
 		return LenSq(VSub(u, v));
 	};
 
-	{
-		const VECTOR cp = ClampPointToAABB(pL);
-		best = (std::min)(best, DistSq(pL, cp));
-		const VECTOR cq = ClampPointToAABB(qL);
-		best = (std::min)(best, DistSq(qL, cq));
-	}
-
-	auto ConsiderT = [&](float t) {
-		if (t <0.0f || t >1.0f) return;
-		const VECTOR s = VAdd(pL, VScale(dL, t));
-		const VECTOR cs = ClampPointToAABB(s);
-		best = (std::min)(best, DistSq(s, cs));
+	auto ConsiderPoint = [&](const VECTOR& segPointL) {
+		const VECTOR boxPointL = ClampPointToAABB(segPointL);
+		const float distSq = DistSq(segPointL, boxPointL);
+		if (distSq < bestDistSq) {
+			bestDistSq = distSq;
+			bestSegPointL = segPointL;
+			bestBoxPointL = boxPointL;
+		}
 	};
 
-	if (std::fabs(dL.x) >1e-6f) {
+	ConsiderPoint(pL);
+	ConsiderPoint(qL);
+
+	auto ConsiderT = [&](float t) {
+		if (t < 0.0f || t > 1.0f) return;
+		ConsiderPoint(VAdd(pL, VScale(dL, t)));
+	};
+
+	if (std::fabs(dL.x) > 1e-6f) {
 		ConsiderT((-hx - pL.x) / dL.x);
 		ConsiderT((hx - pL.x) / dL.x);
 	}
-	if (std::fabs(dL.y) >1e-6f) {
+	if (std::fabs(dL.y) > 1e-6f) {
 		ConsiderT((-hy - pL.y) / dL.y);
 		ConsiderT((hy - pL.y) / dL.y);
 	}
-	if (std::fabs(dL.z) >1e-6f) {
+	if (std::fabs(dL.z) > 1e-6f) {
 		ConsiderT((-hz - pL.z) / dL.z);
 		ConsiderT((hz - pL.z) / dL.z);
 	}
 
 	const float r = cap->GetRadius();
-	_narrowHit = (best <= r * r);
+	if (bestDistSq > r * r) return;
+
+	VECTOR diffL = VSub(bestSegPointL, bestBoxPointL);
+	float dist = std::sqrt((std::max)(bestDistSq, 1e-8f));
+	float pen = r - dist;
+	if (pen <= 0.0f) return;
+
+	VECTOR n;
+	if (dist > 1e-6f) {
+		const VECTOR diffW = VAdd(
+			VAdd(VScale(box->GetAxisX(), diffL.x), VScale(box->GetAxisY(), diffL.y)),
+			VScale(box->GetAxisZ(), diffL.z)
+		);
+		n = SafeNorm(diffW, box->GetAxisY());
+	}
+	else {
+		const float dx = hx - std::fabs(bestSegPointL.x);
+		const float dy = hy - std::fabs(bestSegPointL.y);
+		const float dz = hz - std::fabs(bestSegPointL.z);
+		if (dx <= dy && dx <= dz) n = VScale(box->GetAxisX(), (bestSegPointL.x >= 0.0f) ? 1.0f : -1.0f);
+		else if (dy <= dz) n = VScale(box->GetAxisY(), (bestSegPointL.y >= 0.0f) ? 1.0f : -1.0f);
+		else n = VScale(box->GetAxisZ(), (bestSegPointL.z >= 0.0f) ? 1.0f : -1.0f);
+		pen = r + (std::min)({ dx, dy, dz });
+	}
+
+	Contact ct;
+	ct.a = box;
+	ct.b = cap;
+	ct.normal = n;
+	ct.penetration = pen;
+	_contacts.push_back(ct);
+
+	const float wBox = (obox && !obox->isStatic) ? 1.0f : 0.0f;
+	const float wCap = (ocap && !ocap->isStatic) ? 1.0f : 0.0f;
+	const float wSum = wBox + wCap;
+	if (wSum <= 0.0f) return;
+
+	const float moveBox = (wBox / wSum) * pen;
+	const float moveCap = (wCap / wSum) * pen;
+
+	if (obox && !obox->isStatic) {
+		VECTOR p = obox->transform.LocalPosition();
+		p = VSub(p, VScale(n, moveBox));
+		obox->transform.SetLocalPosition(p);
+	}
+	if (ocap && !ocap->isStatic) {
+		VECTOR p = ocap->transform.LocalPosition();
+		p = VAdd(p, VScale(n, moveCap));
+		ocap->transform.SetLocalPosition(p);
+	}
+
+	box->UpdateShape();
+	cap->UpdateShape();
 }
 
 // 1フレームぶんのコライダ更新入口。
@@ -1250,7 +1251,7 @@ void ColliderManager::CheckBoxCapsule(Collider* a, Collider* b) {
 	auto ToLocal = [&](const VECTOR& w) {
 		const VECTOR d = VSub(w, box->GetCenter());
 		return VGet(Dot3(d, box->GetAxisX()), Dot3(d, box->GetAxisY()), Dot3(d, box->GetAxisZ()));
-	 };
+	};
 
 	const VECTOR pL = ToLocal(cap->GetBottom());
 	const VECTOR qL = ToLocal(cap->GetTop());

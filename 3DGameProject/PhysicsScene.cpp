@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <string>
+#include <deque>
 
 #include "CameraController.h"
 #include "CameraManager.h"
@@ -19,26 +20,64 @@ namespace {
 	CameraController _cameraController;
 	CameraController::CameraId _cameraId = 0;
 	bool _registered = false;
+	bool _isSpawningArena = false;
 
-	// 形状ごとの ObjectPool から物理デバッグオブジェクトを取得する
+	constexpr size_t _maxDynamicBoxCount = 20;
+	constexpr size_t _maxDynamicSphereCount = 30;
+	constexpr size_t _maxDynamicCapsuleCount = 20;
+
+	std::deque<PhysicsDebugClass*> _dynamicBoxes;
+	std::deque<PhysicsDebugClass*> _dynamicSpheres;
+	std::deque<PhysicsDebugClass*> _dynamicCapsules;
+
+	void ReleaseOldestIfNeeded_(std::deque<PhysicsDebugClass*>& objects, size_t maxCount) {
+		while (objects.size() >= maxCount && !objects.empty()) {
+			PhysicsDebugClass* oldest = objects.front();
+			objects.pop_front();
+			if (!oldest) continue;
+			ObjectManager::Instance().Release(oldest);
+		}
+	}
+
+	void RegisterDynamicObject_(PhysicsDebugClass* obj, std::deque<PhysicsDebugClass*>& objects, size_t maxCount) {
+		if (!obj) return;
+		if (_isSpawningArena) return;
+		ReleaseOldestIfNeeded_(objects, maxCount);
+		objects.push_back(obj);
+	}
+
+	void ClearDynamicTracking_() {
+		_dynamicBoxes.clear();
+		_dynamicSpheres.clear();
+		_dynamicCapsules.clear();
+	}
+
 	PhysicsDebugClass* SpawnPhysicsObject(const std::string& key, const VariantMap& params) {
 		return dynamic_cast<PhysicsDebugClass*>(ObjectManager::Instance().Spawn(key, params));
 	}
 
 	PhysicsDebugClass* SpawnPhysicsBox(const VariantMap& params) {
-		return SpawnPhysicsObject(PhysicsDebugBox::StaticPoolKey(), params);
+		auto* obj = SpawnPhysicsObject(PhysicsDebugBox::StaticPoolKey(), params);
+		RegisterDynamicObject_(obj, _dynamicBoxes, _maxDynamicBoxCount);
+		return obj;
 	}
 
 	PhysicsDebugClass* SpawnPhysicsSphere(const VariantMap& params) {
-		return SpawnPhysicsObject(PhysicsDebugSphere::StaticPoolKey(), params);
+		auto* obj = SpawnPhysicsObject(PhysicsDebugSphere::StaticPoolKey(), params);
+		RegisterDynamicObject_(obj, _dynamicSpheres, _maxDynamicSphereCount);
+		return obj;
 	}
 
 	PhysicsDebugClass* SpawnPhysicsCapsule(const VariantMap& params) {
-		return SpawnPhysicsObject(PhysicsDebugCapsule::StaticPoolKey(), params);
+		auto* obj = SpawnPhysicsObject(PhysicsDebugCapsule::StaticPoolKey(), params);
+		RegisterDynamicObject_(obj, _dynamicCapsules, _maxDynamicCapsuleCount);
+		return obj;
 	}
 
 	// 体験用の床・壁・斜面・積みオブジェクト群を配置する
 	void SpawnArena() {
+		_isSpawningArena = true;
+
 		SpawnPhysicsBox({
 			{"static", "true"},
 			{"px", "0"}, {"py", "-1.0"}, {"pz", "0"},
@@ -71,6 +110,7 @@ namespace {
 			{"static", "true"},
 			{"px", "-8.0"}, {"py", "0.2"}, {"pz", "-6.0"},
 			{"hx", "3.0"}, {"hy", "0.4"}, {"hz", "6.0"},
+			{"friction", "0.0"},
 			{"color", std::to_string(GetColor(255, 210, 120))}
 		});
 		if (ramp) {
@@ -112,6 +152,8 @@ namespace {
 				capsule->transform.SetLocalEulerRad(VGet(0.0f, 0.2f * i, 0.1f * i));
 			}
 		}
+
+		_isSpawningArena = false;
 	}
 
 	// カメラ前方に任意形状の物体を落とす
@@ -183,6 +225,7 @@ namespace {
 void PhysicsScene::Start() {
 	auto& cameraManager = CameraManager::Instance();
 	const int sceneId = SceneManager::Instance().CurrentSceneId();
+	ClearDynamicTracking_();
 
 	if (_cameraId == 0 || cameraManager.Get(_cameraId) == nullptr) {
 		_cameraId = _cameraController.SpawnAuto(sceneId, CameraTag::Debug, VGet(0.0f, 6.0f, -18.0f), VGet(0.18f, 0.0f, 0.0f));
@@ -240,5 +283,5 @@ void PhysicsScene::Draw() {
 	DrawString(10, 30, "MouseRight+WASDQE : Free Camera", GetColor(200, 220, 255));
 	DrawString(10, 50, "1:Box 2:Sphere 3:Capsule Drop", GetColor(255, 220, 140));
 	DrawString(10, 70, "F : Fire sphere projectile", GetColor(255, 180, 180));
-	DrawString(10, 90, "Observe stacking, bounce, friction and push-out behavior", GetColor(180, 255, 180));
+	DrawString(10, 90, "Sphere:30 Box:20 Capsule:20 / Oldest is pooled", GetColor(180, 255, 180));
 }

@@ -194,6 +194,7 @@ void PhysicsManager::IntegrateBodies(float stepDt) {
 }
 
 void PhysicsManager::SolveContacts(float stepDt) {
+	(void)stepDt;
 	const auto& contacts = ColliderManager::Instance().GetContacts();
 	if (contacts.empty()) return;
 
@@ -224,15 +225,9 @@ void PhysicsManager::SolveContacts(float stepDt) {
 			restitution = 0.0f;
 		}
 
-		const float penetrationSlop = 0.005f;
-		const float baumgarte = 0.2f;
-		const float bias = (ct.penetration > penetrationSlop)
-			? (baumgarte * (ct.penetration - penetrationSlop) / (stepDt > 1e-6f ? stepDt : 1e-6f))
-			: 0.0f;
-
 		float normalImpulseMagnitude = 0.0f;
-		if (normalVelocity < 0.0f || bias > 0.0f) {
-			normalImpulseMagnitude = (-(1.0f + restitution) * normalVelocity + bias) / invSum;
+		if (normalVelocity < 0.0f) {
+			normalImpulseMagnitude = (-(1.0f + restitution) * normalVelocity) / invSum;
 			if (normalImpulseMagnitude < 0.0f) {
 				normalImpulseMagnitude = 0.0f;
 			}

@@ -267,11 +267,21 @@ void PhysicsManager::SolveContacts(float stepDt) {
 		}
 
 		if (std::fabs(normal.y) > 0.707f) {
-			if (bodyA && invA > 0.0f && bodyA->_velocity.y < 0.0f) {
-				bodyA->_velocity.y = 0.0f;
+			if (normal.y > 0.0f) {
+				if (bodyA && invA > 0.0f && bodyA->_velocity.y > 0.0f) {
+					bodyA->_velocity.y = 0.0f;
+				}
+				if (bodyB && invB > 0.0f && bodyB->_velocity.y < 0.0f) {
+					bodyB->_velocity.y = 0.0f;
+				}
 			}
-			if (bodyB && invB > 0.0f && bodyB->_velocity.y < 0.0f) {
-				bodyB->_velocity.y = 0.0f;
+			else {
+				if (bodyA && invA > 0.0f && bodyA->_velocity.y < 0.0f) {
+					bodyA->_velocity.y = 0.0f;
+				}
+				if (bodyB && invB > 0.0f && bodyB->_velocity.y > 0.0f) {
+					bodyB->_velocity.y = 0.0f;
+				}
 			}
 		}
 

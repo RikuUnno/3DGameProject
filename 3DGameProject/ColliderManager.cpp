@@ -627,14 +627,17 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 
 	float bestPen = FLT_MAX;
 	VECTOR bestAxisW = VGet(1,0,0);
+	bool bestAxisIsFace = false;
 
-	auto ConsiderAxis = [&](const VECTOR& axisW, float dist, float ra, float rb) {
+	auto ConsiderAxis = [&](const VECTOR& axisW, float dist, float ra, float rb, bool isFaceAxis) {
 		// pen = (両者の投影半径の和) - (中心間投影距離)
 		// 最小の貫通量を持つ軸が MTV になる。
 		const float sep = (ra + rb) - dist;
-		if (sep < bestPen) {
+		const float bias = (!isFaceAxis && bestAxisIsFace) ? 1e-4f : 0.0f;
+		if (sep + bias < bestPen || (isFaceAxis && !bestAxisIsFace && sep <= bestPen + 1e-4f)) {
 			bestPen = sep;
 			bestAxisW = axisW;
+			bestAxisIsFace = isFaceAxis;
 		}
 	};
 
@@ -642,14 +645,14 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 		float ra = aExt[i];
 		float rb = bExt[0] * AbsR[i][0] + bExt[1] * AbsR[i][1] + bExt[2] * AbsR[i][2];
 		float dist = std::fabs(tA[i]);
-		ConsiderAxis((i ==0) ? A0 : (i ==1) ? A1 : A2, dist, ra, rb);
+		ConsiderAxis((i ==0) ? A0 : (i ==1) ? A1 : A2, dist, ra, rb, true);
 	}
 
 	for (int j =0; j <3; ++j) {
 		float ra = aExt[0] * AbsR[0][j] + aExt[1] * AbsR[1][j] + aExt[2] * AbsR[2][j];
 		float rb = bExt[j];
 		float dist = std::fabs(tA[0] * R[0][j] + tA[1] * R[1][j] + tA[2] * R[2][j]);
-		ConsiderAxis((j ==0) ? B0 : (j ==1) ? B1 : B2, dist, ra, rb);
+		ConsiderAxis((j ==0) ? B0 : (j ==1) ? B1 : B2, dist, ra, rb, true);
 	}
 
 	auto CrossAxis = [&](const VECTOR& aAxis, const VECTOR& bAxis) {
@@ -665,7 +668,7 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 			const float ra = aExt[1] * AbsR[2][0] + aExt[2] * AbsR[1][0];
 			const float rb = bExt[1] * AbsR[0][2] + bExt[2] * AbsR[0][1];
 			const float dist = std::fabs(tA[2] * R[1][0] - tA[1] * R[2][0]);
-			ConsiderAxis(ax, dist, ra, rb);
+			ConsiderAxis(ax, dist, ra, rb, false);
 		}
 	}
 	// i=0,j=1
@@ -677,7 +680,7 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 			const float ra = aExt[1] * AbsR[2][1] + aExt[2] * AbsR[1][1];
 			const float rb = bExt[0] * AbsR[0][2] + bExt[2] * AbsR[0][0];
 			const float dist = std::fabs(tA[2] * R[1][1] - tA[1] * R[2][1]);
-			ConsiderAxis(ax, dist, ra, rb);
+			ConsiderAxis(ax, dist, ra, rb, false);
 		}
 	}
 	// i=0,j=2
@@ -689,7 +692,7 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 			const float ra = aExt[1] * AbsR[2][2] + aExt[2] * AbsR[1][2];
 			const float rb = bExt[0] * AbsR[0][1] + bExt[1] * AbsR[0][0];
 			const float dist = std::fabs(tA[2] * R[1][2] - tA[1] * R[2][2]);
-			ConsiderAxis(ax, dist, ra, rb);
+			ConsiderAxis(ax, dist, ra, rb, false);
 		}
 	}
 	// i=1,j=0
@@ -701,7 +704,7 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 			const float ra = aExt[0] * AbsR[2][0] + aExt[2] * AbsR[0][0];
 			const float rb = bExt[1] * AbsR[1][2] + bExt[2] * AbsR[1][1];
 			const float dist = std::fabs(tA[0] * R[2][0] - tA[2] * R[0][0]);
-			ConsiderAxis(ax, dist, ra, rb);
+			ConsiderAxis(ax, dist, ra, rb, false);
 		}
 	}
 	// i=1,j=1
@@ -713,7 +716,7 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 			const float ra = aExt[0] * AbsR[2][1] + aExt[2] * AbsR[0][1];
 			const float rb = bExt[0] * AbsR[1][2] + bExt[2] * AbsR[1][0];
 			const float dist = std::fabs(tA[0] * R[2][1] - tA[2] * R[0][1]);
-			ConsiderAxis(ax, dist, ra, rb);
+			ConsiderAxis(ax, dist, ra, rb, false);
 		}
 	}
 	// i=1,j=2
@@ -725,7 +728,7 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 			const float ra = aExt[0] * AbsR[2][2] + aExt[2] * AbsR[0][2];
 			const float rb = bExt[0] * AbsR[1][1] + bExt[1] * AbsR[1][0];
 			const float dist = std::fabs(tA[0] * R[2][2] - tA[2] * R[0][2]);
-			ConsiderAxis(ax, dist, ra, rb);
+			ConsiderAxis(ax, dist, ra, rb, false);
 		}
 	}
 	// i=2,j=0
@@ -737,7 +740,7 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 			const float ra = aExt[0] * AbsR[1][0] + aExt[1] * AbsR[0][0];
 			const float rb = bExt[1] * AbsR[2][2] + bExt[2] * AbsR[2][1];
 			const float dist = std::fabs(tA[1] * R[0][0] - tA[0] * R[1][0]);
-			ConsiderAxis(ax, dist, ra, rb);
+			ConsiderAxis(ax, dist, ra, rb, false);
 		}
 	}
 	// i=2,j=1
@@ -749,7 +752,7 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 			const float ra = aExt[0] * AbsR[1][1] + aExt[1] * AbsR[0][1];
 			const float rb = bExt[0] * AbsR[2][2] + bExt[2] * AbsR[2][0];
 			const float dist = std::fabs(tA[1] * R[0][1] - tA[0] * R[1][1]);
-			ConsiderAxis(ax, dist, ra, rb);
+			ConsiderAxis(ax, dist, ra, rb, false);
 		}
 	}
 	// i=2,j=2
@@ -761,7 +764,7 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 			const float ra = aExt[0] * AbsR[1][2] + aExt[1] * AbsR[0][2];
 			const float rb = bExt[0] * AbsR[2][1] + bExt[1] * AbsR[2][0];
 			const float dist = std::fabs(tA[1] * R[0][2] - tA[0] * R[1][2]);
-			ConsiderAxis(ax, dist, ra, rb);
+			ConsiderAxis(ax, dist, ra, rb, false);
 		}
 	}
 

@@ -3,6 +3,7 @@
 #include "ObjectPool.h"
 #include "GameObject.h"
 #include "Time.h"
+#include "ThreadPool.h"
 #include <algorithm>
 #include <iostream>
 #include <functional>
@@ -229,12 +230,16 @@ bool ObjectManager::UnregisterPool(const std::string& key) {
 
 void ObjectManager::UpdateAll(float dtSec) {
 	std::lock_guard lk(_mtx);
-	for (auto& up : _objects) {
-		GameObject* obj = up.get();
-		if (!obj) continue;
-		if (!obj->IsActive()) continue;
+	const size_t count = _objects.size();
+	if (count == 0) return;
+
+	// 各オブジェクトのUpdateは独立しているため並列に実行可能
+	ThreadPool::Instance().ParallelFor(0, count, [&](size_t i) {
+		GameObject* obj = _objects[i].get();
+		if (!obj) return;
+		if (!obj->IsActive()) return;
 		obj->Update(dtSec);
-	}
+	}, 4);
 }
 
 void ObjectManager::DrawAll() {

@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <atomic>
+#include <mutex>
 
 class ColliderManager {
 private: // ペア状態管理（※unordered_set のメンバより先に定義が必要）
@@ -112,16 +113,24 @@ public:
 		Collider* a = nullptr; // contact normal は a -> b
 		Collider* b = nullptr;
 		VECTOR normal = VGet(0,0,0);
+		VECTOR point  = VGet(0,0,0); // ワールド空間の接触点
 		float penetration = 0.0f;
 	};
 
 	const std::vector<Contact>& GetContacts() const noexcept { return _contacts; }
+
+	// 登録コライダー一覧の取得（Raycast 等で使用）
+	const std::vector<Collider*>& GetColliders() const noexcept { return _colliders; }
+
+	// Find first collider owned by the given GameObject (for inertia computation etc.)
+	Collider* FindColliderByOwner(GameObject* owner) const noexcept;
 
 private:
 	// 空間分割（Spatial Hash）セルサイズ
 	float _cellSize =50.0f;
 	float _deltaTimeSec = 1.0f / 60.0f;
 
+	mutable std::mutex _mtx;							// スレッド安全用ミューテックス
 	std::vector<Collider*> _colliders{}; 	// 登録コライダー群
 	bool _narrowHit = false; 			// 詳細判定結果
 	std::vector<Contact> _contacts; // 今フレームの接触情報

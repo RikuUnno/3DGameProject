@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -161,6 +161,7 @@
     <ClCompile Include="PhysicsDebugClass.cpp" />
     <ClCompile Include="PhysicsManager.cpp" />
     <ClCompile Include="PhysicsScene.cpp" />
+    <ClCompile Include="Raycast.cpp" />
     <ClCompile Include="SceneManager.cpp" />
     <ClCompile Include="SceneTransition.cpp" />
     <ClCompile Include="Se.cpp" />
@@ -210,6 +211,8 @@
     <ClInclude Include="PhysicsManager.h" />
     <ClInclude Include="PhysicsScene.h" />
     <ClInclude Include="Pool.h" />
+    <ClInclude Include="Ray.h" />
+    <ClInclude Include="Raycast.h" />
     <ClInclude Include="SceneManager.h" />
     <ClInclude Include="SceneTpl.h" />
     <ClInclude Include="SceneTransition.h" />
@@ -217,6 +220,7 @@
     <ClInclude Include="SeManager.h" />
     <ClInclude Include="SePool.h" />
     <ClInclude Include="SphereCollider.h" />
+    <ClInclude Include="ThreadPool.h" />
     <ClInclude Include="Time.h" />
     <ClInclude Include="TitleScene.h" />
     <ClInclude Include="Transform.h" />

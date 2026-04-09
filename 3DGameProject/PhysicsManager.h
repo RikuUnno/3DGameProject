@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <atomic>
+#include <mutex>
 
 #include "DxLib.h"
 #include "Manager.h"
@@ -70,6 +71,7 @@ private:
 
 private:
 	std::atomic_bool _shuttingDown{ false }; 		// 終了処理ガード：終了中は Update/Register/Unregister を no-op にする
+	mutable std::mutex _mtx;						// スレッド安全用ミューテックス
 	std::vector<PhysicsController*> _controllers{}; 	// 登録された Controller のリスト
 	std::vector<PhysicsBody*> _bodies{}; 			// 登録された PhysicsBody のリスト
 

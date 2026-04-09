@@ -1,4 +1,5 @@
 #include "PhysicsManager.h"
+#include "PhysicsManager.h"
 
 #include <algorithm>
 #include <cmath>
@@ -7,7 +8,9 @@
 #include "PhysicsBody.h"
 #include "GameObject.h"
 #include "ColliderManager.h"
+#include "Collider.h"
 #include "Transform.h"
+#include "ThreadPool.h"
 
 namespace {
 	inline float Dot3(const VECTOR& a, const VECTOR& b) noexcept {
@@ -48,6 +51,7 @@ namespace {
 void PhysicsManager::Shutdown() {
 	const bool was = _shuttingDown.exchange(true, std::memory_order_relaxed);
 	if (was) return;
+	std::lock_guard lk(_mtx);
 	_controllers.clear();
 	_bodies.clear();
 	_accumulator = 0.0f;
@@ -105,11 +109,20 @@ void PhysicsManager::StepSimulation(float stepDt) {
 }
 
 void PhysicsManager::IntegrateBodies(float stepDt) {
-	for (auto* body : _bodies) {
-		if (!body) continue;
-		if (!body->_enabled) continue;
-		if (!body->_owner) continue;
-		if (!body->_owner->IsActive()) continue;
+	const size_t bodyCount = _bodies.size();
+	if (bodyCount == 0) return;
+
+	// 各ボディの積分は独立しているため並列に実行可能
+	const bool groundEnabled = _groundPlaneEnabled;
+	const float groundY = _groundPlaneY;
+	const float gravityY = _gravityY;
+
+	ThreadPool::Instance().ParallelFor(0, bodyCount, [&](size_t idx) {
+		PhysicsBody* body = _bodies[idx];
+		if (!body) return;
+		if (!body->_enabled) return;
+		if (!body->_owner) return;
+		if (!body->_owner->IsActive()) return;
 
 		body->_previousPosition = body->_owner->transform.LocalPosition();
 		body->_previousRotation = body->_owner->transform.LocalRotation();
@@ -126,11 +139,11 @@ void PhysicsManager::IntegrateBodies(float stepDt) {
 			body->ClearAccumulators();
 			body->_velocity = VGet(0, 0, 0);
 			body->_angularVelocity = VGet(0, 0, 0);
-			continue;
+			return;
 		}
 
 		if (body->_isSleeping && LenSq(body->_force) <= 1e-8f && LenSq(body->_torque) <= 1e-8f) {
-			continue;
+			return;
 		}
 		if (LenSq(body->_force) > 1e-8f || LenSq(body->_torque) > 1e-8f) {
 			body->WakeUp();
@@ -139,17 +152,18 @@ void PhysicsManager::IntegrateBodies(float stepDt) {
 		const float inverseMass = body->InverseMass();
 		if (inverseMass <= 0.0f) {
 			body->ClearAccumulators();
-			continue;
+			return;
 		}
 
 		VECTOR acceleration = VScale(body->_force, inverseMass);
 		if (body->_useGravity) {
-			acceleration.y += _gravityY * body->_gravityScale;
+			acceleration.y += gravityY * body->_gravityScale;
 		}
 		body->_velocity = VAdd(body->_velocity, VScale(acceleration, stepDt));
 
 		if (!body->_freezeRotation) {
-			const VECTOR angularAcceleration = VScale(body->_torque, inverseMass);
+			// angular acceleration = I^{-1} * torque (using diagonal inertia tensor)
+			const VECTOR angularAcceleration = body->ApplyInverseInertia(body->_torque);
 			body->_angularVelocity = VAdd(body->_angularVelocity, VScale(angularAcceleration, stepDt));
 		}
 
@@ -170,10 +184,16 @@ void PhysicsManager::IntegrateBodies(float stepDt) {
 
 		VECTOR position = body->_owner->transform.LocalPosition();
 		position = VAdd(position, VScale(body->_velocity, stepDt));
-		if (_groundPlaneEnabled && position.y < _groundPlaneY) {
-			position.y = _groundPlaneY;
+		if (groundEnabled && position.y < groundY) {
+			position.y = groundY;
 			if (body->_velocity.y < 0.0f) {
 				body->_velocity.y = 0.0f;
+			}
+			// Ground plane contact friction: apply mild angular damping.
+			// Must be weak enough to allow gravity to right a tilted box.
+			if (!body->_freezeRotation && body->_friction > 0.0f) {
+				const float groundFrictionDamp = 1.0f / (1.0f + body->_friction * 0.5f * stepDt);
+				body->_angularVelocity = VScale(body->_angularVelocity, groundFrictionDamp);
 			}
 		}
 		body->_owner->transform.SetLocalPosition(position);
@@ -190,7 +210,7 @@ void PhysicsManager::IntegrateBodies(float stepDt) {
 		body->_hasMovePositionTarget = false;
 		body->_hasMoveRotationTarget = false;
 		body->ClearAccumulators();
-	}
+	}, 4); // grainSize=4: 4ボディ以下はシーケンシャル
 }
 
 void PhysicsManager::SolveContacts(float stepDt) {
@@ -212,9 +232,21 @@ void PhysicsManager::SolveContacts(float stepDt) {
 		if (invSum <= 1e-8f) continue;
 
 		const VECTOR normal = SafeNormalize(ct.normal, VGet(0, 1, 0));
-		const VECTOR velocityA = bodyA ? bodyA->_velocity : VGet(0, 0, 0);
-		const VECTOR velocityB = bodyB ? bodyB->_velocity : VGet(0, 0, 0);
-		VECTOR relativeVelocity = VSub(velocityB, velocityA);
+
+		// Relative vectors from body centers to contact point
+		const VECTOR centerA = (ownerA) ? ownerA->transform.WorldPosition() : VGet(0, 0, 0);
+		const VECTOR centerB = (ownerB) ? ownerB->transform.WorldPosition() : VGet(0, 0, 0);
+		const VECTOR rA = VSub(ct.point, centerA);
+		const VECTOR rB = VSub(ct.point, centerB);
+
+		// Point velocities: v + omega x r
+		const VECTOR velA_linear = bodyA ? bodyA->_velocity : VGet(0, 0, 0);
+		const VECTOR velA_angular = bodyA ? VCross(bodyA->_angularVelocity, rA) : VGet(0, 0, 0);
+		const VECTOR velB_linear = bodyB ? bodyB->_velocity : VGet(0, 0, 0);
+		const VECTOR velB_angular = bodyB ? VCross(bodyB->_angularVelocity, rB) : VGet(0, 0, 0);
+		const VECTOR velA_point = VAdd(velA_linear, velA_angular);
+		const VECTOR velB_point = VAdd(velB_linear, velB_angular);
+		VECTOR relativeVelocity = VSub(velB_point, velA_point);
 		const float normalVelocity = Dot3(relativeVelocity, normal);
 
 		float restitution = 0.0f;
@@ -225,9 +257,27 @@ void PhysicsManager::SolveContacts(float stepDt) {
 			restitution = 0.0f;
 		}
 
+		// Effective inverse mass including rotational contribution via inertia tensor:
+		// K = 1/mA + 1/mB + n . ((I_A^{-1} (rA x n)) x rA) + n . ((I_B^{-1} (rB x n)) x rB)
+		const VECTOR rAxN = VCross(rA, normal);
+		const VECTOR rBxN = VCross(rB, normal);
+
+		float angularTermA = 0.0f;
+		if (bodyA && invA > 0.0f && !bodyA->_freezeRotation) {
+			const VECTOR iInvRAxN = bodyA->ApplyInverseInertia(rAxN);
+			angularTermA = Dot3(VCross(iInvRAxN, rA), normal);
+		}
+		float angularTermB = 0.0f;
+		if (bodyB && invB > 0.0f && !bodyB->_freezeRotation) {
+			const VECTOR iInvRBxN = bodyB->ApplyInverseInertia(rBxN);
+			angularTermB = Dot3(VCross(iInvRBxN, rB), normal);
+		}
+		const float effectiveInvMass = invSum + angularTermA + angularTermB;
+		if (effectiveInvMass <= 1e-8f) continue;
+
 		float normalImpulseMagnitude = 0.0f;
 		if (normalVelocity < 0.0f) {
-			normalImpulseMagnitude = (-(1.0f + restitution) * normalVelocity) / invSum;
+			normalImpulseMagnitude = (-(1.0f + restitution) * normalVelocity) / effectiveInvMass;
 			if (normalImpulseMagnitude < 0.0f) {
 				normalImpulseMagnitude = 0.0f;
 			}
@@ -236,19 +286,45 @@ void PhysicsManager::SolveContacts(float stepDt) {
 		const VECTOR normalImpulse = VScale(normal, normalImpulseMagnitude);
 		if (bodyA && invA > 0.0f) {
 			bodyA->_velocity = VSub(bodyA->_velocity, VScale(normalImpulse, invA));
+			if (!bodyA->_freezeRotation) {
+				bodyA->_angularVelocity = VSub(bodyA->_angularVelocity,
+					bodyA->ApplyInverseInertia(VCross(rA, normalImpulse)));
+			}
 			bodyA->WakeUp();
 		}
 		if (bodyB && invB > 0.0f) {
 			bodyB->_velocity = VAdd(bodyB->_velocity, VScale(normalImpulse, invB));
+			if (!bodyB->_freezeRotation) {
+				bodyB->_angularVelocity = VAdd(bodyB->_angularVelocity,
+					bodyB->ApplyInverseInertia(VCross(rB, normalImpulse)));
+			}
 			bodyB->WakeUp();
 		}
 
-		relativeVelocity = VSub(bodyB ? bodyB->_velocity : VGet(0, 0, 0), bodyA ? bodyA->_velocity : VGet(0, 0, 0));
+		// Friction (tangential impulse)
+		const VECTOR velA_point2 = VAdd(bodyA ? bodyA->_velocity : VGet(0, 0, 0),
+			bodyA ? VCross(bodyA->_angularVelocity, rA) : VGet(0, 0, 0));
+		const VECTOR velB_point2 = VAdd(bodyB ? bodyB->_velocity : VGet(0, 0, 0),
+			bodyB ? VCross(bodyB->_angularVelocity, rB) : VGet(0, 0, 0));
+		relativeVelocity = VSub(velB_point2, velA_point2);
 		VECTOR tangent = TangentFromRelativeVelocity(relativeVelocity, normal);
 		const float tangentLenSq = LenSq(tangent);
 		if (tangentLenSq > 1e-8f && normalImpulseMagnitude > 0.0f) {
 			tangent = VScale(tangent, 1.0f / std::sqrt(tangentLenSq));
-			float tangentImpulseMagnitude = -Dot3(relativeVelocity, tangent) / invSum;
+
+			const VECTOR rAxT = VCross(rA, tangent);
+			const VECTOR rBxT = VCross(rB, tangent);
+			float angTermTA = 0.0f;
+			if (bodyA && invA > 0.0f && !bodyA->_freezeRotation) {
+				angTermTA = Dot3(VCross(bodyA->ApplyInverseInertia(rAxT), rA), tangent);
+			}
+			float angTermTB = 0.0f;
+			if (bodyB && invB > 0.0f && !bodyB->_freezeRotation) {
+				angTermTB = Dot3(VCross(bodyB->ApplyInverseInertia(rBxT), rB), tangent);
+			}
+			const float effectiveInvMassT = invSum + angTermTA + angTermTB;
+
+			float tangentImpulseMagnitude = -Dot3(relativeVelocity, tangent) / effectiveInvMassT;
 			float friction = 0.0f;
 			if (bodyA && bodyB) friction = std::sqrt((std::max)(0.0f, bodyA->_friction) * (std::max)(0.0f, bodyB->_friction));
 			else if (bodyA) friction = (std::max)(0.0f, bodyA->_friction);
@@ -260,9 +336,17 @@ void PhysicsManager::SolveContacts(float stepDt) {
 
 			if (bodyA && invA > 0.0f) {
 				bodyA->_velocity = VSub(bodyA->_velocity, VScale(tangentImpulse, invA));
+				if (!bodyA->_freezeRotation) {
+					bodyA->_angularVelocity = VSub(bodyA->_angularVelocity,
+						bodyA->ApplyInverseInertia(VCross(rA, tangentImpulse)));
+				}
 			}
 			if (bodyB && invB > 0.0f) {
 				bodyB->_velocity = VAdd(bodyB->_velocity, VScale(tangentImpulse, invB));
+				if (!bodyB->_freezeRotation) {
+					bodyB->_angularVelocity = VAdd(bodyB->_angularVelocity,
+						bodyB->ApplyInverseInertia(VCross(rB, tangentImpulse)));
+				}
 			}
 		}
 
@@ -282,6 +366,36 @@ void PhysicsManager::SolveContacts(float stepDt) {
 				if (bodyB && invB > 0.0f && bodyB->_velocity.y > 0.0f) {
 					bodyB->_velocity.y = 0.0f;
 				}
+			}
+		}
+
+		// Rolling friction: when in contact, apply a small damping to angular velocity
+		// to simulate rolling resistance. This must be weak enough to allow restoring
+		// torques (e.g., gravity righting a tilted box) to work properly.
+		if (normalImpulseMagnitude > 0.0f) {
+			float friction = 0.0f;
+			if (bodyA && bodyB) friction = std::sqrt((std::max)(0.0f, bodyA->_friction) * (std::max)(0.0f, bodyB->_friction));
+			else if (bodyA) friction = (std::max)(0.0f, bodyA->_friction);
+			else if (bodyB) friction = (std::max)(0.0f, bodyB->_friction);
+
+			if (friction > 0.0f) {
+				// Use a small rolling friction coefficient (much less than sliding friction)
+				const float rollingCoeff = friction * 0.05f;
+				auto ApplyRollingFriction = [&](PhysicsBody* body, float invM, const VECTOR& r) {
+					if (!body || invM <= 0.0f || body->_freezeRotation) return;
+					const float angSpeed = Len3(body->_angularVelocity);
+					if (angSpeed <= 1e-7f) return;
+					const float rLen = Len3(r);
+					const float maxRollingImpulse = rollingCoeff * normalImpulseMagnitude * (std::max)(rLen, 0.01f);
+					const VECTOR ii = body->InverseInertiaDiag();
+					const float avgInvI = (ii.x + ii.y + ii.z) / 3.0f;
+					float angularReduction = maxRollingImpulse * avgInvI;
+					angularReduction = (std::min)(angularReduction, angSpeed);
+					const float scale = 1.0f - angularReduction / angSpeed;
+					body->_angularVelocity = VScale(body->_angularVelocity, (std::max)(scale, 0.0f));
+				};
+				ApplyRollingFriction(bodyA, invA, rA);
+				ApplyRollingFriction(bodyB, invB, rB);
 			}
 		}
 
@@ -339,6 +453,7 @@ PhysicsBody* PhysicsManager::FindBodyByOwner(GameObject* owner) const {
 void PhysicsManager::Register(PhysicsController* controller) {
 	if (IsShuttingDown()) return;
 	if (!controller) return;
+	std::lock_guard lk(_mtx);
 	if (std::find(_controllers.begin(), _controllers.end(), controller) != _controllers.end()) return;
 	_controllers.push_back(controller);
 }
@@ -346,6 +461,7 @@ void PhysicsManager::Register(PhysicsController* controller) {
 void PhysicsManager::Unregister(PhysicsController* controller) {
 	if (IsShuttingDown()) return;
 	if (!controller) return;
+	std::lock_guard lk(_mtx);
 	auto it = std::remove(_controllers.begin(), _controllers.end(), controller);
 	_controllers.erase(it, _controllers.end());
 }
@@ -353,17 +469,22 @@ void PhysicsManager::Unregister(PhysicsController* controller) {
 void PhysicsManager::RegisterBody(PhysicsBody* body) {
 	if (IsShuttingDown()) return;
 	if (!body) return;
+	std::lock_guard lk(_mtx);
 	if (std::find(_bodies.begin(), _bodies.end(), body) != _bodies.end()) return;
 	_bodies.push_back(body);
 	if (body->_owner) {
 		body->_previousPosition = body->_owner->transform.LocalPosition();
 		body->_previousRotation = body->_owner->transform.LocalRotation();
+		// Compute inertia tensor from associated collider shape
+		Collider* col = ColliderManager::Instance().FindColliderByOwner(body->_owner);
+		body->ComputeInertia(col);
 	}
 }
 
 void PhysicsManager::UnregisterBody(PhysicsBody* body) {
 	if (IsShuttingDown()) return;
 	if (!body) return;
+	std::lock_guard lk(_mtx);
 	auto it = std::remove(_bodies.begin(), _bodies.end(), body);
 	_bodies.erase(it, _bodies.end());
 }

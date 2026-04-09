@@ -5,6 +5,7 @@
 #include "BoxCollider.h"
 #include "CapsuleCollider.h"
 #include "Assert.h"
+#include "ThreadPool.h"
 #include <algorithm>
 #include <cmath>
 #include <cfloat>
@@ -135,6 +136,7 @@ void ColliderManager::Shutdown() noexcept {
 		return;
 	}
 
+	std::lock_guard lk(_mtx);
 	_currPairs.clear();
 	_prevPairs.clear();
 	_colliders.clear();
@@ -260,10 +262,15 @@ AABB ColliderManager::GetSweptAABB(Collider* collider) const {
 // 全コライダのワールド形状更新。
 // Transform 変更後に narrow-phase へ入る前提をそろえる。
 void ColliderManager::UpdateAllShapes() {
-	for (auto* c : _colliders) {
-		if (!c) continue;
+	const size_t count = _colliders.size();
+	if (count == 0) return;
+
+	// 各コライダーの形状更新は独立しているため並列に実行可能
+	ThreadPool::Instance().ParallelFor(0, count, [&](size_t i) {
+		Collider* c = _colliders[i];
+		if (!c) return;
 		c->UpdateShape();
-	}
+	}, 8);
 }
 
 // 今フレームの衝突候補を再構築。
@@ -449,6 +456,7 @@ void ColliderManager::ResolvePushOut(Collider* a, Collider* b) {
 
 // Sphere-Sphere 押し戻し。
 // 中心間ベクトルを法線とし、半径和との差分だけ分離する。
+// pen <= 0（すり抜け済み）の場合は CCD スイープで衝突時刻を求め巻き戻す。
 void ColliderManager::PushOutSphereSphere(Collider* a, Collider* b) {
 	auto* sa = dynamic_cast<SphereCollider*>(a);
 	auto* sb = dynamic_cast<SphereCollider*>(b);
@@ -463,17 +471,83 @@ void ColliderManager::PushOutSphereSphere(Collider* a, Collider* b) {
 	const VECTOR d = VSub(cb, ca);
 	const float dist = std::sqrt((std::max)(LenSq(d), 1e-8f));
 	const float r = sa->GetRadius() + sb->GetRadius();
-	const float pen = r - dist;
-	if (pen <= 0.0f) return;
+	float pen = r - dist;
 
-	const VECTOR n = VScale(d, 1.0f / dist);
+	VECTOR n;
+	bool ccdResolved = false;
+
+	if (pen > 0.0f) {
+		// 通常の重なりケース
+		n = VScale(d, 1.0f / dist);
+	}
+	else {
+		// CCD: 前フレーム位置からのスイープで衝突時刻を求める
+		auto prevItA = _prevAABBs.find(sa);
+		auto prevItB = _prevAABBs.find(sb);
+		if (prevItA == _prevAABBs.end() || prevItB == _prevAABBs.end()) return;
+
+		const VECTOR prevA = prevItA->second.center;
+		const VECTOR prevB = prevItB->second.center;
+
+		// 相対移動: A固定で B の相対軌道
+		const VECTOR relPrev = VSub(prevB, prevA);
+		const VECTOR relCurr = VSub(cb, ca);
+		const VECTOR relDir = VSub(relCurr, relPrev);
+		const float a2 = LenSq(relDir);
+		if (a2 < 1e-8f) return;
+		const float b2 = 2.0f * Dot3(relPrev, relDir);
+		const float c2 = LenSq(relPrev) - r * r;
+		const float disc = b2 * b2 - 4.0f * a2 * c2;
+		if (disc < 0.0f) return;
+		const float sqrtDisc = std::sqrt(disc);
+		const float hitT = (-b2 - sqrtDisc) / (2.0f * a2);
+		if (hitT < 0.0f || hitT > 1.0f) return;
+
+		// 衝突時刻の位置に巻き戻す
+		const VECTOR hitA = VAdd(prevA, VScale(VSub(ca, prevA), hitT));
+		const VECTOR hitB = VAdd(prevB, VScale(VSub(cb, prevB), hitT));
+		const VECTOR hitD = VSub(hitB, hitA);
+		const float hitDist = std::sqrt((std::max)(LenSq(hitD), 1e-8f));
+		n = VScale(hitD, 1.0f / hitDist);
+
+		// 衝突面にちょうど接する位置 + 微小マージン
+		const VECTOR targetA = VSub(hitA, VScale(n, 1e-4f));
+		const VECTOR targetB = VAdd(hitB, VScale(n, 1e-4f));
+
+		const float wA = (oa && !oa->isStatic) ? 1.0f : 0.0f;
+		const float wB = (ob && !ob->isStatic) ? 1.0f : 0.0f;
+
+		if (oa && !oa->isStatic) {
+			const VECTOR deltaA = VSub(targetA, ca);
+			VECTOR p = oa->transform.LocalPosition();
+			p = VAdd(p, deltaA);
+			oa->transform.SetLocalPosition(p);
+		}
+		if (ob && !ob->isStatic) {
+			const VECTOR deltaB = VSub(targetB, cb);
+			VECTOR p = ob->transform.LocalPosition();
+			p = VAdd(p, deltaB);
+			ob->transform.SetLocalPosition(p);
+		}
+
+		pen = 1e-4f;
+		ccdResolved = true;
+		sa->UpdateShape();
+		sb->UpdateShape();
+	}
+
+	// 接触点は2球の中心を結ぶ線分上、半径比で内分した位置
+	const VECTOR contactPoint = VAdd(sa->GetCenter(), VScale(n, sa->GetRadius()));
 
 	Contact ct;
 	ct.a = sa;
 	ct.b = sb;
 	ct.normal = n;
+	ct.point = contactPoint;
 	ct.penetration = pen;
 	_contacts.push_back(ct);
+
+	if (ccdResolved) return;
 
 	const float wA = (oa && !oa->isStatic) ? 1.0f : 0.0f;
 	const float wB = (ob && !ob->isStatic) ? 1.0f : 0.0f;
@@ -511,8 +585,12 @@ void ColliderManager::PushOutSphereBox(Collider* a, Collider* b) {
 
 	GameObject* os = static_cast<Collider*>(s)->owner;
 	GameObject* obox = static_cast<Collider*>(box)->owner;
-	if (!os || os->isStatic) return;
+	if (!os && !obox) return;
 	if (obox && os == obox) return;
+
+	const bool sFixed = (!os) || os->isStatic;
+	const bool boxFixed = (!obox) || obox->isStatic;
+	if (sFixed && boxFixed) return;
 
 	const VECTOR c = s->GetCenter();
 	const VECTOR d = VSub(c, box->GetCenter());
@@ -561,18 +639,24 @@ void ColliderManager::PushOutSphereBox(Collider* a, Collider* b) {
 		pen = Len3(centerDelta);
 		if (pen < 1e-4f) pen = 1e-4f;
 
-		VECTOR p = os->transform.LocalPosition();
-		p = VAdd(p, centerDelta);
-		os->transform.SetLocalPosition(p);
+		if (os && !os->isStatic) {
+			VECTOR p = os->transform.LocalPosition();
+			p = VAdd(p, centerDelta);
+			os->transform.SetLocalPosition(p);
+		}
 		s->UpdateShape();
 		box->UpdateShape();
 		ccdResolved = true;
 	}
 
+	// 接触点は球中心からOBB表面への最近点
+	const VECTOR contactPoint = VSub(s->GetCenter(), VScale(n, s->GetRadius()));
+
 	Contact ct;
 	ct.a = box;
 	ct.b = s;
 	ct.normal = n;
+	ct.point = contactPoint;
 	ct.penetration = pen;
 	_contacts.push_back(ct);
 
@@ -580,9 +664,25 @@ void ColliderManager::PushOutSphereBox(Collider* a, Collider* b) {
 		return;
 	}
 
-	VECTOR p = os->transform.LocalPosition();
-	p = VAdd(p, VScale(n, pen));
-	os->transform.SetLocalPosition(p);
+	// 双方向の押し戻し
+	const float wS = (!sFixed) ? 1.0f : 0.0f;
+	const float wBox = (!boxFixed) ? 1.0f : 0.0f;
+	const float wSum = wS + wBox;
+	if (wSum <= 0.0f) return;
+
+	const float moveS = (wS / wSum) * pen;
+	const float moveBox = (wBox / wSum) * pen;
+
+	if (os && !os->isStatic) {
+		VECTOR p = os->transform.LocalPosition();
+		p = VAdd(p, VScale(n, moveS));
+		os->transform.SetLocalPosition(p);
+	}
+	if (obox && !obox->isStatic) {
+		VECTOR p = obox->transform.LocalPosition();
+		p = VSub(p, VScale(n, moveBox));
+		obox->transform.SetLocalPosition(p);
+	}
 
 	s->UpdateShape();
 	box->UpdateShape();
@@ -628,16 +728,18 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 	float bestPen = FLT_MAX;
 	VECTOR bestAxisW = VGet(1,0,0);
 	bool bestAxisIsFace = false;
+	int bestFaceOwner = -1; // 0 = face of A, 1 = face of B, -1 = edge
+	int bestFaceIndex = -1; // which axis (0,1,2)
 
-	auto ConsiderAxis = [&](const VECTOR& axisW, float dist, float ra, float rb, bool isFaceAxis) {
-		// pen = (両者の投影半径の和) - (中心間投影距離)
-		// 最小の貫通量を持つ軸が MTV になる。
+	auto ConsiderAxis = [&](const VECTOR& axisW, float dist, float ra, float rb, bool isFaceAxis, int faceOwner = -1, int faceIdx = -1) {
 		const float sep = (ra + rb) - dist;
 		const float bias = (!isFaceAxis && bestAxisIsFace) ? 1e-4f : 0.0f;
 		if (sep + bias < bestPen || (isFaceAxis && !bestAxisIsFace && sep <= bestPen + 1e-4f)) {
 			bestPen = sep;
 			bestAxisW = axisW;
 			bestAxisIsFace = isFaceAxis;
+			bestFaceOwner = faceOwner;
+			bestFaceIndex = faceIdx;
 		}
 	};
 
@@ -645,14 +747,14 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 		float ra = aExt[i];
 		float rb = bExt[0] * AbsR[i][0] + bExt[1] * AbsR[i][1] + bExt[2] * AbsR[i][2];
 		float dist = std::fabs(tA[i]);
-		ConsiderAxis((i ==0) ? A0 : (i ==1) ? A1 : A2, dist, ra, rb, true);
+		ConsiderAxis((i ==0) ? A0 : (i ==1) ? A1 : A2, dist, ra, rb, true, 0, i);
 	}
 
 	for (int j =0; j <3; ++j) {
 		float ra = aExt[0] * AbsR[0][j] + aExt[1] * AbsR[1][j] + aExt[2] * AbsR[2][j];
 		float rb = bExt[j];
 		float dist = std::fabs(tA[0] * R[0][j] + tA[1] * R[1][j] + tA[2] * R[2][j]);
-		ConsiderAxis((j ==0) ? B0 : (j ==1) ? B1 : B2, dist, ra, rb, true);
+		ConsiderAxis((j ==0) ? B0 : (j ==1) ? B1 : B2, dist, ra, rb, true, 1, j);
 	}
 
 	auto CrossAxis = [&](const VECTOR& aAxis, const VECTOR& bAxis) {
@@ -776,12 +878,154 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 	}
 	const float pen = bestPen;
 
-	Contact ct;
-	ct.a = ba;
-	ct.b = bb;
-	ct.normal = n;
-	ct.penetration = pen;
-	_contacts.push_back(ct);
+	// --- Contact manifold generation ---
+	// For face-axis contacts, generate up to 4 contact points by clipping
+	// the incident face polygon against the reference face extents.
+	// For edge-edge, use a single midpoint.
+	struct ManifoldPoint { VECTOR pos; };
+	ManifoldPoint manifold[8];
+	int manifoldCount = 0;
+
+	if (bestAxisIsFace) {
+		// Determine reference face (the one whose normal was selected) and incident face.
+		// Reference box = the one whose face normal won.
+		// Incident box  = the other one; pick its face most anti-parallel to n.
+		const VECTOR* refAxes;
+		const float*  refExt;
+		VECTOR        refCenter;
+		const VECTOR* incAxes;
+		const float*  incExt;
+		VECTOR        incCenter;
+		const VECTOR  refAxesArr[2][3] = { {A0,A1,A2}, {B0,B1,B2} };
+		const float   refExtArr[2][3]  = { {aExt[0],aExt[1],aExt[2]}, {bExt[0],bExt[1],bExt[2]} };
+
+		if (bestFaceOwner == 0) {
+			refAxes = refAxesArr[0]; refExt = refExtArr[0]; refCenter = ba->GetCenter();
+			incAxes = refAxesArr[1]; incExt = refExtArr[1]; incCenter = bb->GetCenter();
+		} else {
+			refAxes = refAxesArr[1]; refExt = refExtArr[1]; refCenter = bb->GetCenter();
+			incAxes = refAxesArr[0]; incExt = refExtArr[0]; incCenter = ba->GetCenter();
+		}
+
+		const int refFaceIdx = bestFaceIndex;
+		// The two tangent axes of the reference face
+		const int refU = (refFaceIdx + 1) % 3;
+		const int refV = (refFaceIdx + 2) % 3;
+
+		// Find incident face: the face of the incident box most anti-parallel to n.
+		// We want the face whose outward normal has the smallest (most negative) dot with n.
+		int incFaceIdx = 0;
+		float minDot = FLT_MAX;
+		for (int i = 0; i < 3; ++i) {
+			float d = Dot3(n, incAxes[i]);
+			if (d < minDot) { minDot = d; incFaceIdx = i; }
+			float nd = -d;
+			if (nd < minDot) { minDot = nd; incFaceIdx = i; }
+		}
+		// Determine sign: the incident face is on the side of incBox that faces the refBox.
+		// Its outward normal should be anti-parallel to n.
+		const float incSign = (Dot3(n, incAxes[incFaceIdx]) < 0.0f) ? 1.0f : -1.0f;
+		const int incU = (incFaceIdx + 1) % 3;
+		const int incV = (incFaceIdx + 2) % 3;
+
+		// Build incident face polygon (4 vertices) in world space
+		VECTOR incPoly[4];
+		const float signs[4][2] = { {-1,-1}, {1,-1}, {1,1}, {-1,1} };
+		for (int i = 0; i < 4; ++i) {
+			incPoly[i] = incCenter;
+			incPoly[i] = VAdd(incPoly[i], VScale(incAxes[incFaceIdx], incSign * incExt[incFaceIdx]));
+			incPoly[i] = VAdd(incPoly[i], VScale(incAxes[incU], signs[i][0] * incExt[incU]));
+			incPoly[i] = VAdd(incPoly[i], VScale(incAxes[incV], signs[i][1] * incExt[incV]));
+		}
+
+		// Clip incident polygon against 4 side planes of reference face
+		// using Sutherland-Hodgman algorithm.
+		// Each side plane is defined by a tangent axis and ±extent.
+		VECTOR clipIn[8], clipOut[8];
+		int clipInCount = 4;
+		for (int i = 0; i < 4; ++i) clipIn[i] = incPoly[i];
+
+		auto ClipPolygonByPlane = [&](VECTOR* in, int inCount, VECTOR* out, const VECTOR& planeNormal, float planeDist) -> int {
+			if (inCount < 1) return 0;
+			int outCount = 0;
+			for (int i = 0; i < inCount; ++i) {
+				const VECTOR& cur = in[i];
+				const VECTOR& nxt = in[(i + 1) % inCount];
+				const float dCur = Dot3(cur, planeNormal) - planeDist;
+				const float dNxt = Dot3(nxt, planeNormal) - planeDist;
+				if (dCur <= 0.0f) {
+					if (outCount < 8) out[outCount++] = cur;
+					if (dNxt > 0.0f) {
+						float t = dCur / (dCur - dNxt);
+						if (outCount < 8) out[outCount++] = VAdd(cur, VScale(VSub(nxt, cur), t));
+					}
+				} else if (dNxt <= 0.0f) {
+					float t = dCur / (dCur - dNxt);
+					if (outCount < 8) out[outCount++] = VAdd(cur, VScale(VSub(nxt, cur), t));
+				}
+			}
+			return outCount;
+		};
+
+		// Clip against +refU, -refU, +refV, -refV
+		// Reference face center: the center of the reference face in world space.
+		// The face is on the side of refBox that faces toward the incident box.
+		// n always points from A toward B.
+		// For faceOwner==0 (ref=A), the reference face normal aligns with +n.
+		// For faceOwner==1 (ref=B), the reference face normal aligns with -n.
+		const VECTOR refFaceNormal = (bestFaceOwner == 0) ? n : VScale(n, -1.0f);
+		const float refFaceSign = (Dot3(refFaceNormal, refAxes[refFaceIdx]) >= 0.0f) ? 1.0f : -1.0f;
+		const VECTOR refFaceCenter = VAdd(refCenter, VScale(refAxes[refFaceIdx], refFaceSign * refExt[refFaceIdx]));
+
+		// Plane normals in world space; distance = dot(refFaceCenter, planeNormal) ± extent
+		const float refFaceCenterU = Dot3(refFaceCenter, refAxes[refU]);
+		const float refFaceCenterV = Dot3(refFaceCenter, refAxes[refV]);
+
+		// +U side: dot(p, refAxes[refU]) <= refFaceCenterU + refExt[refU]
+		int cnt = ClipPolygonByPlane(clipIn, clipInCount, clipOut, refAxes[refU], refFaceCenterU + refExt[refU]);
+		// -U side: dot(p, -refAxes[refU]) <= -(refFaceCenterU - refExt[refU])
+		VECTOR negU = VScale(refAxes[refU], -1.0f);
+		cnt = ClipPolygonByPlane(clipOut, cnt, clipIn, negU, -(refFaceCenterU - refExt[refU]));
+		// +V side
+		cnt = ClipPolygonByPlane(clipIn, cnt, clipOut, refAxes[refV], refFaceCenterV + refExt[refV]);
+		// -V side
+		VECTOR negV = VScale(refAxes[refV], -1.0f);
+		cnt = ClipPolygonByPlane(clipOut, cnt, clipIn, negV, -(refFaceCenterV - refExt[refV]));
+
+		// Project clipped points onto reference face plane and keep those behind it
+		const float refFaceD = Dot3(refFaceCenter, n);
+		for (int i = 0; i < cnt && manifoldCount < 8; ++i) {
+			const float depth = Dot3(clipIn[i], n) - refFaceD;
+			// Keep points that are behind or on the reference face (penetrating)
+			if (depth <= pen + 0.01f) {
+				// Project onto reference face plane
+				manifold[manifoldCount].pos = VSub(clipIn[i], VScale(n, depth));
+				manifoldCount++;
+			}
+		}
+
+		// If clipping produced no points, fall back to single center point
+		if (manifoldCount == 0) {
+			manifold[0].pos = VScale(VAdd(ba->GetCenter(), bb->GetCenter()), 0.5f);
+			manifoldCount = 1;
+		}
+	}
+	else {
+		// Edge-edge: single contact at midpoint
+		manifold[0].pos = VScale(VAdd(ba->GetCenter(), bb->GetCenter()), 0.5f);
+		manifoldCount = 1;
+	}
+
+	// Emit contacts
+	for (int i = 0; i < manifoldCount; ++i) {
+		Contact ct;
+		ct.a = ba;
+		ct.b = bb;
+		ct.normal = n;
+		ct.point = manifold[i].pos;
+		ct.penetration = pen;
+		_contacts.push_back(ct);
+	}
 
 	const float wA = (oa && !oa->isStatic) ? 1.0f : 0.0f;
 	const float wB = (ob && !ob->isStatic) ? 1.0f : 0.0f;
@@ -870,11 +1114,14 @@ void ColliderManager::PushOutCapsuleCapsule(Collider* a, Collider* b) {
 	if (pen <= 0.0f) return;
 
 	const VECTOR n = VScale(diff, 1.0f / dist);
+	// 接触点は2線分最近点の中点
+	const VECTOR contactPoint = VScale(VAdd(c1, c2), 0.5f);
 
 	Contact ct;
 	ct.a = ca;
 	ct.b = cb;
 	ct.normal = n;
+	ct.point = contactPoint;
 	ct.penetration = pen;
 	_contacts.push_back(ct);
 
@@ -938,11 +1185,14 @@ void ColliderManager::PushOutSphereCapsule(Collider* a, Collider* b) {
 	if (pen <= 0.0f) return;
 
 	VECTOR n = VScale(diff, 1.0f / dist);
+	// 接触点は球表面上の最近点
+	const VECTOR contactPoint = VSub(s->GetCenter(), VScale(n, s->GetRadius()));
 
 	Contact ct;
 	ct.a = c;
 	ct.b = s;
 	ct.normal = n;
+	ct.point = contactPoint;
 	ct.penetration = pen;
 	_contacts.push_back(ct);
 
@@ -1070,10 +1320,17 @@ void ColliderManager::PushOutBoxCapsule(Collider* a, Collider* b) {
 		pen = r + (std::min)({ dx, dy, dz });
 	}
 
+	// 接触点はOBB表面上の最近点をワールドに戻した位置
+	const VECTOR contactPointW = VAdd(
+		VAdd(VScale(box->GetAxisX(), bestBoxPointL.x), VScale(box->GetAxisY(), bestBoxPointL.y)),
+		VAdd(VScale(box->GetAxisZ(), bestBoxPointL.z), box->GetCenter())
+	);
+
 	Contact ct;
 	ct.a = box;
 	ct.b = cap;
 	ct.normal = n;
+	ct.point = contactPointW;
 	ct.penetration = pen;
 	_contacts.push_back(ct);
 
@@ -1112,6 +1369,7 @@ void ColliderManager::Update(float dtSec) {
 
 // Sphere-Sphere 詳細判定。
 // 距離二乗と半径和二乗の比較で sqrt を避ける。
+// 離れている場合でも CCD 条件を満たせばスイープテストで補う。
 void ColliderManager::CheckSphereSphere(Collider* a, Collider* b) {
 	auto* sa = dynamic_cast<SphereCollider*>(a);
 	auto* sb = dynamic_cast<SphereCollider*>(b);
@@ -1123,7 +1381,54 @@ void ColliderManager::CheckSphereSphere(Collider* a, Collider* b) {
 	const VECTOR cb = sb->GetCenter();
 	const VECTOR d = VSub(cb, ca);
 	const float r = sa->GetRadius() + sb->GetRadius();
-	_narrowHit = (LenSq(d) <= r * r);
+	if (LenSq(d) <= r * r) {
+		_narrowHit = true;
+		return;
+	}
+
+	// CCD フォールバック: 前フレーム位置からのスイープで通過判定
+	auto prevItA = _prevAABBs.find(sa);
+	auto prevItB = _prevAABBs.find(sb);
+	if (prevItA == _prevAABBs.end() || prevItB == _prevAABBs.end()) {
+		_narrowHit = false;
+		return;
+	}
+
+	const VECTOR prevA = prevItA->second.center;
+	const VECTOR prevB = prevItB->second.center;
+	const VECTOR moveA = VSub(ca, prevA);
+	const VECTOR moveB = VSub(cb, prevB);
+	float dt = _deltaTimeSec;
+	if (dt < 1e-6f) dt = 1e-6f;
+	const float speedSqA = LenSq(moveA) / (dt * dt);
+	const float speedSqB = LenSq(moveB) / (dt * dt);
+	const float thrA = sa->ccdDistanceThreshold;
+	const float thrB = sb->ccdDistanceThreshold;
+	const bool useSweep = sa->enableCCD || sb->enableCCD || speedSqA > thrA * thrA || speedSqB > thrB * thrB;
+	if (!useSweep) {
+		_narrowHit = false;
+		return;
+	}
+
+	// 相対移動として球-球スイープ: A を固定し B の相対移動で判定
+	const VECTOR relPrev = VSub(prevB, prevA);
+	const VECTOR relCurr = VSub(cb, ca);
+	const VECTOR relDir = VSub(relCurr, relPrev);
+	const float a2 = LenSq(relDir);
+	if (a2 < 1e-8f) {
+		_narrowHit = false;
+		return;
+	}
+	const float b2 = 2.0f * Dot3(relPrev, relDir);
+	const float c2 = LenSq(relPrev) - r * r;
+	const float disc = b2 * b2 - 4.0f * a2 * c2;
+	if (disc < 0.0f) {
+		_narrowHit = false;
+		return;
+	}
+	const float sqrtDisc = std::sqrt(disc);
+	const float t0 = (-b2 - sqrtDisc) / (2.0f * a2);
+	_narrowHit = (t0 >= 0.0f && t0 <= 1.0f);
 }
 
 // Sphere-Box 詳細判定。
@@ -1465,6 +1770,7 @@ void ColliderManager::RegisterCollider(Collider* collider) {
 		return;
 	}
 	if (!collider) return;
+	std::lock_guard lk(_mtx);
 	if (std::find(_colliders.begin(), _colliders.end(), collider) != _colliders.end()) return;
 	_colliders.push_back(collider);
 }
@@ -1477,6 +1783,7 @@ void ColliderManager::UnregisterCollider(Collider* collider) {
 	}
 	if (!collider) return;
 
+	std::lock_guard lk(_mtx);
 	{
 		auto it = std::find(_colliders.begin(), _colliders.end(), collider);
 		if (it != _colliders.end()) {
@@ -1519,6 +1826,15 @@ bool ColliderManager::CheckAABBCollisions(Collider* a, Collider* b) {
 // broad-phase での取りこぼし抑制用であり、これ自体は連続衝突判定ではない。
 bool ColliderManager::CheckAABBCollisionsSwept(Collider* a, Collider* b) {
 	return !IntersectAABBWorld(GetSweptAABB(a), GetSweptAABB(b));
+}
+
+Collider* ColliderManager::FindColliderByOwner(GameObject* owner) const noexcept {
+	if (!owner) return nullptr;
+	for (auto* c : _colliders) {
+		if (!c) continue;
+		if (c->owner == owner) return c;
+	}
+	return nullptr;
 }
 
 

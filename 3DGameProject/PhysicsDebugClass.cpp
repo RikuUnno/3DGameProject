@@ -6,6 +6,7 @@
 #include "CapsuleCollider.h"
 #include "ColliderManager.h"
 #include "LayerMask.h"
+#include "PhysicsMaterial.h"
 #include "PhysicsManager.h"
 #include "SceneManager.h"
 #include "SphereCollider.h"
@@ -70,9 +71,15 @@ void PhysicsDebugClass::OnAcquire(const VariantMap& params) {
 	_physicsBody._angularDamping = 0.05f;
 	_physicsBody._friction = 0.7f;
 	_physicsBody._restitution = 0.1f;
+	_physicsBody._material.friction = 0.7f;
+	_physicsBody._material.staticFriction = 0.84f;
+	_physicsBody._material.restitution = 0.1f;
+	_physicsBody._material.linearDamping = 0.03f;
+	_physicsBody._material.angularDamping = 0.05f;
 	_physicsBody._maxLinearSpeed = 80.0f;
 	_physicsBody._maxAngularSpeed = 20.0f;
 	isStatic = false;
+	_materialName.clear();
 	CreateCollider_(DefaultShapeType());
 	ConfigureFromParams_(params);
 	EnsureColliderRegistered_();
@@ -195,8 +202,43 @@ void PhysicsDebugClass::ConfigureFromParams_(const VariantMap& params) {
 		_physicsBody._linearDamping = ParseFloat_(params, "linearDamping", 0.03f);
 		_physicsBody._angularDamping = ParseFloat_(params, "angularDamping", 0.05f);
 	}
-	_physicsBody._restitution = ParseFloat_(params, "restitution", 0.1f);
-	_physicsBody._friction = ParseFloat_(params, "friction", 0.7f);
+
+	// マテリアル適用: "material" パラメータがあればプリセットから一括設定。
+	// その後の個別パラメータ（friction, restitution 等）で上書き可能。
+	const std::string materialName = ParseString_(params, "material", "");
+	_materialName = materialName;
+	if (!materialName.empty()) {
+		PhysicsMaterial mat = PhysicsMaterial::FromName(materialName.c_str());
+		_physicsBody.ApplyMaterial(mat, GetCollider());
+	}
+
+	// 個別パラメータ上書き（material 適用後でも明示指定があれば優先）
+	if (params.count("restitution")) {
+		_physicsBody._restitution = ParseFloat_(params, "restitution", _physicsBody._restitution);
+		_physicsBody._material.restitution = _physicsBody._restitution;
+	}
+	else if (materialName.empty()) {
+		_physicsBody._restitution = 0.1f;
+		_physicsBody._material.restitution = _physicsBody._restitution;
+	}
+	if (params.count("friction")) {
+		_physicsBody._friction = ParseFloat_(params, "friction", _physicsBody._friction);
+		_physicsBody._material.friction = _physicsBody._friction;
+		_physicsBody._material.staticFriction = _physicsBody._friction * 1.2f;
+	}
+	else if (materialName.empty()) {
+		_physicsBody._friction = 0.7f;
+		_physicsBody._material.friction = _physicsBody._friction;
+		_physicsBody._material.staticFriction = _physicsBody._friction * 1.2f;
+	}
+	if (params.count("linearDamping")) {
+		_physicsBody._linearDamping = ParseFloat_(params, "linearDamping", _physicsBody._linearDamping);
+		_physicsBody._material.linearDamping = _physicsBody._linearDamping;
+	}
+	if (params.count("angularDamping")) {
+		_physicsBody._angularDamping = ParseFloat_(params, "angularDamping", _physicsBody._angularDamping);
+		_physicsBody._material.angularDamping = _physicsBody._angularDamping;
+	}
 	_physicsBody._freezeRotation = ParseBool_(params, "freezeRotation", false);
 	_physicsBody._velocity = VGet(
 		ParseFloat_(params, "vx", 0.0f),
@@ -243,6 +285,23 @@ void PhysicsDebugClass::ApplyVisualDefaults_() {
 	if (Collider* collider = GetCollider()) {
 		if (_drawColor != 0) {
 			collider->SetDebugColor(_drawColor);
+		}
+		else if (!_materialName.empty()) {
+			// 素材名から色を自動決定
+			unsigned int matColor = 0;
+			if (_materialName == "wood")        matColor = GetColor(180, 140, 80);
+			else if (_materialName == "metal")   matColor = GetColor(180, 185, 200);
+			else if (_materialName == "rubber")  matColor = GetColor(220, 80, 80);
+			else if (_materialName == "ice")     matColor = GetColor(160, 220, 255);
+			else if (_materialName == "stone")   matColor = GetColor(160, 160, 150);
+			else if (_materialName == "bouncy")  matColor = GetColor(255, 200, 60);
+			if (matColor != 0) {
+				collider->SetDebugColor(matColor);
+			} else if (isStatic) {
+				collider->SetDebugColor(GetColor(120, 220, 255));
+			} else {
+				collider->ClearDebugColor();
+			}
 		}
 		else if (isStatic) {
 			collider->SetDebugColor(GetColor(120, 220, 255));

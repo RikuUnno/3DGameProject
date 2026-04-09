@@ -81,6 +81,7 @@ private:
 	float _drawRadius = 0.5f;
 	VECTOR _drawHalfExtents = VGet(0.5f, 0.5f, 0.5f);
 	float _drawHeight = 2.0f;
+	std::string _materialName;
 };
 
 // PhysicsDebugBox

@@ -322,6 +322,27 @@
     <Filter Include="ヘッダー ファイル\Debug\Transform">
       <UniqueIdentifier>{3febb48f-87f6-46bb-9ff9-b69d9dfcf0e1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ヘッダー ファイル\System\Ray">
+      <UniqueIdentifier>{cab3f7ac-08a2-48aa-af02-1f7776971669}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Ray\Cast">
+      <UniqueIdentifier>{837520e0-3765-494a-876e-3c30112d75e6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Ray">
+      <UniqueIdentifier>{7ecc08db-7dd8-4b8b-9517-5aa4a1842982}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Scenes\Debug\Ccd">
+      <UniqueIdentifier>{823fe469-76ea-4bf0-8144-ff1912885482}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Thread">
+      <UniqueIdentifier>{28b242d5-49ab-46ad-bb65-92d2a254f449}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Thread\Pool">
+      <UniqueIdentifier>{84d78d71-5e30-4234-a26d-8bed5f55dd49}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Physics\Material">
+      <UniqueIdentifier>{c17ceccd-661b-49d0-b2ea-be4eb776d870}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -408,11 +429,14 @@
     <ClCompile Include="PhysicsManager.cpp">
       <Filter>ソース ファイル\System\Physics\Manager</Filter>
     </ClCompile>
-    <ClCompile Include="PhysicsScene.cpp">
-      <Filter>ソース ファイル\Scene\Scenes\Debug\Physics</Filter>
-    </ClCompile>
     <ClCompile Include="PhysicsDebugClass.cpp">
       <Filter>ソース ファイル\Debug\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="Raycast.cpp">
+      <Filter>ソース ファイル\System\Ray</Filter>
+    </ClCompile>
+    <ClCompile Include="PhysicsScene.cpp">
+      <Filter>ソース ファイル</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -566,8 +590,20 @@
     <ClInclude Include="TransformDebugClass.h">
       <Filter>ヘッダー ファイル\Debug\Transform</Filter>
     </ClInclude>
+    <ClInclude Include="Raycast.h">
+      <Filter>ヘッダー ファイル\System\Ray\Cast</Filter>
+    </ClInclude>
+    <ClInclude Include="Ray.h">
+      <Filter>ヘッダー ファイル\System\Ray</Filter>
+    </ClInclude>
     <ClInclude Include="CcdScene.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>ヘッダー ファイル\Scene\Scenes\Debug\Ccd</Filter>
+    </ClInclude>
+    <ClInclude Include="ThreadPool.h">
+      <Filter>ヘッダー ファイル\System\Thread\Pool</Filter>
+    </ClInclude>
+    <ClInclude Include="PhysicsMaterial.h">
+      <Filter>ヘッダー ファイル\System\Physics\Material</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

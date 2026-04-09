@@ -87,3 +87,57 @@ void PhysicsBody::ComputeInertia(Collider* collider) noexcept {
 
     _inverseInertiaDiag = VGet(1.0f / Ix, 1.0f / Iy, 1.0f / Iz);
 }
+
+// Apply physics material: set friction, restitution, damping from material.
+// If density > 0 and a collider is provided, compute mass from volume * density.
+void PhysicsBody::ApplyMaterial(const PhysicsMaterial& mat, Collider* collider) noexcept {
+    _material = mat;
+    _friction = mat.friction;
+    _restitution = mat.restitution;
+    _linearDamping = mat.linearDamping;
+    _angularDamping = mat.angularDamping;
+
+    // Auto-compute mass from density if density > 0 and collider is available
+    if (mat.density > 0.0f && collider && !_isKinematic) {
+        float volume = 0.0f;
+        switch (collider->GetKind()) {
+        case Collider::Kind::Sphere: {
+            auto* sc = dynamic_cast<SphereCollider*>(collider);
+            if (sc) {
+                const float r = sc->GetRadius();
+                volume = (4.0f / 3.0f) * 3.14159265f * r * r * r;
+            }
+            break;
+        }
+        case Collider::Kind::Box: {
+            auto* bc = dynamic_cast<BoxCollider*>(collider);
+            if (bc) {
+                const VECTOR he = bc->GetHalfExtents();
+                volume = 8.0f * he.x * he.y * he.z;
+            }
+            break;
+        }
+        case Collider::Kind::Capsule: {
+            auto* cc = dynamic_cast<CapsuleCollider*>(collider);
+            if (cc) {
+                const float r = cc->GetRadius();
+                const VECTOR seg = VSub(cc->GetTop(), cc->GetBottom());
+                const float h = std::sqrt(seg.x * seg.x + seg.y * seg.y + seg.z * seg.z);
+                // cylinder + two hemispheres = cylinder + sphere
+                volume = 3.14159265f * r * r * h + (4.0f / 3.0f) * 3.14159265f * r * r * r;
+            }
+            break;
+        }
+        default:
+            break;
+        }
+        if (volume > 1e-6f) {
+            SetMass(mat.density * volume);
+        }
+    }
+
+    // Recompute inertia if collider is provided
+    if (collider) {
+        ComputeInertia(collider);
+    }
+}

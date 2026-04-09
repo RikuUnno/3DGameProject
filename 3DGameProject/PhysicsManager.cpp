@@ -6,6 +6,7 @@
 
 #include "PhysicsController.h"
 #include "PhysicsBody.h"
+#include "PhysicsMaterial.h"
 #include "GameObject.h"
 #include "ColliderManager.h"
 #include "Collider.h"
@@ -250,7 +251,9 @@ void PhysicsManager::SolveContacts(float stepDt) {
 		const float normalVelocity = Dot3(relativeVelocity, normal);
 
 		float restitution = 0.0f;
-		if (bodyA && bodyB) restitution = (std::min)(bodyA->_restitution, bodyB->_restitution);
+		if (bodyA && bodyB) {
+			restitution = PhysicsMaterial::CombineRestitution(bodyA->_material, bodyB->_material);
+		}
 		else if (bodyA) restitution = bodyA->_restitution;
 		else if (bodyB) restitution = bodyB->_restitution;
 		if (std::fabs(normalVelocity) < 0.25f) {
@@ -326,7 +329,9 @@ void PhysicsManager::SolveContacts(float stepDt) {
 
 			float tangentImpulseMagnitude = -Dot3(relativeVelocity, tangent) / effectiveInvMassT;
 			float friction = 0.0f;
-			if (bodyA && bodyB) friction = std::sqrt((std::max)(0.0f, bodyA->_friction) * (std::max)(0.0f, bodyB->_friction));
+			if (bodyA && bodyB) {
+				friction = PhysicsMaterial::CombineFriction(bodyA->_material, bodyB->_material);
+			}
 			else if (bodyA) friction = (std::max)(0.0f, bodyA->_friction);
 			else if (bodyB) friction = (std::max)(0.0f, bodyB->_friction);
 
@@ -374,7 +379,9 @@ void PhysicsManager::SolveContacts(float stepDt) {
 		// torques (e.g., gravity righting a tilted box) to work properly.
 		if (normalImpulseMagnitude > 0.0f) {
 			float friction = 0.0f;
-			if (bodyA && bodyB) friction = std::sqrt((std::max)(0.0f, bodyA->_friction) * (std::max)(0.0f, bodyB->_friction));
+			if (bodyA && bodyB) {
+				friction = PhysicsMaterial::CombineFriction(bodyA->_material, bodyB->_material);
+			}
 			else if (bodyA) friction = (std::max)(0.0f, bodyA->_friction);
 			else if (bodyB) friction = (std::max)(0.0f, bodyB->_friction);
 

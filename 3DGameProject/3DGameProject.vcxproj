@@ -209,6 +209,7 @@
     <ClInclude Include="PhysicsController.h" />
     <ClInclude Include="PhysicsDebugClass.h" />
     <ClInclude Include="PhysicsManager.h" />
+    <ClInclude Include="PhysicsMaterial.h" />
     <ClInclude Include="PhysicsScene.h" />
     <ClInclude Include="Pool.h" />
     <ClInclude Include="Ray.h" />

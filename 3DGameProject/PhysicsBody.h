@@ -2,6 +2,7 @@
 
 #include "DxLib.h"
 #include "Math/Quaternion.h"
+#include "PhysicsMaterial.h"
 
 class GameObject;
 class Collider;
@@ -54,6 +55,17 @@ public:
     // Computed from collider shape via ComputeInertia().
     // (0,0,0) = kinematic (no rotation).
     VECTOR _inverseInertiaDiag = VGet(1, 1, 1);
+
+    // --- Physics Material ---
+    PhysicsMaterial _material{};
+
+public:
+    // マテリアルを適用し、friction/restitution/damping を一括設定する。
+    // density > 0 かつ collider != nullptr の場合、コライダー体積から質量を自動計算する。
+    void ApplyMaterial(const PhysicsMaterial& mat, Collider* collider = nullptr) noexcept;
+
+    // マテリアルの取得
+    const PhysicsMaterial& GetMaterial() const noexcept { return _material; }
 
 public:
     bool IsEnabled() const noexcept { return _enabled; }
@@ -187,5 +199,6 @@ public:
         _hasMovePositionTarget = false;
         _hasMoveRotationTarget = false;
         _inverseInertiaDiag = VGet(1, 1, 1);
+        _material = PhysicsMaterial{};
     }
 };

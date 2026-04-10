@@ -229,16 +229,25 @@ bool ObjectManager::UnregisterPool(const std::string& key) {
 }
 
 void ObjectManager::UpdateAll(float dtSec) {
-	std::lock_guard lk(_mtx);
-	const size_t count = _objects.size();
+	// raw ポインタのスナップショットをロック下で取得し、
+	// ParallelFor はロック外で実行する。
+	// これにより obj->Update() 内で Spawn/Release を呼んでもデッドロックしない。
+	std::vector<GameObject*> snapshot;
+	{
+		std::lock_guard lk(_mtx);
+		snapshot.reserve(_objects.size());
+		for (auto& up : _objects) {
+			GameObject* obj = up.get();
+			if (obj && obj->IsActive()) {
+				snapshot.push_back(obj);
+			}
+		}
+	}
+	const size_t count = snapshot.size();
 	if (count == 0) return;
 
-	// 各オブジェクトのUpdateは独立しているため並列に実行可能
 	ThreadPool::Instance().ParallelFor(0, count, [&](size_t i) {
-		GameObject* obj = _objects[i].get();
-		if (!obj) return;
-		if (!obj->IsActive()) return;
-		obj->Update(dtSec);
+		snapshot[i]->Update(dtSec);
 	}, 4);
 }
 

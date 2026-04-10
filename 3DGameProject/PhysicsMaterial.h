@@ -63,6 +63,13 @@ struct PhysicsMaterial {
         return Combine(a.restitution, b.restitution, mode);
     }
 
+    // 静止摩擦の合成
+    static float CombineStaticFriction(const PhysicsMaterial& a, const PhysicsMaterial& b) noexcept {
+        CombineMode mode = (static_cast<int>(a.frictionCombine) >= static_cast<int>(b.frictionCombine))
+            ? a.frictionCombine : b.frictionCombine;
+        return Combine(a.staticFriction, b.staticFriction, mode);
+    }
+
     // ============================
     //  プリセット
     // ============================

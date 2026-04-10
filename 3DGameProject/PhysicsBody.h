@@ -10,6 +10,16 @@ class Collider;
 // PhysicsBody
 // - GameObject に付与する物理コンポーネント（データ保持）
 // - 慣性テンソル（対角近似）を保持し、回転の物理を正しく計算する
+
+// CCD quality level (Havok-style hkpMotionQualityType)
+enum class CcdQuality : int {
+    Discrete = 0,   // No CCD (fastest, may tunnel)
+    Debris   = 1,   // Low-priority CCD: only swept AABB, no TOI backstep
+    Default  = 2,   // Standard CCD: swept AABB + velocity clamp + speculative
+    Bullet   = 3,   // Full CCD: TOI backstep + sub-step re-integration
+    Critical = 4,   // Highest quality: never tunnel (strict TOI + reduced step)
+};
+
 class PhysicsBody {
 public:
     PhysicsBody() = default;
@@ -22,8 +32,16 @@ public:
     bool _isKinematic = false;
     bool _freezeRotation = false;
     bool _useInterpolation = false;
-    bool _detectContinuous = true;
+    bool _detectContinuous = false;
     bool _isSleeping = false;
+
+    // CCD quality level (controls how aggressively tunneling is prevented)
+    CcdQuality _ccdQuality = CcdQuality::Default;
+
+    // Per-body allowed penetration depth (Havok-style).
+    // CCD is auto-triggered when penetration exceeds this threshold.
+    // Smaller values = stricter CCD, higher cost. 0 = use collider threshold only.
+    float _allowedPenetrationDepth = 0.0f;
 
     float _mass = 1.0f;
     float _inverseMass = 1.0f;
@@ -46,15 +64,24 @@ public:
     Quaternion _moveRotationTarget = Quaternion::Identity();
     VECTOR _previousPosition = VGet(0, 0, 0);
     Quaternion _previousRotation = Quaternion::Identity();
+
+    // --- Interpolation state (for sub-step interpolated rendering) ---
+    VECTOR _interpPosition = VGet(0, 0, 0);
+    Quaternion _interpRotation = Quaternion::Identity();
+
     float _sleepTimer = 0.0f;
     bool _hasMovePositionTarget = false;
     bool _hasMoveRotationTarget = false;
 
-    // --- Inertia Tensor (diagonal approximation) ---
-    // Inverse inertia tensor diagonal components in local principal axes.
-    // Computed from collider shape via ComputeInertia().
-    // (0,0,0) = kinematic (no rotation).
-    VECTOR _inverseInertiaDiag = VGet(1, 1, 1);
+    // --- Inertia Tensor (full 3x3) ---
+    // Inverse inertia tensor in local principal axes (symmetric 3x3).
+    // Stored as row-major 3x3. Computed via ComputeInertia().
+    // Identity = unit sphere fallback. Zero matrix = kinematic.
+    float _inverseInertiaLocal[9] = {
+        1.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f,
+        0.0f, 0.0f, 1.0f
+    };
 
     // --- Physics Material ---
     PhysicsMaterial _material{};
@@ -79,15 +106,29 @@ public:
     float InverseMass() const noexcept { return (_isKinematic || _mass <= 1e-6f) ? 0.0f : _inverseMass; }
 
     // Inverse inertia diagonal (returns zero if kinematic/frozen).
+    // Backward-compatible: extracts diagonal from full 3x3.
     VECTOR InverseInertiaDiag() const noexcept {
         if (_isKinematic || _mass <= 1e-6f || _freezeRotation) return VGet(0, 0, 0);
-        return _inverseInertiaDiag;
+        return VGet(_inverseInertiaLocal[0], _inverseInertiaLocal[4], _inverseInertiaLocal[8]);
     }
 
-    // Apply inverse inertia tensor to a vector: I^{-1} * v (diagonal approximation).
-    VECTOR ApplyInverseInertia(const VECTOR& v) const noexcept {
+    // Full 3x3 inverse inertia in local frame (returns zero matrix if kinematic/frozen).
+    const float* InverseInertiaLocal3x3() const noexcept {
+        static const float zero[9] = {};
+        if (_isKinematic || _mass <= 1e-6f || _freezeRotation) return zero;
+        return _inverseInertiaLocal;
+    }
+
+    // Apply inverse inertia tensor to a world-space vector:
+    // I_world^{-1} * v = R * diag(I_local^{-1}) * (R^T * v)
+    // where R is the body's current rotation matrix.
+    // This correctly accounts for the body's orientation.
+    VECTOR ApplyInverseInertia(const VECTOR& v) const noexcept;
+
+    // Average scalar inverse inertia (for approximate rolling friction calculations).
+    float AverageInverseInertia() const noexcept {
         const VECTOR ii = InverseInertiaDiag();
-        return VGet(v.x * ii.x, v.y * ii.y, v.z * ii.z);
+        return (ii.x + ii.y + ii.z) / 3.0f;
     }
 
     void SetMass(float mass) noexcept {
@@ -95,7 +136,7 @@ public:
         _inverseMass = (_mass > 1e-6f) ? (1.0f / _mass) : 0.0f;
         if (_mass <= 1e-6f) {
             _isKinematic = true;
-            _inverseInertiaDiag = VGet(0, 0, 0);
+            for (int i = 0; i < 9; ++i) _inverseInertiaLocal[i] = 0.0f;
         }
     }
 
@@ -173,8 +214,10 @@ public:
         _isKinematic = false;
         _freezeRotation = false;
         _useInterpolation = false;
-        _detectContinuous = true;
+        _detectContinuous = false;
         _isSleeping = false;
+        _ccdQuality = CcdQuality::Default;
+        _allowedPenetrationDepth = 0.0f;
         _mass = 1.0f;
         _inverseMass = 1.0f;
         _linearDamping = 0.0f;
@@ -195,10 +238,12 @@ public:
         _moveRotationTarget = Quaternion::Identity();
         _previousPosition = VGet(0, 0, 0);
         _previousRotation = Quaternion::Identity();
+        _interpPosition = VGet(0, 0, 0);
+        _interpRotation = Quaternion::Identity();
         _sleepTimer = 0.0f;
         _hasMovePositionTarget = false;
         _hasMoveRotationTarget = false;
-        _inverseInertiaDiag = VGet(1, 1, 1);
+        for (int i = 0; i < 9; ++i) _inverseInertiaLocal[i] = (i % 4 == 0) ? 1.0f : 0.0f;
         _material = PhysicsMaterial{};
     }
 };

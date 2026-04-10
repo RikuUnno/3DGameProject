@@ -31,7 +31,14 @@ struct Capsule
 // 回転軸ナシのAABBCollider
 struct AABB
 {
-	VECTOR center; // 中心点(ワールド)
-	VECTOR min; // 最小点
-	VECTOR max; // 最大点
+	VECTOR center;
+	VECTOR min;
+	VECTOR max;
+};
+
+// Half-plane (half-space collider): n . x <= d
+struct HalfPlane
+{
+	VECTOR normal; // unit normal (world)
+	float  d;      // signed distance from origin (n . p = d)
 };

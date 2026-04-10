@@ -76,162 +76,170 @@ namespace {
     }
 
     // ================================================================
-    //  アリーナ構築
+    //  Arena
     // ================================================================
     void SpawnArena() {
         _isSpawningArena = true;
 
-        // ========== 床: 半分ゴム(+X側, 赤), 半分氷(-X側, 水色) ==========
+        const unsigned int colFloor   = GetColor(200, 200, 200);
+        const unsigned int colWall    = GetColor(160, 140, 120);
+        const unsigned int colRamp    = GetColor(170, 175, 185);
+        const unsigned int colWood    = GetColor(190, 150, 90);
+        const unsigned int colMetal   = GetColor(180, 185, 195);
+        const unsigned int colBouncy  = GetColor(100, 220, 100);
+        const unsigned int colIce     = GetColor(200, 235, 255);
+
+        // ========== Floor: Stone (36x36) ==========
         SpawnPhysicsBox({
             {"static", "true"},
-            {"px", "9.0"}, {"py", "-1.0"}, {"pz", "0"},
-            {"hx", "9.0"}, {"hy", "1.0"}, {"hz", "18.0"},
+            {"px", "0"}, {"py", "-1.0"}, {"pz", "0"},
+            {"hx", "18.0"}, {"hy", "1.0"}, {"hz", "18.0"},
+            {"material", "stone"},
+            {"color", std::to_string(colFloor)}
+        });
+
+        // ========== Walls: Wood (4 sides) ==========
+        SpawnPhysicsBox({
+            {"static", "true"},
+            {"px", "0"}, {"py", "3.0"}, {"pz", "18.5"},
+            {"hx", "19.0"}, {"hy", "4.0"}, {"hz", "0.5"},
+            {"material", "wood"},
+            {"color", std::to_string(colWall)}
+        });
+        SpawnPhysicsBox({
+            {"static", "true"},
+            {"px", "0"}, {"py", "3.0"}, {"pz", "-18.5"},
+            {"hx", "19.0"}, {"hy", "4.0"}, {"hz", "0.5"},
+            {"material", "wood"},
+            {"color", std::to_string(colWall)}
+        });
+        SpawnPhysicsBox({
+            {"static", "true"},
+            {"px", "18.5"}, {"py", "3.0"}, {"pz", "0"},
+            {"hx", "0.5"}, {"hy", "4.0"}, {"hz", "18.0"},
+            {"material", "wood"},
+            {"color", std::to_string(colWall)}
+        });
+        SpawnPhysicsBox({
+            {"static", "true"},
+            {"px", "-18.5"}, {"py", "3.0"}, {"pz", "0"},
+            {"hx", "0.5"}, {"hy", "4.0"}, {"hz", "18.0"},
+            {"material", "wood"},
+            {"color", std::to_string(colWall)}
+        });
+
+        // ========== Ramp: Metal ==========
+        auto* ramp = SpawnPhysicsBox({
+            {"static", "true"},
+            {"px", "-10.0"}, {"py", "1.0"}, {"pz", "-6.0"},
+            {"hx", "5.0"}, {"hy", "0.25"}, {"hz", "4.0"},
+            {"material", "metal"},
+            {"color", std::to_string(colRamp)}
+        });
+        if (ramp) {
+            ramp->transform.SetLocalEulerRad(VGet(0.0f, 0.0f, -0.3f));
+        }
+
+        // ========== Stacked Wood Boxes: 3 cols x 4 rows ==========
+        for (int row = 0; row < 4; ++row) {
+            for (int col = 0; col < 3; ++col) {
+                SpawnPhysicsBox({
+                    {"px", std::to_string(5.0f + col * 1.05f)},
+                    {"py", std::to_string(0.5f + row * 1.02f)},
+                    {"pz", "6.0"},
+                    {"hx", "0.5"}, {"hy", "0.5"}, {"hz", "0.5"},
+                    {"material", "wood"},
+                    {"ccd", "true"},
+                    {"ccdThreshold", "2.0"},
+                    {"color", std::to_string(colWood)}
+                });
+            }
+        }
+
+        // ========== Pyramid Boxes (far right) ==========
+        for (int row = 0; row < 3; ++row) {
+            const int count = 3 - row;
+            for (int col = 0; col < count; ++col) {
+                SpawnPhysicsBox({
+                    {"px", std::to_string(12.0f + col * 1.05f)},
+                    {"py", std::to_string(0.5f + row * 1.02f)},
+                    {"pz", "-5.0"},
+                    {"hx", "0.5"}, {"hy", "0.5"}, {"hz", "0.5"},
+                    {"material", "wood"},
+                    {"ccd", "true"},
+                    {"ccdThreshold", "2.0"},
+                    {"color", std::to_string(colWood)}
+                });
+            }
+        }
+
+        // ========== Metal Spheres: On ramp ==========
+        SpawnPhysicsSphere({
+            {"px", "-12.0"}, {"py", "3.0"}, {"pz", "-6.0"},
+            {"radius", "0.45"},
+            {"material", "metal"},
+            {"ccd", "true"},
+            {"ccdThreshold", "3.0"},
+            {"color", std::to_string(colMetal)}
+        });
+        SpawnPhysicsSphere({
+            {"px", "-11.0"}, {"py", "2.5"}, {"pz", "-5.0"},
+            {"radius", "0.4"},
+            {"material", "metal"},
+            {"ccd", "true"},
+            {"ccdThreshold", "3.0"},
+            {"color", std::to_string(colMetal)}
+        });
+
+        // ========== Bouncy Balls: High drop ==========
+        SpawnPhysicsSphere({
+            {"px", "0"}, {"py", "8.0"}, {"pz", "0"},
+            {"radius", "0.5"},
+            {"material", "bouncy"},
+            {"ccd", "true"},
+            {"ccdThreshold", "3.0"},
+            {"color", std::to_string(colBouncy)}
+        });
+        SpawnPhysicsSphere({
+            {"px", "2.0"}, {"py", "10.0"}, {"pz", "-2.0"},
+            {"radius", "0.35"},
+            {"material", "bouncy"},
+            {"ccd", "true"},
+            {"ccdThreshold", "3.0"},
+            {"color", std::to_string(colBouncy)}
+        });
+
+        // ========== Capsules: Topple test ==========
+        SpawnPhysicsCapsule({
+            {"px", "-4.0"}, {"py", "1.5"}, {"pz", "0"},
+            {"radius", "0.4"},
+            {"halfHeight", "0.8"},
             {"material", "rubber"},
-            {"color", std::to_string(GetColor(220, 100, 100))}
+            {"color", std::to_string(GetColor(220, 120, 120))}
         });
-        SpawnPhysicsBox({
-            {"static", "true"},
-            {"px", "-9.0"}, {"py", "-1.0"}, {"pz", "0"},
-            {"hx", "9.0"}, {"hy", "1.0"}, {"hz", "18.0"},
-            {"material", "ice"},
-            {"color", std::to_string(GetColor(180, 230, 255))}
+        SpawnPhysicsCapsule({
+            {"px", "-6.0"}, {"py", "1.5"}, {"pz", "2.0"},
+            {"radius", "0.35"},
+            {"halfHeight", "0.7"},
+            {"material", "wood"},
+            {"color", std::to_string(colWood)}
         });
 
-        // ========== 壁: 木（4面） ==========
-        const unsigned int wallColor = GetColor(180, 140, 80);
-        SpawnPhysicsBox({
-            {"static", "true"},
-            {"px", "0"}, {"py", "4.0"}, {"pz", "18.0"},
-            {"hx", "18.0"}, {"hy", "5.0"}, {"hz", "1.0"},
-            {"material", "wood"},
-            {"color", std::to_string(wallColor)}
-        });
-        SpawnPhysicsBox({
-            {"static", "true"},
-            {"px", "0"}, {"py", "4.0"}, {"pz", "-18.0"},
-            {"hx", "18.0"}, {"hy", "5.0"}, {"hz", "1.0"},
-            {"material", "wood"},
-            {"color", std::to_string(wallColor)}
-        });
-        SpawnPhysicsBox({
-            {"static", "true"},
-            {"px", "18.0"}, {"py", "4.0"}, {"pz", "0"},
-            {"hx", "1.0"}, {"hy", "5.0"}, {"hz", "18.0"},
-            {"material", "wood"},
-            {"color", std::to_string(wallColor)}
-        });
-        SpawnPhysicsBox({
-            {"static", "true"},
-            {"px", "-18.0"}, {"py", "4.0"}, {"pz", "0"},
-            {"hx", "1.0"}, {"hy", "5.0"}, {"hz", "18.0"},
-            {"material", "wood"},
-            {"color", std::to_string(wallColor)}
-        });
-
-        // ========== 斜め坂: 鉄 ==========
-        const unsigned int rampColor = GetColor(160, 170, 180);
-        auto* ramp1 = SpawnPhysicsBox({
-            {"static", "true"},
-            {"px", "-8.0"}, {"py", "0.6"}, {"pz", "-6.0"},
-            {"hx", "4.0"}, {"hy", "0.3"}, {"hz", "5.0"},
-            {"material", "metal"},
-            {"color", std::to_string(rampColor)}
-        });
-        if (ramp1) {
-            ramp1->transform.SetLocalEulerRad(VGet(0.0f, 0.0f, -0.35f));
-        }
-        auto* ramp2 = SpawnPhysicsBox({
-            {"static", "true"},
-            {"px", "-10.0"}, {"py", "0.6"}, {"pz", "8.0"},
-            {"hx", "3.5"}, {"hy", "0.3"}, {"hz", "4.0"},
-            {"material", "metal"},
-            {"color", std::to_string(rampColor)}
-        });
-        if (ramp2) {
-            ramp2->transform.SetLocalEulerRad(VGet(-0.30f, 0.4f, -0.25f));
-        }
-
-        // ========== 積み重ねBox: 氷（ゴム床側に配置） ==========
-        const unsigned int iceBoxColor = GetColor(200, 240, 255);
-        for (int y = 0; y < 5; ++y) {
-            for (int x = 0; x < 3; ++x) {
-                SpawnPhysicsBox({
-                    {"px", std::to_string(4.0f + x * 1.05f)},
-                    {"py", std::to_string(0.5f + y * 1.01f)},
-                    {"pz", "5.0"},
-                    {"hx", "0.5"}, {"hy", "0.5"}, {"hz", "0.5"},
-                    {"material", "ice"},
-                    {"ccd", "true"},
-                    {"ccdThreshold", "2.0"},
-                    {"color", std::to_string(iceBoxColor)}
-                });
-            }
-        }
-        for (int y = 0; y < 4; ++y) {
-            for (int x = 0; x < 2; ++x) {
-                SpawnPhysicsBox({
-                    {"px", std::to_string(10.0f + x * 1.05f)},
-                    {"py", std::to_string(0.5f + y * 1.01f)},
-                    {"pz", "-4.0"},
-                    {"hx", "0.5"}, {"hy", "0.5"}, {"hz", "0.5"},
-                    {"material", "ice"},
-                    {"ccd", "true"},
-                    {"ccdThreshold", "2.0"},
-                    {"color", std::to_string(iceBoxColor)}
-                });
-            }
-        }
-
-        // ========== 球: 鉄（複数） ==========
-        const unsigned int metalBallColor = GetColor(180, 185, 195);
-        // ゴム床側（重くてグリップする）
-        for (int i = 0; i < 4; ++i) {
-            SpawnPhysicsSphere({
-                {"px", std::to_string(6.0f + i * 1.8f)},
-                {"py", "1.5"},
-                {"pz", std::to_string(-2.0f + i * 0.5f)},
-                {"radius", "0.5"},
-                {"material", "metal"},
-                {"ccd", "true"},
-                {"ccdThreshold", "3.0"},
-                {"color", std::to_string(metalBallColor)}
+        // ========== Ice Blocks: Low-friction test ==========
+        for (int i = 0; i < 3; ++i) {
+            SpawnPhysicsBox({
+                {"px", std::to_string(-3.0f + i * 1.1f)},
+                {"py", "0.5"},
+                {"pz", "-10.0"},
+                {"hx", "0.5"}, {"hy", "0.5"}, {"hz", "0.5"},
+                {"material", "ice"},
+                {"color", std::to_string(colIce)}
             });
         }
-        // 氷床側（滑って転がる）
-        for (int i = 0; i < 4; ++i) {
-            SpawnPhysicsSphere({
-                {"px", std::to_string(-6.0f - i * 1.8f)},
-                {"py", "1.5"},
-                {"pz", std::to_string(2.0f - i * 0.5f)},
-                {"radius", "0.45"},
-                {"material", "metal"},
-                {"ccd", "true"},
-                {"ccdThreshold", "3.0"},
-                {"color", std::to_string(metalBallColor)}
-            });
-        }
-        // 坂の上（転がり落ちる）
-        SpawnPhysicsSphere({
-            {"px", "-9.0"}, {"py", "2.5"}, {"pz", "-6.0"},
-            {"radius", "0.4"},
-            {"material", "metal"},
-            {"ccd", "true"},
-            {"ccdThreshold", "3.0"},
-            {"color", std::to_string(metalBallColor)}
-        });
-        SpawnPhysicsSphere({
-            {"px", "-10.5"}, {"py", "2.5"}, {"pz", "8.0"},
-            {"radius", "0.4"},
-            {"material", "metal"},
-            {"ccd", "true"},
-            {"ccdThreshold", "3.0"},
-            {"color", std::to_string(metalBallColor)}
-        });
 
         _isSpawningArena = false;
     }
 
-    // カメラ前方にオブジェクトを落とす
     void SpawnDropObject(int type) {
         auto* cam = CameraManager::Instance().Get(_cameraId);
         if (!cam) return;
@@ -267,12 +275,10 @@ namespace {
         }
 
         if (obj) {
-            // AddVelocityChange で直接速度を設定（質量に依存しない）
             obj->GetPhysicsBody()->AddVelocityChange(VScale(forward, 3.0f));
         }
     }
 
-    // F: 鉄のボールを高速発射（CCD閾値を極限まで低く設定してすり抜け防止）
     void FireProjectile() {
         auto* cam = CameraManager::Instance().Get(_cameraId);
         if (!cam) return;
@@ -291,7 +297,6 @@ namespace {
             {"maxLinearSpeed", "200.0"},
         });
         if (obj) {
-            // AddVelocityChange で直接速度を設定（質量に依存しない）
             obj->GetPhysicsBody()->AddVelocityChange(VScale(forward, 40.0f));
         }
     }
@@ -303,14 +308,23 @@ void PhysicsScene::Start() {
     ClearDynamicTracking_();
 
     if (_cameraId == 0 || cameraManager.Get(_cameraId) == nullptr) {
-        _cameraId = _cameraController.SpawnAuto(sceneId, CameraTag::Debug, VGet(0.0f, 8.0f, -22.0f), VGet(0.22f, 0.0f, 0.0f));
+        _cameraId = _cameraController.SpawnAuto(
+            sceneId, CameraTag::Debug,
+            VGet(0.0f, 10.0f, -25.0f),
+            VGet(0.30f, 0.0f, 0.0f));
     }
     cameraManager.SetRender(_cameraId);
 
     if (!_registered) {
-        ObjectFactory::Instance().RegisterCreator(PhysicsDebugBox::StaticPoolKey(), [](const VariantMap&) { return std::make_unique<PhysicsDebugBox>(); });
-        ObjectFactory::Instance().RegisterCreator(PhysicsDebugSphere::StaticPoolKey(), [](const VariantMap&) { return std::make_unique<PhysicsDebugSphere>(); });
-        ObjectFactory::Instance().RegisterCreator(PhysicsDebugCapsule::StaticPoolKey(), [](const VariantMap&) { return std::make_unique<PhysicsDebugCapsule>(); });
+        ObjectFactory::Instance().RegisterCreator(
+            PhysicsDebugBox::StaticPoolKey(),
+            [](const VariantMap&) { return std::make_unique<PhysicsDebugBox>(); });
+        ObjectFactory::Instance().RegisterCreator(
+            PhysicsDebugSphere::StaticPoolKey(),
+            [](const VariantMap&) { return std::make_unique<PhysicsDebugSphere>(); });
+        ObjectFactory::Instance().RegisterCreator(
+            PhysicsDebugCapsule::StaticPoolKey(),
+            [](const VariantMap&) { return std::make_unique<PhysicsDebugCapsule>(); });
         ObjectManager::Instance().RegisterPool(PhysicsDebugBox::StaticPoolKey(), 160);
         ObjectManager::Instance().RegisterPool(PhysicsDebugSphere::StaticPoolKey(), 160);
         ObjectManager::Instance().RegisterPool(PhysicsDebugCapsule::StaticPoolKey(), 64);
@@ -346,9 +360,15 @@ void PhysicsScene::Update(float dtSec) {
 void PhysicsScene::Draw() {
     ObjectManager::Instance().DrawAll();
 
-    DrawString(10, 10, "PhysicsScene - R:リセット T:タイトル", GetColor(255, 255, 255));
-    DrawString(10, 30, "右クリック+WASDQE : フリーカメラ操作", GetColor(200, 220, 255));
-    DrawString(10, 50, "1:木の箱  2:鉄の球  3:ゴムカプセル を前方に落とす", GetColor(255, 220, 140));
-    DrawString(10, 70, "F : 鉄のボールを高速発射", GetColor(255, 180, 180));
-    DrawString(10, 90, "床: 右=ゴム(赤) 左=氷(水色) / 壁:木 / 坂:鉄 / 積Box:氷 / 球:鉄", GetColor(180, 255, 180));
+    const unsigned int white  = GetColor(255, 255, 255);
+    const unsigned int blue   = GetColor(200, 220, 255);
+    const unsigned int yellow = GetColor(255, 220, 140);
+    const unsigned int red    = GetColor(255, 180, 180);
+    const unsigned int green  = GetColor(180, 255, 180);
+
+    DrawString(10, 10,  "PhysicsScene  R: Reset  T: Title", white);
+    DrawString(10, 30,  "RightClick + WASDQE : Free Camera", blue);
+    DrawString(10, 50,  "1: Wood Box  2: Metal Sphere  3: Rubber Capsule  (drop forward)", yellow);
+    DrawString(10, 70,  "F : Fire Metal Ball", red);
+    DrawString(10, 90,  "Floor: Stone / Wall: Wood / Ramp: Metal / Stack: Wood / Ball: Bouncy+Metal", green);
 }

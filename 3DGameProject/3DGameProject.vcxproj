@@ -149,6 +149,7 @@
     <ClCompile Include="CapsuleCollider.cpp" />
     <ClCompile Include="ColliderManager.cpp" />
     <ClCompile Include="Debug Class.cpp" />
+    <ClCompile Include="HalfPlaneCollider.cpp" />
     <ClCompile Include="Math\Quaternion.cpp" />
     <ClCompile Include="ObjectController.cpp" />
     <ClCompile Include="ObjectFactory.cpp" />
@@ -159,6 +160,7 @@
     <ClCompile Include="ObjectPool.cpp" />
     <ClCompile Include="PhysicsBody.cpp" />
     <ClCompile Include="PhysicsDebugClass.cpp" />
+    <ClCompile Include="PhysicsLabScene.cpp" />
     <ClCompile Include="PhysicsManager.cpp" />
     <ClCompile Include="PhysicsScene.cpp" />
     <ClCompile Include="Raycast.cpp" />
@@ -191,7 +193,9 @@
     <ClInclude Include="ColliderType.h" />
     <ClInclude Include="CollisionDebugClass.h" />
     <ClInclude Include="CollisionScene.h" />
+    <ClInclude Include="CompoundCollider.h" />
     <ClInclude Include="Debug Class.h" />
+    <ClInclude Include="HalfPlaneCollider.h" />
     <ClInclude Include="LayerMask.h" />
     <ClInclude Include="Manager.h" />
     <ClInclude Include="Math\Quaternion.h" />
@@ -208,6 +212,7 @@
     <ClInclude Include="PhysicsBody.h" />
     <ClInclude Include="PhysicsController.h" />
     <ClInclude Include="PhysicsDebugClass.h" />
+    <ClInclude Include="PhysicsLabScene.h" />
     <ClInclude Include="PhysicsManager.h" />
     <ClInclude Include="PhysicsMaterial.h" />
     <ClInclude Include="PhysicsScene.h" />

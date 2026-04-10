@@ -294,6 +294,22 @@ void MenuScene::Update(float dtSec) {
 
 		SceneTransition::Instance().Start(std::make_unique<CcdScene>(), p, 0.5f);
 	}
+	if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_L)) {
+		if (g_debugHat) {
+			g_debugHat->transform.SetParent(nullptr);
+			ObjectManager::Instance().Release(g_debugHat);
+			g_debugHat = nullptr;
+		}
+		if (g_debugGround) { ObjectManager::Instance().Release(g_debugGround); g_debugGround = nullptr; }
+		if (g_debugPlayer) { ObjectManager::Instance().Release(g_debugPlayer); g_debugPlayer = nullptr; }
+		if (g_debugEnemy) { ObjectManager::Instance().Release(g_debugEnemy); g_debugEnemy = nullptr; }
+
+		SceneTransition::Params p;
+		p.mode = SceneTransition::Mode::MaskImage;
+		p.durationSec = 0.6;
+		p.maskGraphPath = "Data/Transition/mask.png";
+		p.pixelShaderPath = "Data/Transition/mask_transition.pso";
+	}
 }
 
 void MenuScene::Draw() {

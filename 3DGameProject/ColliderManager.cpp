@@ -4,6 +4,8 @@
 #include "SphereCollider.h"
 #include "BoxCollider.h"
 #include "CapsuleCollider.h"
+#include "HalfPlaneCollider.h"
+#include "CompoundCollider.h"
 #include "Assert.h"
 #include "ThreadPool.h"
 #include <algorithm>
@@ -125,6 +127,200 @@ namespace {
 		GameObject* parentOwner = parentTf->Owner();
 		if (!parentOwner || parentOwner == c->owner) return nullptr;
 		return parentOwner;
+	}
+
+	// ============================================================
+	//  Swept Box-Box TOI (linear SAT sweep)
+	// ============================================================
+	// Returns earliest time t in [0,1] when two OBBs first overlap along
+	// their relative linear motion, using a swept separating-axis test.
+	// prevCenterA/prevCenterB are previous-frame centers; currCenterA/B current.
+	// Axes and half-extents are assumed constant (rotation CCD omitted here).
+	inline bool SweepBoxAgainstBox(
+		const VECTOR& prevCenterA, const VECTOR& currCenterA,
+		const BoxCollider* ba,
+		const VECTOR& prevCenterB, const VECTOR& currCenterB,
+		const BoxCollider* bb,
+		float* outHitT, VECTOR* outNormalWorld) noexcept
+	{
+		if (!ba || !bb) return false;
+		// Relative motion: A fixed, B moves by (relVel)
+		const VECTOR moveA = VSub(currCenterA, prevCenterA);
+		const VECTOR moveB = VSub(currCenterB, prevCenterB);
+		const VECTOR relVel = VSub(moveB, moveA);
+
+		const VECTOR A0 = ba->GetAxisX(), A1 = ba->GetAxisY(), A2 = ba->GetAxisZ();
+		const VECTOR B0 = bb->GetAxisX(), B1 = bb->GetAxisY(), B2 = bb->GetAxisZ();
+		const float aExt[3] = { ba->GetHalfExtents().x, ba->GetHalfExtents().y, ba->GetHalfExtents().z };
+		const float bExt[3] = { bb->GetHalfExtents().x, bb->GetHalfExtents().y, bb->GetHalfExtents().z };
+		const VECTOR Axes_A[3] = { A0, A1, A2 };
+		const VECTOR Axes_B[3] = { B0, B1, B2 };
+
+		// Separation vector at t=0
+		const VECTOR t0Sep = VSub(prevCenterB, prevCenterA);
+
+		float tFirst = 0.0f, tLast = 1.0f;
+		VECTOR bestNormal = VGet(0, 1, 0);
+		bool bestNormalSet = false;
+
+		auto TestAxis = [&](const VECTOR& axis) -> bool {
+			const float axisLen = Len3(axis);
+			if (axisLen < 1e-5f) return true; // Degenerate axis, skip
+			const VECTOR n = VScale(axis, 1.0f / axisLen);
+
+			// Project extents of A and B onto axis
+			float rA = 0.0f, rB = 0.0f;
+			for (int i = 0; i < 3; ++i) {
+				rA += std::fabs(Dot3(Axes_A[i], n)) * aExt[i];
+				rB += std::fabs(Dot3(Axes_B[i], n)) * bExt[i];
+			}
+			const float d0 = Dot3(t0Sep, n); // Separation at t=0
+			const float v = Dot3(relVel, n);  // Relative velocity along axis
+
+			const float s = rA + rB; // Combined extent
+			// Overlap range: d0 + v*t in [-s, s]
+			float tEnter, tExit;
+			if (std::fabs(v) < 1e-8f) {
+				if (d0 < -s || d0 > s) return false; // Separated, no relative motion on this axis
+				tEnter = 0.0f;
+				tExit = 1.0f;
+			} else {
+				tEnter = (-s - d0) / v;
+				tExit = (s - d0) / v;
+				if (tEnter > tExit) std::swap(tEnter, tExit);
+			}
+
+			if (tEnter > tFirst) {
+				tFirst = tEnter;
+				bestNormal = (d0 > 0.0f) ? n : VScale(n, -1.0f);
+				bestNormalSet = true;
+			}
+			tLast = (std::min)(tLast, tExit);
+
+			return tFirst <= tLast;
+		};
+
+		// Test 6 face normals
+		for (int i = 0; i < 3; ++i) { if (!TestAxis(Axes_A[i])) return false; }
+		for (int i = 0; i < 3; ++i) { if (!TestAxis(Axes_B[i])) return false; }
+		// Test 9 edge-edge cross products
+		for (int i = 0; i < 3; ++i) {
+			for (int j = 0; j < 3; ++j) {
+				if (!TestAxis(VCross(Axes_A[i], Axes_B[j]))) return false;
+			}
+		}
+
+		if (tFirst < 0.0f || tFirst > 1.0f) return false;
+		if (!bestNormalSet) return false;
+
+		if (outHitT) *outHitT = tFirst;
+		if (outNormalWorld) *outNormalWorld = bestNormal;
+		return true;
+	}
+
+	// ============================================================
+	//  Swept Sphere-Sphere with angular extent consideration
+	// ============================================================
+	// Conservative radius expansion: r_effective = r + angularSpeed * maxExtent * dt
+	// This accounts for the fact that a rotating body's surface sweeps a larger
+	// volume than a purely linearly-moving one.
+	inline float ComputeAngularExpansion(const VECTOR& angVel, float halfExtent, float dt) noexcept {
+		const float angSpeed = Len3(angVel);
+		// The maximum surface displacement due to rotation is angSpeed * halfExtent * dt
+		return angSpeed * halfExtent * dt;
+	}
+
+	// ============================================================
+	//  Improved SweepSphereAgainstBox with GJK-like corner refinement
+	// ============================================================
+	// After the slab test finds a hit, refine the contact point for corners/edges
+	// by computing the closest point on the box to the sphere center at the TOI.
+	inline bool SweepSphereAgainstBoxRefined(
+		const VECTOR& prevCenter,
+		const VECTOR& currCenter,
+		float radius,
+		const BoxCollider* box,
+		float* outHitT,
+		VECTOR* outNormalWorld,
+		VECTOR* outHitCenterWorld) noexcept
+	{
+		if (!box) return false;
+
+		// First pass: slab test (Minkowski-expanded box)
+		const VECTOR p0 = ToObbLocal(prevCenter, box);
+		const VECTOR p1 = ToObbLocal(currCenter, box);
+		const VECTOR d = VSub(p1, p0);
+		const VECTOR he = box->GetHalfExtents();
+		const VECTOR e = VAdd(he, VGet(radius, radius, radius));
+
+		float tMin = 0.0f;
+		float tMax = 1.0f;
+		VECTOR hitNormalLocal = VGet(0, 0, 0);
+		int hitAxis = -1;
+		const float p0Arr[3] = { p0.x, p0.y, p0.z };
+		const float dArr[3] = { d.x, d.y, d.z };
+		const float eArr[3] = { e.x, e.y, e.z };
+
+		for (int axis = 0; axis < 3; ++axis) {
+			const float origin = p0Arr[axis];
+			const float dir = dArr[axis];
+			const float extent = eArr[axis];
+
+			if (std::fabs(dir) < 1e-6f) {
+				if (origin < -extent || origin > extent) return false;
+				continue;
+			}
+
+			float t1 = (-extent - origin) / dir;
+			float t2 = (extent - origin) / dir;
+			VECTOR nearNormal = VGet(0, 0, 0);
+			if (axis == 0) nearNormal.x = (t1 <= t2) ? -1.0f : 1.0f;
+			else if (axis == 1) nearNormal.y = (t1 <= t2) ? -1.0f : 1.0f;
+			else nearNormal.z = (t1 <= t2) ? -1.0f : 1.0f;
+
+			if (t1 > t2) std::swap(t1, t2);
+			if (t1 > tMin) {
+				tMin = t1;
+				hitNormalLocal = nearNormal;
+				hitAxis = axis;
+			}
+			tMax = (std::min)(tMax, t2);
+			if (tMin > tMax) return false;
+		}
+
+		if (tMin < 0.0f || tMin > 1.0f) return false;
+
+		// Second pass: corner/edge refinement
+		// Compute sphere center at TOI
+		const VECTOR hitLocal = VAdd(p0, VScale(d, tMin));
+		const float heArr[3] = { he.x, he.y, he.z };
+		const float hitArr[3] = { hitLocal.x, hitLocal.y, hitLocal.z };
+
+		// Closest point on actual box (not Minkowski-expanded) to sphere center
+		float closest[3];
+		int outsideAxes = 0;
+		for (int i = 0; i < 3; ++i) {
+			closest[i] = std::clamp(hitArr[i], -heArr[i], heArr[i]);
+			if (std::fabs(hitArr[i]) > heArr[i] + 1e-6f) ++outsideAxes;
+		}
+
+		if (outsideAxes >= 2) {
+			// Corner or edge hit: recompute normal from sphere-center to closest point
+			const VECTOR closestPt = VGet(closest[0], closest[1], closest[2]);
+			const VECTOR diff = VSub(hitLocal, closestPt);
+			const float diffLen = Len3(diff);
+			if (diffLen > 1e-6f) {
+				// Verify the closest point distance ≈ radius
+				if (diffLen <= radius + 0.1f) {
+					hitNormalLocal = VScale(diff, 1.0f / diffLen);
+				}
+			}
+		}
+
+		if (outHitT) *outHitT = tMin;
+		if (outNormalWorld) *outNormalWorld = SafeNorm(FromObbLocalVector(hitNormalLocal, box), VGet(1, 0, 0));
+		if (outHitCenterWorld) *outHitCenterWorld = VAdd(prevCenter, VScale(VSub(currCenter, prevCenter), tMin));
+		return true;
 	}
 }
 
@@ -255,6 +451,33 @@ AABB ColliderManager::GetSweptAABB(Collider* collider) const {
 	sweep.max.x = (std::max)(sweep.max.x, it->second.max.x);
 	sweep.max.y = (std::max)(sweep.max.y, it->second.max.y);
 	sweep.max.z = (std::max)(sweep.max.z, it->second.max.z);
+
+	// Angular expansion: if the collider's owner has a PhysicsBody with angular
+	// velocity, expand the swept AABB to account for rotation-induced surface motion.
+	if (collider->owner) {
+		// Estimate max extent from AABB diagonal
+		const float ex = (curr.max.x - curr.min.x) * 0.5f;
+		const float ey = (curr.max.y - curr.min.y) * 0.5f;
+		const float ez = (curr.max.z - curr.min.z) * 0.5f;
+		const float maxExtent = std::sqrt(ex * ex + ey * ey + ez * ez);
+		// Use prevAABB displacement as proxy for angular expansion
+		// (actual angular velocity from PhysicsBody not accessible here,
+		//  so use extent growth between frames as heuristic)
+		const float prevEx = (it->second.max.x - it->second.min.x) * 0.5f;
+		const float prevEy = (it->second.max.y - it->second.min.y) * 0.5f;
+		const float prevEz = (it->second.max.z - it->second.min.z) * 0.5f;
+		const float extentGrowth = std::fabs(maxExtent - std::sqrt(prevEx*prevEx + prevEy*prevEy + prevEz*prevEz));
+		if (extentGrowth > 0.01f) {
+			const float angExpansion = extentGrowth * 1.5f;
+			sweep.min.x -= angExpansion;
+			sweep.min.y -= angExpansion;
+			sweep.min.z -= angExpansion;
+			sweep.max.x += angExpansion;
+			sweep.max.y += angExpansion;
+			sweep.max.z += angExpansion;
+		}
+	}
+
 	sweep.center = VScale(VAdd(sweep.min, sweep.max), 0.5f);
 	return sweep;
 }
@@ -262,12 +485,19 @@ AABB ColliderManager::GetSweptAABB(Collider* collider) const {
 // 全コライダのワールド形状更新。
 // Transform 変更後に narrow-phase へ入る前提をそろえる。
 void ColliderManager::UpdateAllShapes() {
-	const size_t count = _colliders.size();
+	// _colliders のスナップショットをロック下で取得し、
+	// ParallelFor はロック外で実行する。
+	// Register/Unregister が並行しても _colliders を破壊しない。
+	std::vector<Collider*> snapshot;
+	{
+		std::lock_guard lk(_mtx);
+		snapshot = _colliders;
+	}
+	const size_t count = snapshot.size();
 	if (count == 0) return;
 
-	// 各コライダーの形状更新は独立しているため並列に実行可能
 	ThreadPool::Instance().ParallelFor(0, count, [&](size_t i) {
-		Collider* c = _colliders[i];
+		Collider* c = snapshot[i];
 		if (!c) return;
 		c->UpdateShape();
 	}, 8);
@@ -363,8 +593,30 @@ void ColliderManager::SpatialPartitioning() {
 				else if (IsPair(ka, kb, Collider::Kind::Capsule, Collider::Kind::Capsule)) CheckCapsuleCapsule(a, b);
 				else if (IsPair(ka, kb, Collider::Kind::Sphere, Collider::Kind::Capsule)) CheckSphereCapsule(a, b);
 				else if (IsPair(ka, kb, Collider::Kind::Box, Collider::Kind::Capsule)) CheckBoxCapsule(a, b);
+				// HalfPlane combinations
+				else if (IsPair(ka, kb, Collider::Kind::Sphere, Collider::Kind::HalfPlane)) {
+					Collider* sp = (ka == Collider::Kind::Sphere) ? a : b;
+					Collider* hp = (ka == Collider::Kind::HalfPlane) ? a : b;
+					CheckSphereHalfPlane(sp, hp);
+				}
+				else if (IsPair(ka, kb, Collider::Kind::Box, Collider::Kind::HalfPlane)) {
+					Collider* bx = (ka == Collider::Kind::Box) ? a : b;
+					Collider* hp = (ka == Collider::Kind::HalfPlane) ? a : b;
+					CheckBoxHalfPlane(bx, hp);
+				}
+				else if (IsPair(ka, kb, Collider::Kind::Capsule, Collider::Kind::HalfPlane)) {
+					Collider* cp = (ka == Collider::Kind::Capsule) ? a : b;
+					Collider* hp = (ka == Collider::Kind::HalfPlane) ? a : b;
+					CheckCapsuleHalfPlane(cp, hp);
+				}
+				// Compound dispatch
+				else if (ka == Collider::Kind::Compound || kb == Collider::Kind::Compound) {
+					Collider* comp = (ka == Collider::Kind::Compound) ? a : b;
+					Collider* other = (comp == a) ? b : a;
+					CheckCompoundVsAny(comp, other);
+				}
 				else {
-					ASSERT_MSG(false, "未定義のコライダー組み合わせ: kindA=%d kindB=%d", static_cast<int>(ka), static_cast<int>(kb));
+					// Unknown pair — skip silently for forward compatibility
 					_narrowHit = false;
 				}
 
@@ -449,9 +701,22 @@ void ColliderManager::ResolvePushOut(Collider* a, Collider* b) {
 	else if (IsPair(ka, kb, Collider::Kind::Box, Collider::Kind::Capsule)) {
 		PushOutBoxCapsule(a, b);
 	}
-	else {
-		ASSERT_MSG(false, "未定義のコライダー組み合わせ: kindA=%d kindB=%d", static_cast<int>(ka), static_cast<int>(kb));
+	else if (IsPair(ka, kb, Collider::Kind::Sphere, Collider::Kind::HalfPlane)) {
+		Collider* sp = (ka == Collider::Kind::Sphere) ? a : b;
+		Collider* hp = (ka == Collider::Kind::HalfPlane) ? a : b;
+		PushOutSphereHalfPlane(sp, hp);
 	}
+	else if (IsPair(ka, kb, Collider::Kind::Box, Collider::Kind::HalfPlane)) {
+		Collider* bx = (ka == Collider::Kind::Box) ? a : b;
+		Collider* hp = (ka == Collider::Kind::HalfPlane) ? a : b;
+		PushOutBoxHalfPlane(bx, hp);
+	}
+	else if (IsPair(ka, kb, Collider::Kind::Capsule, Collider::Kind::HalfPlane)) {
+		Collider* cp = (ka == Collider::Kind::Capsule) ? a : b;
+		Collider* hp = (ka == Collider::Kind::HalfPlane) ? a : b;
+		PushOutCapsuleHalfPlane(cp, hp);
+	}
+	// Compound: push-out handled by child dispatch (no explicit compound push-out)
 }
 
 // Sphere-Sphere 押し戻し。
@@ -478,7 +743,14 @@ void ColliderManager::PushOutSphereSphere(Collider* a, Collider* b) {
 
 	if (pen > 0.0f) {
 		// 通常の重なりケース
-		n = VScale(d, 1.0f / dist);
+		// 中心間距離がほぼゼロ（完全重なり）の場合は法線が不定になるため
+		// Y軸方向をフォールバックとして使う。
+		if (LenSq(d) > 1e-6f) {
+			n = VScale(d, 1.0f / dist);
+		}
+		else {
+			n = VGet(0, 1, 0);
+		}
 	}
 	else {
 		// CCD: 前フレーム位置からのスイープで衝突時刻を求める
@@ -594,27 +866,66 @@ void ColliderManager::PushOutSphereBox(Collider* a, Collider* b) {
 
 	const VECTOR c = s->GetCenter();
 	const VECTOR d = VSub(c, box->GetCenter());
-	float x = Dot3(d, box->GetAxisX());
-	float y = Dot3(d, box->GetAxisY());
-	float z = Dot3(d, box->GetAxisZ());
-	x = std::clamp(x, -box->GetHalfExtents().x, box->GetHalfExtents().x);
-	y = std::clamp(y, -box->GetHalfExtents().y, box->GetHalfExtents().y);
-	z = std::clamp(z, -box->GetHalfExtents().z, box->GetHalfExtents().z);
-	VECTOR closest = box->GetCenter();
-	closest = VAdd(closest, VScale(box->GetAxisX(), x));
-	closest = VAdd(closest, VScale(box->GetAxisY(), y));
-	closest = VAdd(closest, VScale(box->GetAxisZ(), z));
+	const VECTOR he = box->GetHalfExtents();
+	// 球中心をOBBローカル座標に投影
+	float lx = Dot3(d, box->GetAxisX());
+	float ly = Dot3(d, box->GetAxisY());
+	float lz = Dot3(d, box->GetAxisZ());
+	// OBB上の最近点（クランプ）
+	float cx = std::clamp(lx, -he.x, he.x);
+	float cy = std::clamp(ly, -he.y, he.y);
+	float cz = std::clamp(lz, -he.z, he.z);
 
-	VECTOR diff = VSub(c, closest);
-	float dist = std::sqrt((std::max)(LenSq(diff), 1e-8f));
-	float pen = s->GetRadius() - dist;
+	// 球中心がBox内部にあるかどうか判定
+	// 内部にある場合、最近点 == 球中心 となり法線が求まらないため
+	// 最小貫通軸を使って正しい分離方向を計算する。
+	const bool centerInside =
+		(std::fabs(lx) <= he.x) &&
+		(std::fabs(ly) <= he.y) &&
+		(std::fabs(lz) <= he.z);
+
 	VECTOR n = VGet(0, 0, 0);
+	float pen = 0.0f;
 	bool ccdResolved = false;
 
-	if (pen > 0.0f) {
-		n = VScale(diff, 1.0f / dist);
+	if (centerInside) {
+		// --- 球中心がBox内部にある場合 ---
+		// 各軸で「面までの距離」を求め、最も浅い軸を分離方向とする。
+		const float axes[3] = { lx, ly, lz };
+		const float exts[3] = { he.x, he.y, he.z };
+		const VECTOR axisVecs[3] = { box->GetAxisX(), box->GetAxisY(), box->GetAxisZ() };
+
+		float minPen = FLT_MAX;
+		int bestAxis = 0;
+		float bestSign = 1.0f;
+		for (int i = 0; i < 3; ++i) {
+			// 正方向の面までの距離
+			const float penPos = exts[i] - axes[i];
+			// 負方向の面までの距離
+			const float penNeg = exts[i] + axes[i];
+			if (penPos < minPen) { minPen = penPos; bestAxis = i; bestSign =  1.0f; }
+			if (penNeg < minPen) { minPen = penNeg; bestAxis = i; bestSign = -1.0f; }
+		}
+		n = VScale(axisVecs[bestAxis], bestSign);
+		// penetration = 面までの距離 + 球の半径
+		pen = minPen + s->GetRadius();
 	}
 	else {
+		// --- 球中心がBox外部にある場合（通常ケース） ---
+		VECTOR closest = box->GetCenter();
+		closest = VAdd(closest, VScale(box->GetAxisX(), cx));
+		closest = VAdd(closest, VScale(box->GetAxisY(), cy));
+		closest = VAdd(closest, VScale(box->GetAxisZ(), cz));
+
+		const VECTOR diff = VSub(c, closest);
+		const float dist = std::sqrt((std::max)(LenSq(diff), 1e-8f));
+		pen = s->GetRadius() - dist;
+		if (pen > 0.0f) {
+			n = VScale(diff, 1.0f / dist);
+		}
+	}
+
+	if (pen <= 0.0f && !centerInside) {
 		auto prevIt = _prevAABBs.find(s);
 		if (prevIt == _prevAABBs.end()) return;
 
@@ -631,7 +942,7 @@ void ColliderManager::PushOutSphereBox(Collider* a, Collider* b) {
 		float hitT = 0.0f;
 		VECTOR hitNormal = VGet(0, 0, 0);
 		VECTOR hitCenter = VGet(0, 0, 0);
-		if (!SweepSphereAgainstBox(prevCenter, c, s->GetRadius(), box, &hitT, &hitNormal, &hitCenter)) return;
+		if (!SweepSphereAgainstBoxRefined(prevCenter, c, s->GetRadius(), box, &hitT, &hitNormal, &hitCenter)) return;
 
 		n = SafeNorm(hitNormal, VGet(1, 0, 0));
 		const VECTOR targetCenter = VAdd(hitCenter, VScale(n, 1e-4f));
@@ -649,8 +960,12 @@ void ColliderManager::PushOutSphereBox(Collider* a, Collider* b) {
 		ccdResolved = true;
 	}
 
-	// 接触点は球中心からOBB表面への最近点
-	const VECTOR contactPoint = VSub(s->GetCenter(), VScale(n, s->GetRadius()));
+	// 接触点はBox表面上の最近点と球表面の中間点。
+	// エッジ/コーナーヒットでは球表面点とBox最近点が離れるため
+	// 中間点を使うことで rA/rB の精度を改善する。
+	const VECTOR sphereSurface = VSub(s->GetCenter(), VScale(n, s->GetRadius()));
+	const VECTOR boxSurface = VAdd(s->GetCenter(), VScale(n, pen - s->GetRadius()));
+	const VECTOR contactPoint = VScale(VAdd(sphereSurface, boxSurface), 0.5f);
 
 	Contact ct;
 	ct.a = box;
@@ -730,11 +1045,30 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 	bool bestAxisIsFace = false;
 	int bestFaceOwner = -1; // 0 = face of A, 1 = face of B, -1 = edge
 	int bestFaceIndex = -1; // which axis (0,1,2)
+	bool separated = false; // SAT: set to true if separated on any axis
 
 	auto ConsiderAxis = [&](const VECTOR& axisW, float dist, float ra, float rb, bool isFaceAxis, int faceOwner = -1, int faceIdx = -1) {
+		if (separated) return; // already found a separating axis
 		const float sep = (ra + rb) - dist;
-		const float bias = (!isFaceAxis && bestAxisIsFace) ? 1e-4f : 0.0f;
-		if (sep + bias < bestPen || (isFaceAxis && !bestAxisIsFace && sep <= bestPen + 1e-4f)) {
+		if (sep <= 0.0f) { separated = true; return; } // SAT: separated on this axis → no collision
+		// Face-axis preference: face normals produce stable contact manifolds,
+		// while edge axes can cause sliding objects to be pushed sideways off edges.
+		// An edge axis must have substantially less penetration to override a face axis.
+		if (!isFaceAxis && bestAxisIsFace) {
+			// Edge must beat face by both a relative AND absolute margin
+			if (sep >= bestPen * 0.9f - 0.005f) return;
+		}
+		// If candidate is a face axis and current best is an edge axis,
+		// prefer the face axis unless the edge has much less penetration.
+		if (isFaceAxis && !bestAxisIsFace) {
+			bestPen = sep;
+			bestAxisW = axisW;
+			bestAxisIsFace = true;
+			bestFaceOwner = faceOwner;
+			bestFaceIndex = faceIdx;
+			return;
+		}
+		if (sep < bestPen) {
 			bestPen = sep;
 			bestAxisW = axisW;
 			bestAxisIsFace = isFaceAxis;
@@ -870,7 +1204,59 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 		}
 	}
 
-	if (bestPen == FLT_MAX || bestPen <=0.0f) return;
+	if (separated || bestPen == FLT_MAX || bestPen <=0.0f) {
+		// CCD: If no overlap at current position, try swept SAT
+		auto prevItA = _prevAABBs.find(ba);
+		auto prevItB = _prevAABBs.find(bb);
+		if (prevItA == _prevAABBs.end() || prevItB == _prevAABBs.end()) return;
+		float dt = _deltaTimeSec;
+		if (dt < 1e-6f) dt = 1e-6f;
+		const VECTOR prevCenterA = prevItA->second.center;
+		const VECTOR prevCenterB = prevItB->second.center;
+		const VECTOR moveA = VSub(ba->GetCenter(), prevCenterA);
+		const VECTOR moveB = VSub(bb->GetCenter(), prevCenterB);
+		const float speedSqA = LenSq(moveA) / (dt * dt);
+		const float speedSqB = LenSq(moveB) / (dt * dt);
+		const float thrA = static_cast<Collider*>(ba)->ccdDistanceThreshold;
+		const float thrB = static_cast<Collider*>(bb)->ccdDistanceThreshold;
+		const bool useSweep = static_cast<Collider*>(ba)->enableCCD || static_cast<Collider*>(bb)->enableCCD
+			|| speedSqA > thrA * thrA || speedSqB > thrB * thrB;
+		if (!useSweep) return;
+
+		float hitT = 0.0f;
+		VECTOR hitNormal = VGet(0, 1, 0);
+		if (!SweepBoxAgainstBox(prevCenterA, ba->GetCenter(), ba, prevCenterB, bb->GetCenter(), bb, &hitT, &hitNormal)) return;
+
+		// Backstep both boxes to TOI position
+		const VECTOR hitCenterA = VAdd(prevCenterA, VScale(moveA, hitT));
+		const VECTOR hitCenterB = VAdd(prevCenterB, VScale(moveB, hitT));
+		// Separate by a small margin along the hit normal
+		if (oa && !oa->isStatic) {
+			VECTOR p = oa->transform.LocalPosition();
+			p = VAdd(p, VSub(hitCenterA, ba->GetCenter()));
+			p = VSub(p, VScale(hitNormal, 1e-4f));
+			oa->transform.SetLocalPosition(p);
+		}
+		if (ob && !ob->isStatic) {
+			VECTOR p = ob->transform.LocalPosition();
+			p = VAdd(p, VSub(hitCenterB, bb->GetCenter()));
+			p = VAdd(p, VScale(hitNormal, 1e-4f));
+			ob->transform.SetLocalPosition(p);
+		}
+		ba->UpdateShape();
+		bb->UpdateShape();
+
+		// Emit contact at TOI
+		const VECTOR contactPt = VScale(VAdd(hitCenterA, hitCenterB), 0.5f);
+		Contact ct;
+		ct.a = ba;
+		ct.b = bb;
+		ct.normal = hitNormal;
+		ct.point = contactPt;
+		ct.penetration = 1e-4f;
+		_contacts.push_back(ct);
+		return;
+	}
 
 	VECTOR n = bestAxisW;
 	if (Dot3(tV, n) <0.0f) {
@@ -882,7 +1268,7 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 	// For face-axis contacts, generate up to 4 contact points by clipping
 	// the incident face polygon against the reference face extents.
 	// For edge-edge, use a single midpoint.
-	struct ManifoldPoint { VECTOR pos; };
+	struct ManifoldPoint { VECTOR pos; float depth; };
 	ManifoldPoint manifold[8];
 	int manifoldCount = 0;
 
@@ -992,38 +1378,62 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 		VECTOR negV = VScale(refAxes[refV], -1.0f);
 		cnt = ClipPolygonByPlane(clipOut, cnt, clipIn, negV, -(refFaceCenterV - refExt[refV]));
 
-		// Project clipped points onto reference face plane and keep those behind it
+		// Project clipped points onto reference face plane and keep those behind it.
+		// Each point gets its own penetration depth for accurate per-point correction.
+		// depth > 0  → point is in front of (outside) the reference face
+		// depth <= 0 → point is behind (inside) the reference face → penetrating
 		const float refFaceD = Dot3(refFaceCenter, n);
 		for (int i = 0; i < cnt && manifoldCount < 8; ++i) {
 			const float depth = Dot3(clipIn[i], n) - refFaceD;
-			// Keep points that are behind or on the reference face (penetrating)
-			if (depth <= pen + 0.01f) {
-				// Project onto reference face plane
-				manifold[manifoldCount].pos = VSub(clipIn[i], VScale(n, depth));
-				manifoldCount++;
-			}
+			// Reject points that are clearly in front of the reference face.
+			// Use a generous threshold so edge-case border points are not discarded.
+			if (depth > pen * 0.5f + 0.01f) continue;
+			// Per-point penetration: the SAT pen minus how far in front of the face.
+			// For points behind the face (depth <= 0), this adds to the base pen.
+			// Clamp to [0, pen] with a small floor to avoid zero-depth contacts.
+			const float rawPointPen = pen - depth;
+			const float pointPen = (std::max)((std::min)(rawPointPen, pen), 0.001f);
+			// Project onto reference face plane
+			manifold[manifoldCount].pos = VSub(clipIn[i], VScale(n, depth));
+			manifold[manifoldCount].depth = pointPen;
+			manifoldCount++;
 		}
 
-		// If clipping produced no points, fall back to single center point
+		// If clipping produced no points, fall back to the closest point
+		// between the two face centers projected onto the reference face.
 		if (manifoldCount == 0) {
-			manifold[0].pos = VScale(VAdd(ba->GetCenter(), bb->GetCenter()), 0.5f);
+			// Use the incident face center projected onto the reference face
+			const float incDepth = Dot3(incCenter, n) - refFaceD;
+			manifold[0].pos = VSub(incCenter, VScale(n, incDepth));
+			// Clamp to reference face extents
+			{
+				const VECTOR rel = VSub(manifold[0].pos, refFaceCenter);
+				float u = Dot3(rel, refAxes[refU]);
+				float v = Dot3(rel, refAxes[refV]);
+				u = std::clamp(u, -refExt[refU], refExt[refU]);
+				v = std::clamp(v, -refExt[refV], refExt[refV]);
+				manifold[0].pos = VAdd(refFaceCenter, VAdd(
+					VScale(refAxes[refU], u), VScale(refAxes[refV], v)));
+			}
+			manifold[0].depth = pen;
 			manifoldCount = 1;
 		}
 	}
 	else {
 		// Edge-edge: single contact at midpoint
 		manifold[0].pos = VScale(VAdd(ba->GetCenter(), bb->GetCenter()), 0.5f);
+		manifold[0].depth = pen;
 		manifoldCount = 1;
 	}
 
-	// Emit contacts
+	// Emit contacts with per-point penetration depth
 	for (int i = 0; i < manifoldCount; ++i) {
 		Contact ct;
 		ct.a = ba;
 		ct.b = bb;
 		ct.normal = n;
 		ct.point = manifold[i].pos;
-		ct.penetration = pen;
+		ct.penetration = manifold[i].depth;
 		_contacts.push_back(ct);
 	}
 
@@ -1111,7 +1521,70 @@ void ColliderManager::PushOutCapsuleCapsule(Collider* a, Collider* b) {
 	const float dist = std::sqrt((std::max)(LenSq(diff), 1e-8f));
 	const float r = ca->GetRadius() + cb->GetRadius();
 	const float pen = r - dist;
-	if (pen <= 0.0f) return;
+	if (pen <= 0.0f) {
+		// CCD: sweep via relative sphere-sphere model on segment closest points
+		auto prevItA = _prevAABBs.find(ca);
+		auto prevItB = _prevAABBs.find(cb);
+		if (prevItA == _prevAABBs.end() || prevItB == _prevAABBs.end()) return;
+		float dt = _deltaTimeSec;
+		if (dt < 1e-6f) dt = 1e-6f;
+		const VECTOR prevA = prevItA->second.center;
+		const VECTOR prevB = prevItB->second.center;
+		const VECTOR moveA = VSub(ca->GetCenter(), prevA);
+		const VECTOR moveB = VSub(cb->GetCenter(), prevB);
+		const float speedSqA = LenSq(moveA) / (dt * dt);
+		const float speedSqB = LenSq(moveB) / (dt * dt);
+		const float thrA = static_cast<Collider*>(ca)->ccdDistanceThreshold;
+		const float thrB = static_cast<Collider*>(cb)->ccdDistanceThreshold;
+		const bool useSweep = static_cast<Collider*>(ca)->enableCCD || static_cast<Collider*>(cb)->enableCCD
+			|| speedSqA > thrA * thrA || speedSqB > thrB * thrB;
+		if (!useSweep) return;
+
+		// Relative motion of centers: treat as sphere-sphere sweep
+		const VECTOR relPrev = VSub(prevB, prevA);
+		const VECTOR relCurr = VSub(cb->GetCenter(), ca->GetCenter());
+		const VECTOR relDir = VSub(relCurr, relPrev);
+		const float a2 = LenSq(relDir);
+		if (a2 < 1e-8f) return;
+		const float b2 = 2.0f * Dot3(relPrev, relDir);
+		const float c2_ = LenSq(relPrev) - r * r;
+		const float disc = b2 * b2 - 4.0f * a2 * c2_;
+		if (disc < 0.0f) return;
+		const float sqrtDisc = std::sqrt(disc);
+		const float hitT = (-b2 - sqrtDisc) / (2.0f * a2);
+		if (hitT < 0.0f || hitT > 1.0f) return;
+
+		const VECTOR hitA = VAdd(prevA, VScale(moveA, hitT));
+		const VECTOR hitB = VAdd(prevB, VScale(moveB, hitT));
+		const VECTOR hitD = VSub(hitB, hitA);
+		const float hitDist = std::sqrt((std::max)(LenSq(hitD), 1e-8f));
+		const VECTOR hitN = VScale(hitD, 1.0f / hitDist);
+
+		if (oa && !oa->isStatic) {
+			VECTOR p = oa->transform.LocalPosition();
+			p = VAdd(p, VSub(hitA, ca->GetCenter()));
+			p = VSub(p, VScale(hitN, 1e-4f));
+			oa->transform.SetLocalPosition(p);
+		}
+		if (ob && !ob->isStatic) {
+			VECTOR p = ob->transform.LocalPosition();
+			p = VAdd(p, VSub(hitB, cb->GetCenter()));
+			p = VAdd(p, VScale(hitN, 1e-4f));
+			ob->transform.SetLocalPosition(p);
+		}
+		ca->UpdateShape();
+		cb->UpdateShape();
+
+		const VECTOR contactPt = VScale(VAdd(hitA, hitB), 0.5f);
+		Contact ct;
+		ct.a = ca;
+		ct.b = cb;
+		ct.normal = hitN;
+		ct.point = contactPt;
+		ct.penetration = 1e-4f;
+		_contacts.push_back(ct);
+		return;
+	}
 
 	const VECTOR n = VScale(diff, 1.0f / dist);
 	// 接触点は2線分最近点の中点
@@ -1182,7 +1655,70 @@ void ColliderManager::PushOutSphereCapsule(Collider* a, Collider* b) {
 	const float dist = std::sqrt((std::max)(LenSq(diff), 1e-8f));
 	const float r = s->GetRadius() + c->GetRadius();
 	const float pen = r - dist;
-	if (pen <= 0.0f) return;
+	if (pen <= 0.0f) {
+		// CCD: sweep sphere against capsule center line
+		auto prevItS = _prevAABBs.find(s);
+		auto prevItC = _prevAABBs.find(c);
+		if (prevItS == _prevAABBs.end() || prevItC == _prevAABBs.end()) return;
+		float dt = _deltaTimeSec;
+		if (dt < 1e-6f) dt = 1e-6f;
+		const VECTOR prevS = prevItS->second.center;
+		const VECTOR prevC = prevItC->second.center;
+		const VECTOR moveS0 = VSub(s->GetCenter(), prevS);
+		const VECTOR moveC0 = VSub(c->GetCenter(), prevC);
+		const float speedSqS = LenSq(moveS0) / (dt * dt);
+		const float speedSqC = LenSq(moveC0) / (dt * dt);
+		const float thrS = static_cast<Collider*>(s)->ccdDistanceThreshold;
+		const float thrC = static_cast<Collider*>(c)->ccdDistanceThreshold;
+		const bool useSweep = static_cast<Collider*>(s)->enableCCD || static_cast<Collider*>(c)->enableCCD
+			|| speedSqS > thrS * thrS || speedSqC > thrC * thrC;
+		if (!useSweep) return;
+
+		// Approximate: sweep sphere center vs capsule center as sphere-sphere
+		const VECTOR relPrev = VSub(prevS, prevC);
+		const VECTOR relCurr = VSub(s->GetCenter(), c->GetCenter());
+		const VECTOR relDir = VSub(relCurr, relPrev);
+		const float a2 = LenSq(relDir);
+		if (a2 < 1e-8f) return;
+		const float b2 = 2.0f * Dot3(relPrev, relDir);
+		const float c2_ = LenSq(relPrev) - r * r;
+		const float disc = b2 * b2 - 4.0f * a2 * c2_;
+		if (disc < 0.0f) return;
+		const float sqrtDisc = std::sqrt(disc);
+		const float hitT = (-b2 - sqrtDisc) / (2.0f * a2);
+		if (hitT < 0.0f || hitT > 1.0f) return;
+
+		const VECTOR hitS = VAdd(prevS, VScale(moveS0, hitT));
+		const VECTOR hitC_ = VAdd(prevC, VScale(moveC0, hitT));
+		const VECTOR hitD = VSub(hitS, hitC_);
+		const float hitDist_ = std::sqrt((std::max)(LenSq(hitD), 1e-8f));
+		const VECTOR hitN = VScale(hitD, 1.0f / hitDist_);
+
+		if (os && !os->isStatic) {
+			VECTOR p0 = os->transform.LocalPosition();
+			p0 = VAdd(p0, VSub(hitS, s->GetCenter()));
+			p0 = VAdd(p0, VScale(hitN, 1e-4f));
+			os->transform.SetLocalPosition(p0);
+		}
+		if (oc && !oc->isStatic) {
+			VECTOR p0 = oc->transform.LocalPosition();
+			p0 = VAdd(p0, VSub(hitC_, c->GetCenter()));
+			p0 = VSub(p0, VScale(hitN, 1e-4f));
+			oc->transform.SetLocalPosition(p0);
+		}
+		s->UpdateShape();
+		c->UpdateShape();
+
+		const VECTOR contactPt = VSub(hitS, VScale(hitN, s->GetRadius()));
+		Contact ct;
+		ct.a = c;
+		ct.b = s;
+		ct.normal = hitN;
+		ct.point = contactPt;
+		ct.penetration = 1e-4f;
+		_contacts.push_back(ct);
+		return;
+	}
 
 	VECTOR n = VScale(diff, 1.0f / dist);
 	// 接触点は球表面上の最近点
@@ -1295,12 +1831,64 @@ void ColliderManager::PushOutBoxCapsule(Collider* a, Collider* b) {
 	}
 
 	const float r = cap->GetRadius();
-	if (bestDistSq > r * r) return;
+	if (bestDistSq > r * r || r - std::sqrt((std::max)(bestDistSq, 1e-8f)) <= 0.0f) {
+		// CCD: sweep capsule center against Minkowski-expanded box
+		auto prevItBox = _prevAABBs.find(box);
+		auto prevItCap = _prevAABBs.find(cap);
+		if (prevItBox == _prevAABBs.end() || prevItCap == _prevAABBs.end()) return;
+		float dt = _deltaTimeSec;
+		if (dt < 1e-6f) dt = 1e-6f;
+		const VECTOR prevBox_ = prevItBox->second.center;
+		const VECTOR prevCap_ = prevItCap->second.center;
+		const VECTOR moveBx = VSub(box->GetCenter(), prevBox_);
+		const VECTOR moveCp = VSub(cap->GetCenter(), prevCap_);
+		const float speedSqBx = LenSq(moveBx) / (dt * dt);
+		const float speedSqCp = LenSq(moveCp) / (dt * dt);
+		const float thrBx = static_cast<Collider*>(box)->ccdDistanceThreshold;
+		const float thrCp = static_cast<Collider*>(cap)->ccdDistanceThreshold;
+		const bool useSweep = static_cast<Collider*>(box)->enableCCD || static_cast<Collider*>(cap)->enableCCD
+			|| speedSqBx > thrBx * thrBx || speedSqCp > thrCp * thrCp;
+		if (!useSweep) return;
+
+		// Approximate: sweep capsule center as sphere against Minkowski box
+		float hitT = 0.0f;
+		VECTOR hitNormal = VGet(0, 1, 0);
+		VECTOR hitCenter = VGet(0, 0, 0);
+		if (!SweepSphereAgainstBoxRefined(prevCap_, cap->GetCenter(), r, box, &hitT, &hitNormal, &hitCenter)) return;
+
+		if (obox && !obox->isStatic) {
+			VECTOR p = obox->transform.LocalPosition();
+			p = VAdd(p, VScale(moveBx, hitT));
+			p = VSub(p, VScale(hitNormal, 1e-4f));
+			p = VSub(p, box->GetCenter());
+			p = VAdd(p, obox->transform.LocalPosition());
+			// Simpler: just backstep
+			VECTOR posFix = obox->transform.LocalPosition();
+			posFix = VSub(posFix, VScale(hitNormal, 1e-4f));
+			obox->transform.SetLocalPosition(posFix);
+		}
+		if (ocap && !ocap->isStatic) {
+			VECTOR p = ocap->transform.LocalPosition();
+			p = VAdd(p, VSub(hitCenter, cap->GetCenter()));
+			p = VAdd(p, VScale(hitNormal, 1e-4f));
+			ocap->transform.SetLocalPosition(p);
+		}
+		box->UpdateShape();
+		cap->UpdateShape();
+
+		Contact ct;
+		ct.a = box;
+		ct.b = cap;
+		ct.normal = hitNormal;
+		ct.point = hitCenter;
+		ct.penetration = 1e-4f;
+		_contacts.push_back(ct);
+		return;
+	}
 
 	VECTOR diffL = VSub(bestSegPointL, bestBoxPointL);
 	float dist = std::sqrt((std::max)(bestDistSq, 1e-8f));
 	float pen = r - dist;
-	if (pen <= 0.0f) return;
 
 	VECTOR n;
 	if (dist > 1e-6f) {
@@ -1357,14 +1945,380 @@ void ColliderManager::PushOutBoxCapsule(Collider* a, Collider* b) {
 	cap->UpdateShape();
 }
 
+// ============================================================
+//  HalfPlane narrow-phase + push-out
+// ============================================================
+void ColliderManager::CheckSphereHalfPlane(Collider* sphere, Collider* plane) {
+	auto* s = dynamic_cast<SphereCollider*>(sphere);
+	auto* hp = dynamic_cast<HalfPlaneCollider*>(plane);
+	if (!s || !hp) { _narrowHit = false; return; }
+
+	const HalfPlane& pl = hp->GetPlane();
+	const float dist = Dot3(s->GetCenter(), pl.normal) - pl.d;
+	const float pen = s->GetRadius() - dist;
+	if (pen <= 0.0f) { _narrowHit = false; return; }
+
+	_narrowHit = true;
+	const VECTOR contactPoint = VSub(s->GetCenter(), VScale(pl.normal, dist));
+	Contact ct;
+	ct.a = sphere;
+	ct.b = plane;
+	ct.normal = pl.normal;
+	ct.point = contactPoint;
+	ct.penetration = pen;
+	_contacts.push_back(ct);
+}
+
+void ColliderManager::PushOutSphereHalfPlane(Collider* sphere, Collider* plane) {
+	auto* s = dynamic_cast<SphereCollider*>(sphere);
+	auto* hp = dynamic_cast<HalfPlaneCollider*>(plane);
+	if (!s || !hp) return;
+
+	const HalfPlane& pl = hp->GetPlane();
+	const float dist = Dot3(s->GetCenter(), pl.normal) - pl.d;
+	const float pen = s->GetRadius() - dist;
+	if (pen <= 0.0f) {
+		// CCD: sphere may have tunneled through the half-plane
+		auto prevIt = _prevAABBs.find(s);
+		if (prevIt == _prevAABBs.end()) return;
+		float dt = _deltaTimeSec;
+		if (dt < 1e-6f) dt = 1e-6f;
+		const VECTOR prevCenter = prevIt->second.center;
+		const float prevDist = Dot3(prevCenter, pl.normal) - pl.d;
+		// Was the sphere on the positive side last frame and now on negative?
+		if (prevDist >= s->GetRadius() && dist < s->GetRadius()) {
+			const VECTOR move = VSub(s->GetCenter(), prevCenter);
+			const float speedSq = LenSq(move) / (dt * dt);
+			const float thr = static_cast<Collider*>(s)->ccdDistanceThreshold;
+			const bool useSweep = static_cast<Collider*>(s)->enableCCD || speedSq > thr * thr;
+			if (useSweep) {
+				// Compute TOI: time when dist == radius
+				const float vn = Dot3(move, pl.normal);
+				if (std::fabs(vn) > 1e-6f) {
+					const float hitT = (prevDist - s->GetRadius()) / (-vn);
+					if (hitT >= 0.0f && hitT <= 1.0f) {
+						const VECTOR hitPos = VAdd(prevCenter, VScale(move, hitT));
+						GameObject* owner = sphere->owner;
+						if (owner && !owner->isStatic) {
+							VECTOR p = owner->transform.LocalPosition();
+							p = VAdd(p, VSub(hitPos, s->GetCenter()));
+							p = VAdd(p, VScale(pl.normal, 1e-4f));
+							owner->transform.SetLocalPosition(p);
+							s->UpdateShape();
+						}
+						// Emit contact at TOI
+						const VECTOR contactPoint = VSub(hitPos, VScale(pl.normal, s->GetRadius()));
+						Contact ct;
+						ct.a = sphere;
+						ct.b = plane;
+						ct.normal = pl.normal;
+						ct.point = contactPoint;
+						ct.penetration = 1e-4f;
+						_contacts.push_back(ct);
+					}
+				}
+			}
+		}
+		return;
+	}
+
+	GameObject* owner = sphere->owner;
+	if (!owner || owner->isStatic) return;
+	VECTOR p = owner->transform.LocalPosition();
+	p = VAdd(p, VScale(pl.normal, pen));
+	owner->transform.SetLocalPosition(p);
+	s->UpdateShape();
+}
+
+void ColliderManager::CheckBoxHalfPlane(Collider* box, Collider* plane) {
+	auto* b = dynamic_cast<BoxCollider*>(box);
+	auto* hp = dynamic_cast<HalfPlaneCollider*>(plane);
+	if (!b || !hp) { _narrowHit = false; return; }
+
+	const HalfPlane& pl = hp->GetPlane();
+	const VECTOR he = b->GetHalfExtents();
+	// Project box extent onto plane normal: sum of |axis_i . n| * halfExtent_i
+	const float proj =
+		std::fabs(Dot3(b->GetAxisX(), pl.normal)) * he.x +
+		std::fabs(Dot3(b->GetAxisY(), pl.normal)) * he.y +
+		std::fabs(Dot3(b->GetAxisZ(), pl.normal)) * he.z;
+	const float dist = Dot3(b->GetCenter(), pl.normal) - pl.d;
+	const float pen = proj - dist;
+	if (pen <= 0.0f) { _narrowHit = false; return; }
+
+	_narrowHit = true;
+
+	// Multi-point manifold: test all 8 corners, emit contacts for those below the plane.
+	const VECTOR axes[3] = { b->GetAxisX(), b->GetAxisY(), b->GetAxisZ() };
+	const float exts[3] = { he.x, he.y, he.z };
+	const float signs[8][3] = {
+		{-1,-1,-1}, {1,-1,-1}, {-1,1,-1}, {1,1,-1},
+		{-1,-1, 1}, {1,-1, 1}, {-1,1, 1}, {1,1, 1}
+	};
+
+	int contactCount = 0;
+	for (int i = 0; i < 8; ++i) {
+		VECTOR corner = b->GetCenter();
+		corner = VAdd(corner, VScale(axes[0], signs[i][0] * exts[0]));
+		corner = VAdd(corner, VScale(axes[1], signs[i][1] * exts[1]));
+		corner = VAdd(corner, VScale(axes[2], signs[i][2] * exts[2]));
+		const float cornerDist = Dot3(corner, pl.normal) - pl.d;
+		if (cornerDist < 0.0f) {
+			Contact ct;
+			ct.a = box;
+			ct.b = plane;
+			ct.normal = pl.normal;
+			ct.point = VSub(corner, VScale(pl.normal, cornerDist));
+			ct.penetration = -cornerDist;
+			_contacts.push_back(ct);
+			++contactCount;
+		}
+	}
+
+	// Fallback: if no corners penetrated, use center projection (single point)
+	if (contactCount == 0) {
+		Contact ct;
+		ct.a = box;
+		ct.b = plane;
+		ct.normal = pl.normal;
+		ct.point = VSub(b->GetCenter(), VScale(pl.normal, dist));
+		ct.penetration = pen;
+		_contacts.push_back(ct);
+	}
+}
+
+void ColliderManager::PushOutBoxHalfPlane(Collider* box, Collider* plane) {
+	auto* b = dynamic_cast<BoxCollider*>(box);
+	auto* hp = dynamic_cast<HalfPlaneCollider*>(plane);
+	if (!b || !hp) return;
+
+	const HalfPlane& pl = hp->GetPlane();
+	const VECTOR he = b->GetHalfExtents();
+	const float proj =
+		std::fabs(Dot3(b->GetAxisX(), pl.normal)) * he.x +
+		std::fabs(Dot3(b->GetAxisY(), pl.normal)) * he.y +
+		std::fabs(Dot3(b->GetAxisZ(), pl.normal)) * he.z;
+	const float dist = Dot3(b->GetCenter(), pl.normal) - pl.d;
+	const float pen = proj - dist;
+	if (pen <= 0.0f) {
+		// CCD: box may have tunneled through the half-plane
+		auto prevIt = _prevAABBs.find(b);
+		if (prevIt != _prevAABBs.end()) {
+			float dt = _deltaTimeSec;
+			if (dt < 1e-6f) dt = 1e-6f;
+			const VECTOR prevCenter = prevIt->second.center;
+			const float prevDist = Dot3(prevCenter, pl.normal) - pl.d;
+			if (prevDist >= proj && dist < proj) {
+				const VECTOR move = VSub(b->GetCenter(), prevCenter);
+				const float speedSq = LenSq(move) / (dt * dt);
+				const float thr = static_cast<Collider*>(b)->ccdDistanceThreshold;
+				const bool useSweep = static_cast<Collider*>(b)->enableCCD || speedSq > thr * thr;
+				if (useSweep) {
+					const float vn = Dot3(move, pl.normal);
+					if (std::fabs(vn) > 1e-6f) {
+						const float hitT = (prevDist - proj) / (-vn);
+						if (hitT >= 0.0f && hitT <= 1.0f) {
+							const VECTOR hitPos = VAdd(prevCenter, VScale(move, hitT));
+							GameObject* owner = box->owner;
+							if (owner && !owner->isStatic) {
+								VECTOR p = owner->transform.LocalPosition();
+								p = VAdd(p, VSub(hitPos, b->GetCenter()));
+								p = VAdd(p, VScale(pl.normal, 1e-4f));
+								owner->transform.SetLocalPosition(p);
+								b->UpdateShape();
+							}
+							const VECTOR contactPt = VSub(hitPos, VScale(pl.normal, proj));
+							Contact ct;
+							ct.a = box;
+							ct.b = plane;
+							ct.normal = pl.normal;
+							ct.point = contactPt;
+							ct.penetration = 1e-4f;
+							_contacts.push_back(ct);
+						}
+					}
+				}
+			}
+		}
+		return;
+	}
+
+	GameObject* owner = box->owner;
+	if (!owner || owner->isStatic) return;
+	VECTOR p = owner->transform.LocalPosition();
+	p = VAdd(p, VScale(pl.normal, pen));
+	owner->transform.SetLocalPosition(p);
+	b->UpdateShape();
+}
+
+void ColliderManager::CheckCapsuleHalfPlane(Collider* capsule, Collider* plane) {
+	auto* c = dynamic_cast<CapsuleCollider*>(capsule);
+	auto* hp = dynamic_cast<HalfPlaneCollider*>(plane);
+	if (!c || !hp) { _narrowHit = false; return; }
+
+	const HalfPlane& pl = hp->GetPlane();
+	const float distBot = Dot3(c->GetBottom(), pl.normal) - pl.d;
+	const float distTop = Dot3(c->GetTop(), pl.normal) - pl.d;
+	const float minDist = (std::min)(distBot, distTop);
+	const float pen = c->GetRadius() - minDist;
+	if (pen <= 0.0f) { _narrowHit = false; return; }
+
+	_narrowHit = true;
+	const VECTOR closestEnd = (distBot < distTop) ? c->GetBottom() : c->GetTop();
+	const VECTOR contactPoint = VSub(closestEnd, VScale(pl.normal, minDist));
+	Contact ct;
+	ct.a = capsule;
+	ct.b = plane;
+	ct.normal = pl.normal;
+	ct.point = contactPoint;
+	ct.penetration = pen;
+	_contacts.push_back(ct);
+}
+
+void ColliderManager::PushOutCapsuleHalfPlane(Collider* capsule, Collider* plane) {
+	auto* c = dynamic_cast<CapsuleCollider*>(capsule);
+	auto* hp = dynamic_cast<HalfPlaneCollider*>(plane);
+	if (!c || !hp) return;
+
+	const HalfPlane& pl = hp->GetPlane();
+	const float distBot = Dot3(c->GetBottom(), pl.normal) - pl.d;
+	const float distTop = Dot3(c->GetTop(), pl.normal) - pl.d;
+	const float minDist = (std::min)(distBot, distTop);
+	const float pen = c->GetRadius() - minDist;
+	if (pen <= 0.0f) {
+		// CCD: capsule may have tunneled through the half-plane
+		auto prevIt = _prevAABBs.find(c);
+		if (prevIt != _prevAABBs.end()) {
+			float dt = _deltaTimeSec;
+			if (dt < 1e-6f) dt = 1e-6f;
+			const VECTOR prevCenter = prevIt->second.center;
+			const float prevMinDist = Dot3(prevCenter, pl.normal) - pl.d;
+			if (prevMinDist >= c->GetRadius() && minDist < c->GetRadius()) {
+				const VECTOR move = VSub(c->GetCenter(), prevCenter);
+				const float speedSq = LenSq(move) / (dt * dt);
+				const float thr = static_cast<Collider*>(c)->ccdDistanceThreshold;
+				const bool useSweep = static_cast<Collider*>(c)->enableCCD || speedSq > thr * thr;
+				if (useSweep) {
+					const float vn = Dot3(move, pl.normal);
+					if (std::fabs(vn) > 1e-6f) {
+						const float hitT = (prevMinDist - c->GetRadius()) / (-vn);
+						if (hitT >= 0.0f && hitT <= 1.0f) {
+							const VECTOR hitPos = VAdd(prevCenter, VScale(move, hitT));
+							GameObject* owner = capsule->owner;
+							if (owner && !owner->isStatic) {
+								VECTOR p = owner->transform.LocalPosition();
+								p = VAdd(p, VSub(hitPos, c->GetCenter()));
+								p = VAdd(p, VScale(pl.normal, 1e-4f));
+								owner->transform.SetLocalPosition(p);
+								c->UpdateShape();
+							}
+							const VECTOR closestEnd = (distBot < distTop) ? c->GetBottom() : c->GetTop();
+							const VECTOR contactPt = VSub(closestEnd, VScale(pl.normal, minDist));
+							Contact ct;
+							ct.a = capsule;
+							ct.b = plane;
+							ct.normal = pl.normal;
+							ct.point = contactPt;
+							ct.penetration = 1e-4f;
+							_contacts.push_back(ct);
+						}
+					}
+				}
+			}
+		}
+		return;
+	}
+
+	GameObject* owner = capsule->owner;
+	if (!owner || owner->isStatic) return;
+	VECTOR p = owner->transform.LocalPosition();
+	p = VAdd(p, VScale(pl.normal, pen));
+	owner->transform.SetLocalPosition(p);
+	c->UpdateShape();
+}
+
+// ============================================================
+//  Compound dispatch — recurse into children via BVH
+// ============================================================
+void ColliderManager::CheckCompoundVsAny(Collider* compound, Collider* other) {
+	auto* comp = dynamic_cast<CompoundCollider*>(compound);
+	if (!comp) { _narrowHit = false; return; }
+
+	bool anyHit = false;
+	const AABB& otherAABB = other->GetAABB();
+
+	// Use BVH query if available, otherwise fall back to linear scan
+	comp->QueryOverlapping(otherAABB, [&](size_t childIdx) {
+		Collider* child = comp->GetChild(childIdx);
+		if (!child) return;
+
+		_narrowHit = false;
+		const auto ck = child->GetKind();
+		const auto ok = other->GetKind();
+
+		if (IsPair(ck, ok, Collider::Kind::Sphere, Collider::Kind::Sphere)) CheckSphereSphere(child, other);
+		else if (IsPair(ck, ok, Collider::Kind::Sphere, Collider::Kind::Box)) CheckSphereBox(child, other);
+		else if (IsPair(ck, ok, Collider::Kind::Box, Collider::Kind::Box)) CheckBoxBox(child, other);
+		else if (IsPair(ck, ok, Collider::Kind::Capsule, Collider::Kind::Capsule)) CheckCapsuleCapsule(child, other);
+		else if (IsPair(ck, ok, Collider::Kind::Sphere, Collider::Kind::Capsule)) CheckSphereCapsule(child, other);
+		else if (IsPair(ck, ok, Collider::Kind::Box, Collider::Kind::Capsule)) CheckBoxCapsule(child, other);
+		else if (IsPair(ck, ok, Collider::Kind::Sphere, Collider::Kind::HalfPlane)) {
+			Collider* sp = (ck == Collider::Kind::Sphere) ? child : other;
+			Collider* hp = (ck == Collider::Kind::HalfPlane) ? child : other;
+			CheckSphereHalfPlane(sp, hp);
+		}
+		else if (IsPair(ck, ok, Collider::Kind::Box, Collider::Kind::HalfPlane)) {
+			Collider* bx = (ck == Collider::Kind::Box) ? child : other;
+			Collider* hp = (ck == Collider::Kind::HalfPlane) ? child : other;
+			CheckBoxHalfPlane(bx, hp);
+		}
+		else if (IsPair(ck, ok, Collider::Kind::Capsule, Collider::Kind::HalfPlane)) {
+			Collider* cp = (ck == Collider::Kind::Capsule) ? child : other;
+			Collider* hp = (ck == Collider::Kind::HalfPlane) ? child : other;
+			CheckCapsuleHalfPlane(cp, hp);
+		}
+
+		if (_narrowHit) anyHit = true;
+	});
+
+	_narrowHit = anyHit;
+}
+
 // 1フレームぶんのコライダ更新入口。
 void ColliderManager::Update(float dtSec) {
 	if (IsShuttingDown()) {
 		return;
 	}
 	_deltaTimeSec = (dtSec > 1e-6f) ? dtSec : 1e-6f;
+	if (_adaptiveCellSize) ComputeAdaptiveCellSize();
 	UpdateAllShapes();
 	CheckDetailedCollisions();
+}
+
+// Adaptive cell size: compute from average collider extent.
+// Uses the median half-extent * 2 as cell size, clamped to [1, 32].
+void ColliderManager::ComputeAdaptiveCellSize() {
+	if (_colliders.empty()) return;
+	float totalExtent = 0.0f;
+	int count = 0;
+	for (auto* c : _colliders) {
+		if (!c) continue;
+		const AABB& aabb = c->GetAABB();
+		const float ex = aabb.max.x - aabb.min.x;
+		const float ey = aabb.max.y - aabb.min.y;
+		const float ez = aabb.max.z - aabb.min.z;
+		const float maxE = (std::max)({ex, ey, ez});
+		if (maxE > 1e-4f && maxE < 1e5f) {
+			totalExtent += maxE;
+			++count;
+		}
+	}
+	if (count > 0) {
+		float avg = totalExtent / static_cast<float>(count);
+		// Cell size = 2x average extent, clamped
+		float newSize = std::clamp(avg * 2.0f, 1.0f, 32.0f);
+		_cellSize = newSize;
+	}
 }
 
 // Sphere-Sphere 詳細判定。

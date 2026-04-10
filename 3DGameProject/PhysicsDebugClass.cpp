@@ -240,6 +240,7 @@ void PhysicsDebugClass::ConfigureFromParams_(const VariantMap& params) {
 		_physicsBody._material.angularDamping = _physicsBody._angularDamping;
 	}
 	_physicsBody._freezeRotation = ParseBool_(params, "freezeRotation", false);
+	_physicsBody._detectContinuous = ParseBool_(params, "ccd", false);
 	_physicsBody._velocity = VGet(
 		ParseFloat_(params, "vx", 0.0f),
 		ParseFloat_(params, "vy", 0.0f),

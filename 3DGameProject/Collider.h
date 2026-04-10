@@ -60,6 +60,8 @@ public:
 		Sphere,
 		Capsule,
 		Box, // OBB想定
+		HalfPlane, // 半空間コライダー
+		Compound,  // 複合コライダー
 	};
 
 	// コライダー種別取得

@@ -95,18 +95,33 @@ private:
 	void CheckSphereCapsule(Collider* a, Collider* b);	// Sphere-Capsule 当たり判定
 	void CheckBoxCapsule(Collider* a, Collider* b);		// Box(OBB)-Capsule 当たり判定
 
+	// HalfPlane narrow-phase
+	void CheckSphereHalfPlane(Collider* sphere, Collider* plane);
+	void CheckBoxHalfPlane(Collider* box, Collider* plane);
+	void CheckCapsuleHalfPlane(Collider* capsule, Collider* plane);
+
+	// Compound dispatch
+	void CheckCompoundVsAny(Collider* compound, Collider* other);
+
 	// 各種押し戻し処理
 	void PushOutSphereSphere(Collider* a, Collider* b);		// Sphere-Sphere 押し戻し
 	void PushOutSphereBox(Collider* a, Collider* b);		// Sphere-Box 押し戻し
 	void PushOutBoxBox(Collider* a, Collider* b); 			// Box-Box 押し戻し
 	void PushOutCapsuleCapsule(Collider* a, Collider* b); 	// Capsule-Capsule 押し戻し
 	void PushOutSphereCapsule(Collider* a, Collider* b); 	// Sphere-Capsule 押し戻し
-	void PushOutBoxCapsule(Collider* a, Collider* b); 		// Box-Capsule 押し戻し
+	void PushOutBoxCapsule(Collider* a, Collider* b); 	// Box-Capsule 押し戻し
+	void PushOutSphereHalfPlane(Collider* sphere, Collider* plane);
+	void PushOutBoxHalfPlane(Collider* box, Collider* plane);
+	void PushOutCapsuleHalfPlane(Collider* capsule, Collider* plane);
 
 public:
-	// 空間分割セルサイズ（ワールド単位）。デフォルト:50
+	// 空間分割セルサイズ（ワールド単位）。デフォルト:4
 	float GetCellSize() const noexcept { return _cellSize; }
 	void SetCellSize(float cellSize) noexcept { _cellSize = (cellSize >0.01f) ? cellSize :0.01f; }
+
+	// Adaptive cell size: auto-compute based on average collider extent
+	void SetAdaptiveCellSize(bool enabled) noexcept { _adaptiveCellSize = enabled; }
+	bool IsAdaptiveCellSize() const noexcept { return _adaptiveCellSize; }
 
 	// Contact情報（Physics 用）
 	struct Contact {
@@ -127,8 +142,11 @@ public:
 
 private:
 	// 空間分割（Spatial Hash）セルサイズ
-	float _cellSize =50.0f;
+	float _cellSize = 4.0f;
+	bool _adaptiveCellSize = true;
 	float _deltaTimeSec = 1.0f / 60.0f;
+
+	void ComputeAdaptiveCellSize();
 
 	mutable std::mutex _mtx;							// スレッド安全用ミューテックス
 	std::vector<Collider*> _colliders{}; 	// 登録コライダー群

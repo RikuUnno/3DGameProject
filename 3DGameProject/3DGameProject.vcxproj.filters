@@ -343,6 +343,15 @@
     <Filter Include="ヘッダー ファイル\System\Physics\Material">
       <UniqueIdentifier>{c17ceccd-661b-49d0-b2ea-be4eb776d870}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ヘッダー ファイル\System\Collision\Primitive\Compound">
+      <UniqueIdentifier>{98b4a9b2-997a-46d4-92bf-77cea6456564}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Collision\Primitive\HalfPlane">
+      <UniqueIdentifier>{17694504-74e7-4cf7-805c-e9964bab27ee}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Collision\Primitive\HalfPlane">
+      <UniqueIdentifier>{19a16c6b-03f6-4fb9-88df-91b425564725}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -426,16 +435,22 @@
     <ClCompile Include="PhysicsBody.cpp">
       <Filter>ソース ファイル\System\Physics\Physics</Filter>
     </ClCompile>
-    <ClCompile Include="PhysicsManager.cpp">
-      <Filter>ソース ファイル\System\Physics\Manager</Filter>
-    </ClCompile>
     <ClCompile Include="PhysicsDebugClass.cpp">
       <Filter>ソース ファイル\Debug\Physics</Filter>
     </ClCompile>
     <ClCompile Include="Raycast.cpp">
       <Filter>ソース ファイル\System\Ray</Filter>
     </ClCompile>
+    <ClCompile Include="PhysicsManager.cpp">
+      <Filter>ソース ファイル\System\Physics\Manager</Filter>
+    </ClCompile>
+    <ClCompile Include="HalfPlaneCollider.cpp">
+      <Filter>ソース ファイル\System\Collision\Primitive\HalfPlane</Filter>
+    </ClCompile>
     <ClCompile Include="PhysicsScene.cpp">
+      <Filter>ソース ファイル\Scene\Scenes\Debug\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="PhysicsLabScene.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
   </ItemGroup>
@@ -604,6 +619,15 @@
     </ClInclude>
     <ClInclude Include="PhysicsMaterial.h">
       <Filter>ヘッダー ファイル\System\Physics\Material</Filter>
+    </ClInclude>
+    <ClInclude Include="HalfPlaneCollider.h">
+      <Filter>ヘッダー ファイル\System\Collision\Primitive\HalfPlane</Filter>
+    </ClInclude>
+    <ClInclude Include="CompoundCollider.h">
+      <Filter>ヘッダー ファイル\System\Collision\Primitive\Compound</Filter>
+    </ClInclude>
+    <ClInclude Include="PhysicsLabScene.h">
+      <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

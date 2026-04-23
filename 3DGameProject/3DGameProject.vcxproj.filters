@@ -352,6 +352,27 @@
     <Filter Include="ソース ファイル\System\Collision\Primitive\HalfPlane">
       <UniqueIdentifier>{19a16c6b-03f6-4fb9-88df-91b425564725}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ヘッダー ファイル\System\Monitor">
+      <UniqueIdentifier>{4dfb5f6f-de3b-47c1-bec8-a76560933f19}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Monitor\Performance">
+      <UniqueIdentifier>{66e70a48-ec97-4918-bd89-8a9e9aec632e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Monitor">
+      <UniqueIdentifier>{c084447d-2236-440a-9612-6e95b28d53fd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Monitor\Performance">
+      <UniqueIdentifier>{4ef69fe2-4bd6-444f-8598-57e1ff817f7c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Collision\Manager\ThreadSafe">
+      <UniqueIdentifier>{4602a4bb-f24e-4c59-8e92-32a9e370968b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Collision\ContactManifold">
+      <UniqueIdentifier>{f2b2af8e-09d4-42a7-ab92-f2e0267a5e1b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Collision\ContactManifold">
+      <UniqueIdentifier>{e562289a-8c07-4770-b24f-a28018cce1db}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -450,8 +471,11 @@
     <ClCompile Include="PhysicsScene.cpp">
       <Filter>ソース ファイル\Scene\Scenes\Debug\Physics</Filter>
     </ClCompile>
-    <ClCompile Include="PhysicsLabScene.cpp">
-      <Filter>ソース ファイル</Filter>
+    <ClCompile Include="PerformanceMonitor.cpp">
+      <Filter>ソース ファイル\System\Monitor\Performance</Filter>
+    </ClCompile>
+    <ClCompile Include="ColliderManagerThreadSafe.cpp">
+      <Filter>ソース ファイル\System\Collision\Manager\ThreadSafe</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -614,9 +638,6 @@
     <ClInclude Include="CcdScene.h">
       <Filter>ヘッダー ファイル\Scene\Scenes\Debug\Ccd</Filter>
     </ClInclude>
-    <ClInclude Include="ThreadPool.h">
-      <Filter>ヘッダー ファイル\System\Thread\Pool</Filter>
-    </ClInclude>
     <ClInclude Include="PhysicsMaterial.h">
       <Filter>ヘッダー ファイル\System\Physics\Material</Filter>
     </ClInclude>
@@ -626,8 +647,11 @@
     <ClInclude Include="CompoundCollider.h">
       <Filter>ヘッダー ファイル\System\Collision\Primitive\Compound</Filter>
     </ClInclude>
-    <ClInclude Include="PhysicsLabScene.h">
-      <Filter>ヘッダー ファイル</Filter>
+    <ClInclude Include="PerformanceMonitor.h">
+      <Filter>ヘッダー ファイル\System\Monitor\Performance</Filter>
+    </ClInclude>
+    <ClInclude Include="ThreadPool.h">
+      <Filter>ヘッダー ファイル\System\Thread\Pool</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -658,5 +682,11 @@
     <Text Include="Object_Manual_Reference.txt">
       <Filter>メモ\リファレンス・マニュアル\Object</Filter>
     </Text>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="docs\MultithreadFlowDiagram.md" />
+    <None Include="docs\PhysicsSystemComprehensiveAnalysis.md" />
+    <None Include="docs\Week1-2_Completion_Report.md" />
+    <None Include="docs\Week1-2_Implementation_Progress.md" />
   </ItemGroup>
 </Project>

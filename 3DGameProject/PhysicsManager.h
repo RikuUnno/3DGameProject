@@ -1,9 +1,9 @@
 #pragma once
-#pragma once
 
 #include <vector>
 #include <atomic>
 #include <mutex>
+#include <future>
 #include <unordered_map>
 #include <cstdint>
 #include <algorithm>
@@ -80,6 +80,9 @@ struct SolverContact {
 struct PhysicsIsland {
 	std::vector<PhysicsBody*> bodies;
 	std::vector<int> contactIndices; // _solverContacts へのインデックス
+	// Graph-coloring constraint batches: contacts within each batch
+	// do not share bodies, so they can be solved in parallel.
+	std::vector<std::vector<int>> constraintBatches;
 	bool allSleeping = false;
 };
 
@@ -156,6 +159,32 @@ private:
 	std::unordered_map<GameObject*, PhysicsBody*> _bodyByOwner{};
 	std::unordered_map<GameObject*, Collider*>    _colliderByOwner{};
 
+	// --- SoA キャッシュ (IntegrateBodies 高速化用) ---
+	// AoS (PhysicsBody*) を連続メモリの SoA に展開し、
+	// ParallelFor のキャッシュヒット率を向上させる。
+	struct BodySoA {
+		std::vector<VECTOR> position;
+		std::vector<VECTOR> velocity;
+		std::vector<VECTOR> angularVelocity;
+		std::vector<VECTOR> force;
+		std::vector<VECTOR> torque;
+		std::vector<float>  inverseMass;
+		std::vector<float>  linearDamping;
+		std::vector<float>  angularDamping;
+		std::vector<float>  gravityScale;
+		std::vector<uint8_t> flags; // bit0=active, bit1=kinematic, bit2=sleeping, bit3=useGravity, bit4=freezeRot, bit5=ccd
+		void Resize(size_t n) {
+			position.resize(n); velocity.resize(n); angularVelocity.resize(n);
+			force.resize(n); torque.resize(n);
+			inverseMass.resize(n); linearDamping.resize(n);
+			angularDamping.resize(n); gravityScale.resize(n);
+			flags.resize(n);
+		}
+	};
+	BodySoA _bodySoA{};
+	void GatherBodySoA();
+	void ScatterBodySoA(float stepDt);
+
 	// --- ソルバーコンタクト ---
 	// ColliderManager の生 Contact から SolverContact を構築し、
 	// 前フレームの累積インパルスを照合してウォームスタート。
@@ -174,8 +203,22 @@ private:
 
 	// --- アイランド ---
 	void BuildIslands();
+	void SplitLargeIsland(int islandIdx, int maxBodiesPerSplit);
+	void BuildConstraintBatches(PhysicsIsland& island);
 	std::vector<PhysicsIsland> _islands{};
 	std::unordered_map<PhysicsBody*, int> _bodyIslandMap{}; // body → islandId
+
+	// Union-Find with rank for O(α(n)) amortized merges
+	std::vector<int> _ufParent{};
+	std::vector<int> _ufRank{};
+	int UFFind(int x) noexcept;
+	void UFUnite(int a, int b) noexcept;
+
+	// Island splitting threshold: islands larger than this are split for parallel PGS
+	// With ~50 objects, splitting small islands wastes more time than it saves.
+	static constexpr int kIslandSplitThreshold = 64;
+	// Constraint batching threshold: islands with more contacts get graph-colored batches
+	static constexpr int kBatchingThreshold = 32;
 
 private:
 	std::atomic_bool _shuttingDown{ false };
@@ -207,8 +250,25 @@ private:
 	bool _splitImpulseEnabled = true;
 	bool _speculativeCcdEnabled = true;
 
-	float _fixedDeltaTime = 1.0f / 120.0f;
-	int _maxSubSteps = 8;
+	float _fixedDeltaTime = 1.0f / 60.0f;
+	int _maxSubSteps = 4;
 	int _solverIterations = 6;
 	float _accumulator = 0.0f;
+
+public:
+	// ================================================================
+	//  Async physics mode (double-buffered)
+	// ================================================================
+	//  When enabled, StepSimulation runs on a background thread.
+	//  Main thread uses the previous frame's interpolated transforms
+	//  while the physics thread computes the current frame.
+	//  Call WaitForPhysics() before reading physics state if needed.
+	void SetAsyncEnabled(bool enabled) noexcept { _asyncEnabled = enabled; }
+	bool IsAsyncEnabled() const noexcept { return _asyncEnabled; }
+	void WaitForPhysics();
+
+private:
+	bool _asyncEnabled = false;
+	std::future<void> _asyncFuture{};
+	void RunAsyncStep(float dt);
 };

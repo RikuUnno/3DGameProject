@@ -1,4 +1,4 @@
-ï»¿#include "ColliderManager.h"
+#include "ColliderManager.h"
 #include "GameObject.h"
 #include "SceneManager.h"
 #include "SphereCollider.h"
@@ -8,35 +8,45 @@
 #include "CompoundCollider.h"
 #include "Assert.h"
 #include "ThreadPool.h"
+#include "PerformanceMonitor.h"
 #include <algorithm>
 #include <cmath>
 #include <cfloat>
 
+// ================================================================
+//  Week 1-2: Narrow Phase Parallelization - thread_local definitions
+// ================================================================
+// Each worker thread has its own _tlNarrowHit and _tlContactOut.
+// The parallel narrow-phase loop sets these before calling CheckXxx,
+// allowing CheckXxx to write results without any mutex or shared state.
+thread_local bool                  ColliderManager::_tlNarrowHit   = false;
+thread_local std::vector<ColliderManager::Contact>* ColliderManager::_tlContactOut = nullptr;
+
 namespace {
-	// ãƒ¯ãƒ¼ãƒ«ãƒ‰ç©ºé–“AABBåŒå£«ã®é‡ãªã‚Šåˆ¤å®šã€‚
-	// broad-phase ã®å€™è£œçµã‚Šè¾¼ã¿ã«ä½¿ã†ã€‚
+	// ƒ[ƒ‹ƒh‹óŠÔAABB“¯m‚Ìd‚È‚è”»’èB
+	// broad-phase ‚ÌŒó•âi‚è‚İ‚Ég‚¤B
 	inline bool IntersectAABBWorld(const AABB& a, const AABB& b) noexcept {
 		return (a.min.x <= b.max.x && a.max.x >= b.min.x) &&
 			(a.min.y <= b.max.y && a.max.y >= b.min.y) &&
 			(a.min.z <= b.max.z && a.max.z >= b.min.z);
 	}
-	// 3æ¬¡å…ƒãƒ™ã‚¯ãƒˆãƒ«ã®å†…ç©ã€‚
-	// æŠ•å½±é•·ã€è§’åº¦åˆ¤å®šã€SAT ãªã©ã®åŸºç¤è¨ˆç®—ã«ä½¿ã†ã€‚
+	// 3ŸŒ³ƒxƒNƒgƒ‹‚Ì“àÏB
+	// “Š‰e’·AŠp“x”»’èASAT ‚È‚Ç‚ÌŠî‘bŒvZ‚Ég‚¤B
 	inline float Dot3(const VECTOR& a, const VECTOR& b) noexcept { return a.x * b.x + a.y * b.y + a.z * b.z; }
-	// ãƒ™ã‚¯ãƒˆãƒ«é•·ã®äºŒä¹—ã€‚
-	// sqrt ã‚’é¿ã‘ã¦è·é›¢æ¯”è¼ƒã‚’è»½ãã™ã‚‹ãŸã‚ã«ä½¿ã†ã€‚
+	// ƒxƒNƒgƒ‹’·‚Ì“ñæB
+	// sqrt ‚ğ”ğ‚¯‚Ä‹——£”äŠr‚ğŒy‚­‚·‚é‚½‚ß‚Ég‚¤B
 	inline float LenSq(const VECTOR& v) noexcept { return Dot3(v, v); }
-	// ãƒ™ã‚¯ãƒˆãƒ«é•·ã€‚
+	// ƒxƒNƒgƒ‹’·B
 	inline float Len3(const VECTOR& v) noexcept { return std::sqrt((std::max)(LenSq(v),0.0f)); }
-	// å®‰å…¨æ­£è¦åŒ–ã€‚
-	// ã‚¼ãƒ­é•·ãƒ™ã‚¯ãƒˆãƒ«ã«è¿‘ã„å ´åˆã¯ fallback ã‚’è¿”ã—ã¦ NaN ã‚’é˜²ãã€‚
+	// ˆÀ‘S³‹K‰»B
+	// ƒ[ƒ’·ƒxƒNƒgƒ‹‚É‹ß‚¢ê‡‚Í fallback ‚ğ•Ô‚µ‚Ä NaN ‚ğ–h‚®B
 	inline VECTOR SafeNorm(const VECTOR& v, const VECTOR& fallback = VGet(1,0,0)) noexcept {
 		const float l = Len3(v);
 		if (l >1e-6f) return VScale(v,1.0f / l);
 		return fallback;
 	}
-	// å†…ç©ã®çµ¶å¯¾å€¤ã€‚
-	// SAT ã§å„è»¸ã¸ã®æŠ•å½±åŠå¾„ã‚’æ±‚ã‚ã‚‹æ™‚ã«ä½¿ã†ã€‚
+	// “àÏ‚Ìâ‘Î’lB
+	// SAT ‚ÅŠe²‚Ö‚Ì“Š‰e”¼Œa‚ğ‹‚ß‚é‚Ég‚¤B
 	inline float AbsDot3(const VECTOR& a, const VECTOR& b) noexcept { return std::fabs(Dot3(a, b)); }
 
 	inline VECTOR ToObbLocal(const VECTOR& worldPoint, const BoxCollider* box) noexcept {
@@ -118,8 +128,8 @@ namespace {
 		return true;
 	}
 
-	// å­Colliderã® owner ã‹ã‚‰ã€ãã®è¦ªTransformã«ç´ã¥ã GameObject ã‚’å–ã‚Šå‡ºã™ã€‚
-	// bubbleEventsToParentOwner ãŒ true ã®æ™‚ã ã‘ã€owner ã«åŠ ãˆã¦è¦ªGameObject ã«ã‚‚ã‚¤ãƒ™ãƒ³ãƒˆã‚’é€ã‚‹ã€‚
+	// qCollider‚Ì owner ‚©‚çA‚»‚ÌeTransform‚É•R‚Ã‚­ GameObject ‚ğæ‚èo‚·B
+	// bubbleEventsToParentOwner ‚ª true ‚Ì‚¾‚¯Aowner ‚É‰Á‚¦‚ÄeGameObject ‚É‚àƒCƒxƒ“ƒg‚ğ‘—‚éB
 	inline GameObject* GetParentOwner(Collider* c) noexcept {
 		if (!c || !c->bubbleEventsToParentOwner || !c->owner) return nullptr;
 		Transform* parentTf = c->owner->transform.Parent();
@@ -310,7 +320,7 @@ namespace {
 			const VECTOR diff = VSub(hitLocal, closestPt);
 			const float diffLen = Len3(diff);
 			if (diffLen > 1e-6f) {
-				// Verify the closest point distance â‰ˆ radius
+				// Verify the closest point distance ? radius
 				if (diffLen <= radius + 0.1f) {
 					hitNormalLocal = VScale(diff, 1.0f / diffLen);
 				}
@@ -324,8 +334,8 @@ namespace {
 	}
 }
 
-// æ˜ç¤ºçµ‚äº†ã€‚
-// çµ‚äº†ä¸­ã« Unregister ãŒèµ°ã£ã¦ã‚‚å®‰å…¨ãªã‚ˆã†ã«å†…éƒ¨ã‚³ãƒ³ãƒ†ãƒŠã‚’ç©ºã«ã™ã‚‹ã€‚
+// –¾¦I—¹B
+// I—¹’†‚É Unregister ‚ª‘–‚Á‚Ä‚àˆÀ‘S‚È‚æ‚¤‚É“à•”ƒRƒ“ƒeƒi‚ğ‹ó‚É‚·‚éB
 void ColliderManager::Shutdown() noexcept {
 	const bool wasShuttingDown = _shuttingDown.exchange(true, std::memory_order_relaxed);
 	if (wasShuttingDown) {
@@ -339,8 +349,8 @@ void ColliderManager::Shutdown() noexcept {
 	_prevAABBs.clear();
 }
 
-// è¡çªé–‹å§‹ã‚¤ãƒ™ãƒ³ãƒˆã®é…é€ã€‚
-// Trigger ã¨é€šå¸¸è¡çªã§å‘¼ã¶ã‚³ãƒ¼ãƒ«ãƒãƒƒã‚¯ã‚’åˆ†ã‘ã¦ã„ã‚‹ã€‚
+// Õ“ËŠJnƒCƒxƒ“ƒg‚Ì”z‘—B
+// Trigger ‚Æ’ÊíÕ“Ë‚ÅŒÄ‚ÔƒR[ƒ‹ƒoƒbƒN‚ğ•ª‚¯‚Ä‚¢‚éB
 void ColliderManager::DispatchEnter(Collider* a, Collider* b) {
 	if (!a || !b) return;
 	if (a->isTrigger || b->isTrigger) {
@@ -361,7 +371,7 @@ void ColliderManager::DispatchEnter(Collider* a, Collider* b) {
 	}
 }
 
-// è¡çªç¶™ç¶šã‚¤ãƒ™ãƒ³ãƒˆã®é…é€ã€‚
+// Õ“ËŒp‘±ƒCƒxƒ“ƒg‚Ì”z‘—B
 void ColliderManager::DispatchStay(Collider* a, Collider* b) {
 	if (!a || !b) return;
 	if (a->isTrigger || b->isTrigger) {
@@ -382,7 +392,7 @@ void ColliderManager::DispatchStay(Collider* a, Collider* b) {
 	}
 }
 
-// è¡çªçµ‚äº†ã‚¤ãƒ™ãƒ³ãƒˆã®é…é€ã€‚
+// Õ“ËI—¹ƒCƒxƒ“ƒg‚Ì”z‘—B
 void ColliderManager::DispatchExit(Collider* a, Collider* b) {
 	if (!a || !b) return;
 	if (a->isTrigger || b->isTrigger) {
@@ -403,15 +413,15 @@ void ColliderManager::DispatchExit(Collider* a, Collider* b) {
 	}
 }
 
-// åˆ¤å®šé–¢æ•°é¸æŠç”¨ã®ç¨®åˆ¥ãƒšã‚¢æ¯”è¼ƒã€‚
-// a-b / b-a ã®é †ä¸åŒã§åŒã˜çµ„ã¿åˆã‚ã›ã¨ã—ã¦æ‰±ã†ã€‚
+// ”»’èŠÖ”‘I‘ğ—p‚Ìí•ÊƒyƒA”äŠrB
+// a-b / b-a ‚Ì‡•s“¯‚Å“¯‚¶‘g‚İ‡‚í‚¹‚Æ‚µ‚Äˆµ‚¤B
 static bool IsPair(Collider::Kind a, Collider::Kind b, Collider::Kind x, Collider::Kind y) {
 	return (a == x && b == y) || (a == y && b == x);
 }
 
-// ç¾ãƒ•ãƒ¬ãƒ¼ãƒ AABBã¨å‰ãƒ•ãƒ¬ãƒ¼ãƒ AABBã‚’åˆæˆã—ãŸ swept AABB ã‚’è¿”ã™ã€‚
-// ã“ã‚Œã¯ã€Œå‰å›ä½ç½®ã‹ã‚‰ä»Šå›ä½ç½®ã¾ã§ã«é€šéã—ãŸå¯èƒ½æ€§ã®ã‚ã‚‹é ˜åŸŸã€ã‚’è¿‘ä¼¼ã—ãŸã‚‚ã®ã€‚
-// å®Œå…¨ãªé€£ç¶šè¡çªåˆ¤å®šã§ã¯ãªã„ãŒã€é«˜é€Ÿç§»å‹•æ™‚ã® broad-phase å–ã‚Šã“ã¼ã—ã‚’æ¸›ã‚‰ã›ã‚‹ã€‚
+// Œ»ƒtƒŒ[ƒ€AABB‚Æ‘OƒtƒŒ[ƒ€AABB‚ğ‡¬‚µ‚½ swept AABB ‚ğ•Ô‚·B
+// ‚±‚ê‚Íu‘O‰ñˆÊ’u‚©‚ç¡‰ñˆÊ’u‚Ü‚Å‚É’Ê‰ß‚µ‚½‰Â”\«‚Ì‚ ‚é—Ìˆæv‚ğ‹ß—‚µ‚½‚à‚ÌB
+// Š®‘S‚È˜A‘±Õ“Ë”»’è‚Å‚Í‚È‚¢‚ªA‚‘¬ˆÚ“®‚Ì broad-phase æ‚è‚±‚Ú‚µ‚ğŒ¸‚ç‚¹‚éB
 AABB ColliderManager::GetSweptAABB(Collider* collider) const {
 	const AABB curr = collider->GetAABB();
 	auto it = _prevAABBs.find(collider);
@@ -421,9 +431,9 @@ AABB ColliderManager::GetSweptAABB(Collider* collider) const {
 
 	bool useSweep = collider->enableCCD;
 	if (!useSweep) {
-		// enableCCD ãŒæ˜ç¤ºã•ã‚Œã¦ã„ãªã„å ´åˆã§ã‚‚ã€
-		// ãƒ•ãƒ¬ãƒ¼ãƒ é–“é€Ÿåº¦ãŒé–¾å€¤ã‚’è¶…ãˆãŸã‚‰ sweep ã‚’æœ‰åŠ¹åŒ–ã™ã‚‹ã€‚
-		// speed^2 = distance^2 / dt^2 ã§ sqrt ã‚’é¿ã‘ã¦æ¯”è¼ƒã—ã¦ã„ã‚‹ã€‚
+		// enableCCD ‚ª–¾¦‚³‚ê‚Ä‚¢‚È‚¢ê‡‚Å‚àA
+		// ƒtƒŒ[ƒ€ŠÔ‘¬“x‚ªè‡’l‚ğ’´‚¦‚½‚ç sweep ‚ğ—LŒø‰»‚·‚éB
+		// speed^2 = distance^2 / dt^2 ‚Å sqrt ‚ğ”ğ‚¯‚Ä”äŠr‚µ‚Ä‚¢‚éB
 		const VECTOR prevCenter = VGet((it->second.min.x + it->second.max.x) * 0.5f,
 			(it->second.min.y + it->second.max.y) * 0.5f,
 			(it->second.min.z + it->second.max.z) * 0.5f);
@@ -443,7 +453,7 @@ AABB ColliderManager::GetSweptAABB(Collider* collider) const {
 		return curr;
 	}
 
-	// å‰å›AABBã¨ä»Šå›AABBã® union ã‚’å–ã‚Šã€ç§»å‹•åŒºé–“å…¨ä½“ã‚’å«ã‚€AABBã«ã™ã‚‹ã€‚
+	// ‘O‰ñAABB‚Æ¡‰ñAABB‚Ì union ‚ğæ‚èAˆÚ“®‹æŠÔ‘S‘Ì‚ğŠÜ‚ŞAABB‚É‚·‚éB
 	AABB sweep = curr;
 	sweep.min.x = (std::min)(sweep.min.x, it->second.min.x);
 	sweep.min.y = (std::min)(sweep.min.y, it->second.min.y);
@@ -482,12 +492,15 @@ AABB ColliderManager::GetSweptAABB(Collider* collider) const {
 	return sweep;
 }
 
-// å…¨ã‚³ãƒ©ã‚¤ãƒ€ã®ãƒ¯ãƒ¼ãƒ«ãƒ‰å½¢çŠ¶æ›´æ–°ã€‚
-// Transform å¤‰æ›´å¾Œã« narrow-phase ã¸å…¥ã‚‹å‰æã‚’ãã‚ãˆã‚‹ã€‚
+// ‘SƒRƒ‰ƒCƒ_‚Ìƒ[ƒ‹ƒhŒ`óXVB
+// Transform •ÏXŒã‚É narrow-phase ‚Ö“ü‚é‘O’ñ‚ğ‚»‚ë‚¦‚éB
 void ColliderManager::UpdateAllShapes() {
-	// _colliders ã®ã‚¹ãƒŠãƒƒãƒ—ã‚·ãƒ§ãƒƒãƒˆã‚’ãƒ­ãƒƒã‚¯ä¸‹ã§å–å¾—ã—ã€
-	// ParallelFor ã¯ãƒ­ãƒƒã‚¯å¤–ã§å®Ÿè¡Œã™ã‚‹ã€‚
-	// Register/Unregister ãŒä¸¦è¡Œã—ã¦ã‚‚ _colliders ã‚’ç ´å£Šã—ãªã„ã€‚
+   #ifdef _DEBUG
+	auto _s = PerformanceMonitor::Instance().Scope("Collider.UpdateAllShapes");
+	#endif
+	// _colliders ‚ÌƒXƒiƒbƒvƒVƒ‡ƒbƒg‚ğƒƒbƒN‰º‚Åæ“¾‚µA
+	// ParallelFor ‚ÍƒƒbƒNŠO‚ÅÀs‚·‚éB
+	// Register/Unregister ‚ª•Às‚µ‚Ä‚à _colliders ‚ğ”j‰ó‚µ‚È‚¢B
 	std::vector<Collider*> snapshot;
 	{
 		std::lock_guard lk(_mtx);
@@ -496,23 +509,29 @@ void ColliderManager::UpdateAllShapes() {
 	const size_t count = snapshot.size();
 	if (count == 0) return;
 
-	ThreadPool::Instance().ParallelFor(0, count, [&](size_t i) {
+	ThreadPool::Instance().ParallelForBarrier(0, count, [&](size_t i) {
 		Collider* c = snapshot[i];
 		if (!c) return;
 		c->UpdateShape();
-	}, 8);
+	}, 64);
 }
 
-// ä»Šãƒ•ãƒ¬ãƒ¼ãƒ ã®è¡çªå€™è£œã‚’å†æ§‹ç¯‰ã€‚
+// ¡ƒtƒŒ[ƒ€‚ÌÕ“ËŒó•â‚ğÄ\’zB
 void ColliderManager::BuildCurrentPairs() {
+ #ifdef _DEBUG
+	auto _s = PerformanceMonitor::Instance().Scope("Collider.BuildCurrentPairs");
+	#endif
 	_currPairs.clear();
 	_contacts.clear();
 	SpatialPartitioning();
 }
 
-// ç©ºé–“åˆ†å‰²ã«ã‚ˆã‚‹ broad-phaseã€‚
-// swept AABB ã‚’ã‚»ãƒ«ã«ç™»éŒ²ã—ã€åŒã˜ã‚»ãƒ«ã«ã„ã‚‹ãƒšã‚¢ã ã‘ã‚’è©³ç´°åˆ¤å®šã«å›ã™ã€‚
+// ‹óŠÔ•ªŠ„‚É‚æ‚é broad-phaseB
+// swept AABB ‚ğƒZƒ‹‚É“o˜^‚µA“¯‚¶ƒZƒ‹‚É‚¢‚éƒyƒA‚¾‚¯‚ğÚ×”»’è‚É‰ñ‚·B
 void ColliderManager::SpatialPartitioning() {
+   #ifdef _DEBUG
+	auto _sTotal = PerformanceMonitor::Instance().Scope("Collider.SpatialPartitioning");
+	#endif
 	const int currentSceneId = SceneManager::Instance().CurrentSceneId();
 
 	struct CellKey {
@@ -532,108 +551,262 @@ void ColliderManager::SpatialPartitioning() {
 	};
 
 	const float cellSize = (_cellSize >0.01f) ? _cellSize :0.01f;
-	auto ToCell = [&](float v) {
-		return static_cast<int>(std::floor(v / cellSize));
+	constexpr int kCellLimit = 100000;
+	auto ToCell = [&](float v) -> int {
+		if (!std::isfinite(v)) return 0;
+		const float c = std::floor(v / cellSize);
+		if (c < -static_cast<float>(kCellLimit)) return -kCellLimit;
+		if (c >  static_cast<float>(kCellLimit)) return  kCellLimit;
+		return static_cast<int>(c);
 	};
 
-	std::unordered_map<CellKey, std::vector<Collider*>, CellHash> grid;
-	grid.reserve(_colliders.size());
+    // --- ƒtƒBƒ‹ƒ^Ï‚İƒRƒ‰ƒCƒ_[‚ÌûWiƒƒbƒN‰º‚ÅƒXƒiƒbƒvƒVƒ‡ƒbƒgj ---
+	std::vector<Collider*> active;
+	{
+		#ifdef _DEBUG
+		auto _s = PerformanceMonitor::Instance().Scope("Collider.ActiveCollect");
+		#endif
+		std::lock_guard lk(_mtx);
+		active.reserve(_colliders.size());
+		for (auto* c : _colliders) {
+			if (!c) continue;
+			if (!c->owner) { if (c->useSceneFilter) continue; }
+			else { if (c->useSceneFilter && c->owner->_ownerSceneId != currentSceneId) continue; }
+			if (!c->IsEnabled()) continue;
+			if (c->owner && !c->owner->IsActive()) continue;
+			active.push_back(c);
+		}
+	}
 
-	auto PassCommonFilters = [&](Collider* c) -> bool {
-		if (!c) return false;
-		if (!c->owner) { if (c->useSceneFilter) return false; }
-		else { if (c->useSceneFilter && c->owner->_ownerSceneId != currentSceneId) return false; }
-		if (!c->IsEnabled()) return false;
-		if (c->owner && !c->owner->IsActive()) return false;
-		return true;
-	};
+ // --- swept AABB ‚ÌƒvƒŠƒRƒ“ƒsƒ…[ƒgi•À—ñj ---
+	std::vector<AABB> sweptAABBs(active.size());
+	{
+		#ifdef _DEBUG
+		auto _s = PerformanceMonitor::Instance().Scope("Collider.SweptAABB");
+		#endif
+		ThreadPool::Instance().ParallelForBarrier(0, active.size(), [&](size_t i) {
+			sweptAABBs[i] = GetSweptAABB(active[i]);
+		}, 64);
+	}
 
-	for (auto* c : _colliders) {
-		if (!PassCommonFilters(c)) continue;
+   // --- ƒOƒŠƒbƒh\’z ---
+	// Phase 1: compute per-collider cell lists in parallel
+	// Each collider gets a list of CellKeys it touches.
+	struct CellEntry { CellKey key; int colliderIdx; };
+	std::vector<std::vector<CellEntry>> perColliderCells(active.size());
+	{
+		#ifdef _DEBUG
+		auto _s = PerformanceMonitor::Instance().Scope("Collider.GridCellCompute");
+		#endif
+		ThreadPool::Instance().ParallelForBarrier(0, active.size(), [&](size_t i) {
+			const AABB& sweep = sweptAABBs[i];
+			const int idx = static_cast<int>(i);
 
-		// é«˜é€Ÿç§»å‹•ä½“ã¯å‰å›ä½ç½®ã‚‚å«ã‚ãŸ swept AABB ã§ã‚»ãƒ«ç™»éŒ²ã™ã‚‹ã“ã¨ã§ã€
-		// ã€Œä»Šãƒ•ãƒ¬ãƒ¼ãƒ ã®çµ‚ç‚¹ã§ã¯é›¢ã‚Œã¦ã„ã‚‹ãŒé€”ä¸­ã§è¿‘ã¥ã„ãŸã€å€™è£œã‚’æ‹¾ã„ã‚„ã™ãã™ã‚‹ã€‚
-		const AABB sweep = GetSweptAABB(c);
-		const int minX = ToCell(sweep.min.x);
-		const int minY = ToCell(sweep.min.y);
-		const int minZ = ToCell(sweep.min.z);
-		const int maxX = ToCell(sweep.max.x);
-		const int maxY = ToCell(sweep.max.y);
-		const int maxZ = ToCell(sweep.max.z);
+			if (!std::isfinite(sweep.min.x) || !std::isfinite(sweep.max.x) ||
+				!std::isfinite(sweep.min.y) || !std::isfinite(sweep.max.y) ||
+				!std::isfinite(sweep.min.z) || !std::isfinite(sweep.max.z)) {
+				perColliderCells[i].push_back({CellKey{0, 0, 0}, idx});
+				return;
+			}
 
-		for (int z = minZ; z <= maxZ; ++z) {
-			for (int y = minY; y <= maxY; ++y) {
-				for (int x = minX; x <= maxX; ++x) {
-					grid[CellKey{ x,y,z }].push_back(c);
+			const int minX = ToCell(sweep.min.x);
+			const int minY = ToCell(sweep.min.y);
+			const int minZ = ToCell(sweep.min.z);
+			const int maxX = ToCell(sweep.max.x);
+			const int maxY = ToCell(sweep.max.y);
+			const int maxZ = ToCell(sweep.max.z);
+
+			const int64_t dx = static_cast<int64_t>(maxX) - minX + 1;
+			const int64_t dy = static_cast<int64_t>(maxY) - minY + 1;
+			const int64_t dz = static_cast<int64_t>(maxZ) - minZ + 1;
+			if (dx <= 0 || dy <= 0 || dz <= 0 || dx * dy * dz > 512) {
+				const int cx = ToCell(sweep.center.x);
+				const int cy = ToCell(sweep.center.y);
+				const int cz = ToCell(sweep.center.z);
+				perColliderCells[i].push_back({CellKey{cx, cy, cz}, idx});
+				return;
+			}
+
+			perColliderCells[i].reserve(static_cast<size_t>(dx * dy * dz));
+			for (int z = minZ; z <= maxZ; ++z) {
+				for (int y = minY; y <= maxY; ++y) {
+					for (int x = minX; x <= maxX; ++x) {
+						perColliderCells[i].push_back({CellKey{x, y, z}, idx});
+					}
 				}
+			}
+		}, 64);
+	}
+
+	// Phase 2: merge per-collider cell lists into grid (serial, but data is ready)
+	std::unordered_map<CellKey, std::vector<int>, CellHash> grid;
+	{
+		#ifdef _DEBUG
+		auto _s = PerformanceMonitor::Instance().Scope("Collider.GridMerge");
+		#endif
+		size_t totalEntries = 0;
+		for (const auto& cells : perColliderCells) totalEntries += cells.size();
+		grid.reserve(totalEntries);
+		for (const auto& cells : perColliderCells) {
+			for (const auto& entry : cells) {
+				grid[entry.key].push_back(entry.colliderIdx);
 			}
 		}
 	}
 
-	for (auto& [cell, cellCols] : grid) {
-		const size_t n = cellCols.size();
-		for (size_t i =0; i < n; ++i) {
-			Collider* a = cellCols[i];
-			for (size_t j = i +1; j < n; ++j) {
-				Collider* b = cellCols[j];
+ // --- Step 1: Œó•âƒyƒA—ñ‹“ (broad-phase) ---
+	struct CandidatePair { int a; int b; };
+	std::vector<CandidatePair> candidates;
+	{
+		#ifdef _DEBUG
+		auto _s = PerformanceMonitor::Instance().Scope("Collider.BroadPhase");
+		#endif
+		// Use sorted vector + dedup instead of unordered_set for small counts
+		// (avoids hash table allocation overhead with < ~200 colliders)
+		std::vector<uint64_t> seenPairs;
+		seenPairs.reserve(active.size() * 2);
+		auto makePairId = [](int ai, int bi) -> uint64_t {
+			const auto lo = static_cast<uint32_t>((std::min)(ai, bi));
+			const auto hi = static_cast<uint32_t>((std::max)(ai, bi));
+			return (static_cast<uint64_t>(lo) << 32) | hi;
+		};
+		for (auto& [cell, cellIndices] : grid) {
+			const size_t cn = cellIndices.size();
+			for (size_t i = 0; i < cn; ++i) {
+				for (size_t j = i + 1; j < cn; ++j) {
+					const int ai = cellIndices[i];
+					const int bi = cellIndices[j];
 
-				const auto key = MakeKey(a, b);
-				if (_currPairs.contains(key)) continue;
-				if (CheckLayerMaskCollisions(a, b)) continue;
-				// broad-phase ã®AABBåˆ¤å®šã«ã‚‚ swept AABB ã‚’ä½¿ã†ã€‚
-				// ã“ã‚Œã«ã‚ˆã‚Šã‚»ãƒ«ç™»éŒ²ã ã‘ sweep ã—ã¦ã€AABBåˆ¤å®šã§è½ã¡ã‚‹çŠ¶æ³ã‚’æ¸›ã‚‰ã™ã€‚
-				if (CheckAABBCollisionsSwept(a, b)) continue;
+					const AABB& sa = sweptAABBs[ai];
+					const AABB& sb = sweptAABBs[bi];
+					if (sa.min.x > sb.max.x || sa.max.x < sb.min.x) continue;
+					if (sa.min.y > sb.max.y || sa.max.y < sb.min.y) continue;
+					if (sa.min.z > sb.max.z || sa.max.z < sb.min.z) continue;
 
-				_narrowHit = false;
-				const auto ka = a->GetKind();
-				const auto kb = b->GetKind();
-				if (IsPair(ka, kb, Collider::Kind::Sphere, Collider::Kind::Sphere)) CheckSphereSphere(a, b);
-				else if (IsPair(ka, kb, Collider::Kind::Sphere, Collider::Kind::Box)) CheckSphereBox(a, b);
-				else if (IsPair(ka, kb, Collider::Kind::Box, Collider::Kind::Box)) CheckBoxBox(a, b);
-				else if (IsPair(ka, kb, Collider::Kind::Capsule, Collider::Kind::Capsule)) CheckCapsuleCapsule(a, b);
-				else if (IsPair(ka, kb, Collider::Kind::Sphere, Collider::Kind::Capsule)) CheckSphereCapsule(a, b);
-				else if (IsPair(ka, kb, Collider::Kind::Box, Collider::Kind::Capsule)) CheckBoxCapsule(a, b);
-				// HalfPlane combinations
-				else if (IsPair(ka, kb, Collider::Kind::Sphere, Collider::Kind::HalfPlane)) {
-					Collider* sp = (ka == Collider::Kind::Sphere) ? a : b;
-					Collider* hp = (ka == Collider::Kind::HalfPlane) ? a : b;
-					CheckSphereHalfPlane(sp, hp);
-				}
-				else if (IsPair(ka, kb, Collider::Kind::Box, Collider::Kind::HalfPlane)) {
-					Collider* bx = (ka == Collider::Kind::Box) ? a : b;
-					Collider* hp = (ka == Collider::Kind::HalfPlane) ? a : b;
-					CheckBoxHalfPlane(bx, hp);
-				}
-				else if (IsPair(ka, kb, Collider::Kind::Capsule, Collider::Kind::HalfPlane)) {
-					Collider* cp = (ka == Collider::Kind::Capsule) ? a : b;
-					Collider* hp = (ka == Collider::Kind::HalfPlane) ? a : b;
-					CheckCapsuleHalfPlane(cp, hp);
-				}
-				// Compound dispatch
-				else if (ka == Collider::Kind::Compound || kb == Collider::Kind::Compound) {
-					Collider* comp = (ka == Collider::Kind::Compound) ? a : b;
-					Collider* other = (comp == a) ? b : a;
-					CheckCompoundVsAny(comp, other);
-				}
-				else {
-					// Unknown pair â€” skip silently for forward compatibility
-					_narrowHit = false;
-				}
+					if (CheckLayerMaskCollisions(active[ai], active[bi])) continue;
 
-				if (!_narrowHit) continue;
-
-				_currPairs.insert(key);
-				if (!(a->isTrigger || b->isTrigger)) {
-					ResolvePushOut(a, b);
+					seenPairs.push_back(makePairId(ai, bi));
+					candidates.push_back({ai, bi});
 				}
+			}
+		}
+		// Remove duplicate pairs (from objects spanning multiple grid cells)
+		if (candidates.size() > 1) {
+			// Sort by pair id, then remove duplicates
+			std::vector<size_t> order(candidates.size());
+			for (size_t i = 0; i < order.size(); ++i) order[i] = i;
+			std::sort(order.begin(), order.end(), [&](size_t a, size_t b) {
+				return seenPairs[a] < seenPairs[b];
+			});
+			std::vector<CandidatePair> unique;
+			unique.reserve(candidates.size());
+			uint64_t prevId = ~uint64_t(0);
+			for (size_t idx : order) {
+				if (seenPairs[idx] != prevId) {
+					prevId = seenPairs[idx];
+					unique.push_back(candidates[idx]);
+				}
+			}
+			candidates.swap(unique);
+		}
+	}
+
+	// --- Step 2: ƒiƒƒEƒtƒF[ƒY”»’è (Week 1-2: •À—ñ‰») ---
+	// ================================================================
+	//  •À—ñ‰»í—ª:
+	//    Phase A (Parallel): ŠeƒyƒA‚Ì“–‚½‚è”»’è‚Ì‚İÀsB
+	//                        Œ‹‰Ê‚ğ perPairContacts[ci] / perPairHit[ci] ‚ÉŠi”[B
+	//                        CheckXxx ‚Í thread_local ‚Ì _tlNarrowHit / _tlContactOut
+	//                        ‚ğg‚¤‚½‚ß‹¤—Ló‘Ô‚Ö‚Ì‘‚«‚İ‚È‚µB
+	//    Phase B (Serial):   ƒqƒbƒg‚µ‚½ƒyƒA‚ğ _currPairs ‚É“o˜^‚µ Contact ‚ğƒ}[ƒWB
+	//                        ResolvePushOut ‚Í Transform ‚ğ‘‚«Š·‚¦‚é‚Ì‚ÅƒVƒŠƒAƒ‹ÀsB
+	// ================================================================
+	{
+		const size_t numCandidates = candidates.size();
+#ifdef _DEBUG
+		auto _s = PerformanceMonitor::Instance().Scope("Collider.NarrowPhase");
+#endif
+
+		// --- Phase A: •À—ñ narrow-phase ---
+		// Še candidate ‚ÌƒqƒbƒgŒ‹‰Ê‚ÆÚG“_‚ğŠi”[‚·‚éƒoƒbƒtƒ@‚ğŠm•Û
+		std::vector<bool>                   perPairHit(numCandidates, false);
+		std::vector<std::vector<Contact>>   perPairContacts(numCandidates);
+
+		ThreadPool::Instance().ParallelForBarrier(0, numCandidates, [&](size_t ci) {
+			const int ai = candidates[ci].a;
+			const int bi = candidates[ci].b;
+			Collider* a = active[ai];
+			Collider* b = active[bi];
+
+			// thread_local ƒoƒbƒtƒ@‚ğ‚±‚ÌŒó•âê—p‚Éİ’è
+			_tlNarrowHit  = false;
+			_tlContactOut = &perPairContacts[ci];
+
+			const auto ka = a->GetKind();
+			const auto kb = b->GetKind();
+			if (IsPair(ka, kb, Collider::Kind::Sphere, Collider::Kind::Sphere))         CheckSphereSphere(a, b);
+			else if (IsPair(ka, kb, Collider::Kind::Sphere, Collider::Kind::Box))       CheckSphereBox(a, b);
+			else if (IsPair(ka, kb, Collider::Kind::Box, Collider::Kind::Box))          CheckBoxBox(a, b);
+			else if (IsPair(ka, kb, Collider::Kind::Capsule, Collider::Kind::Capsule))  CheckCapsuleCapsule(a, b);
+			else if (IsPair(ka, kb, Collider::Kind::Sphere, Collider::Kind::Capsule))   CheckSphereCapsule(a, b);
+			else if (IsPair(ka, kb, Collider::Kind::Box, Collider::Kind::Capsule))      CheckBoxCapsule(a, b);
+			else if (IsPair(ka, kb, Collider::Kind::Sphere, Collider::Kind::HalfPlane)) {
+				Collider* sp = (ka == Collider::Kind::Sphere) ? a : b;
+				Collider* hp = (ka == Collider::Kind::HalfPlane) ? a : b;
+				CheckSphereHalfPlane(sp, hp);
+			}
+			else if (IsPair(ka, kb, Collider::Kind::Box, Collider::Kind::HalfPlane)) {
+				Collider* bx = (ka == Collider::Kind::Box) ? a : b;
+				Collider* hp = (ka == Collider::Kind::HalfPlane) ? a : b;
+				CheckBoxHalfPlane(bx, hp);
+			}
+			else if (IsPair(ka, kb, Collider::Kind::Capsule, Collider::Kind::HalfPlane)) {
+				Collider* cp = (ka == Collider::Kind::Capsule) ? a : b;
+				Collider* hp = (ka == Collider::Kind::HalfPlane) ? a : b;
+				CheckCapsuleHalfPlane(cp, hp);
+			}
+			else if (ka == Collider::Kind::Compound || kb == Collider::Kind::Compound) {
+				Collider* comp  = (ka == Collider::Kind::Compound) ? a : b;
+				Collider* other = (comp == a) ? b : a;
+				CheckCompoundVsAny(comp, other);
+			}
+
+			perPairHit[ci] = _tlNarrowHit;
+			_tlContactOut  = nullptr; // ƒXƒŒƒbƒhƒ[ƒJƒ‹‚ğƒŠƒZƒbƒg
+		}, 16); // grainSize=16: narrow-phase ‚Íd‚¢‚Ì‚Å¬‚³‚ß‚É
+
+		// --- Phase B: ƒVƒŠƒAƒ‹ƒ}[ƒW + push-out ---
+		// ƒqƒbƒg‚µ‚½ƒyƒA‚ÌÚG“_‚ğ _contacts ‚É“‡‚µAƒyƒA“o˜^‚Æ‰Ÿ‚µ–ß‚µ‚ğÀs
+		for (size_t ci = 0; ci < numCandidates; ++ci) {
+			if (!perPairHit[ci]) continue;
+
+			Collider* a = active[candidates[ci].a];
+			Collider* b = active[candidates[ci].b];
+
+			const auto key = MakeKey(a, b);
+			if (_currPairs.contains(key)) continue;
+			_currPairs.insert(key);
+
+			// ÚG“_‚ğƒƒCƒ“ƒoƒbƒtƒ@‚ÖˆÚ“®
+			for (auto& ct : perPairContacts[ci]) {
+				_contacts.push_back(std::move(ct));
+			}
+
+			// ‰Ÿ‚µ–ß‚µ (Transform ‘‚«Š·‚¦‚Ì‚½‚ßƒVƒŠƒAƒ‹)
+			if (!(a->isTrigger || b->isTrigger)) {
+				ResolvePushOut(a, b);
 			}
 		}
 	}
 }
 
-// Enter / Stay / Exit ã®å·®åˆ†è¨ˆç®—ã€‚
-// å‰ãƒ•ãƒ¬ãƒ¼ãƒ é›†åˆã¨ä»Šãƒ•ãƒ¬ãƒ¼ãƒ é›†åˆã‚’æ¯”è¼ƒã—ã¦ã‚¤ãƒ™ãƒ³ãƒˆã‚’ç¢ºå®šã™ã‚‹ã€‚
+
+// Enter / Stay / Exit ‚Ì·•ªŒvZB
+// ‘OƒtƒŒ[ƒ€W‡‚Æ¡ƒtƒŒ[ƒ€W‡‚ğ”äŠr‚µ‚ÄƒCƒxƒ“ƒg‚ğŠm’è‚·‚éB
 void ColliderManager::ProcessPairEvents() {
+  #ifdef _DEBUG
+	auto _s = PerformanceMonitor::Instance().Scope("Collider.ProcessPairEvents");
+	#endif
 	for (const auto& k : _currPairs) {
 		if (_prevPairs.contains(k)) {
 			DispatchStay(k.a, k.b);
@@ -652,9 +825,12 @@ void ColliderManager::ProcessPairEvents() {
 	_prevPairs = _currPairs;
 }
 
-// è©³ç´°åˆ¤å®šä¸€å¼ã€‚
-// æœ€å¾Œã«ç¾åœ¨AABBã‚’ä¿å­˜ã—ã€æ¬¡ãƒ•ãƒ¬ãƒ¼ãƒ ã® swept AABB è¨ˆç®—ã«ä½¿ã†ã€‚
+// Ú×”»’èˆê®B
+// ÅŒã‚ÉŒ»İAABB‚ğ•Û‘¶‚µAŸƒtƒŒ[ƒ€‚Ì swept AABB ŒvZ‚Ég‚¤B
 void ColliderManager::CheckDetailedCollisions() {
+    #ifdef _DEBUG
+	auto _s = PerformanceMonitor::Instance().Scope("Collider.CheckDetailedCollisions");
+	#endif
 	BuildCurrentPairs();
 	ProcessPairEvents();
 
@@ -664,8 +840,8 @@ void ColliderManager::CheckDetailedCollisions() {
 	}
 }
 
-// æŠ¼ã—æˆ»ã—ã€‚
-// ä¸¡æ–¹å¯å‹•ãªã‚‰å½¢çŠ¶ã”ã¨ã®æŠ¼ã—æˆ»ã—ã¸ã€ç‰‡å´å›ºå®šãªã‚‰ç°¡æ˜“MTVã§å¯å‹•å´ã®ã¿ç§»å‹•ã™ã‚‹ã€‚
+// ‰Ÿ‚µ–ß‚µB
+// —¼•û‰Â“®‚È‚çŒ`ó‚²‚Æ‚Ì‰Ÿ‚µ–ß‚µ‚ÖA•Ğ‘¤ŒÅ’è‚È‚çŠÈˆÕMTV‚Å‰Â“®‘¤‚Ì‚İˆÚ“®‚·‚éB
 void ColliderManager::ResolvePushOut(Collider* a, Collider* b) {
 	if (!a || !b) return;
 	if (a->isTrigger || b->isTrigger) return;
@@ -719,9 +895,9 @@ void ColliderManager::ResolvePushOut(Collider* a, Collider* b) {
 	// Compound: push-out handled by child dispatch (no explicit compound push-out)
 }
 
-// Sphere-Sphere æŠ¼ã—æˆ»ã—ã€‚
-// ä¸­å¿ƒé–“ãƒ™ã‚¯ãƒˆãƒ«ã‚’æ³•ç·šã¨ã—ã€åŠå¾„å’Œã¨ã®å·®åˆ†ã ã‘åˆ†é›¢ã™ã‚‹ã€‚
-// pen <= 0ï¼ˆã™ã‚ŠæŠœã‘æ¸ˆã¿ï¼‰ã®å ´åˆã¯ CCD ã‚¹ã‚¤ãƒ¼ãƒ—ã§è¡çªæ™‚åˆ»ã‚’æ±‚ã‚å·»ãæˆ»ã™ã€‚
+// Sphere-Sphere ‰Ÿ‚µ–ß‚µB
+// ’†SŠÔƒxƒNƒgƒ‹‚ğ–@ü‚Æ‚µA”¼Œa˜a‚Æ‚Ì·•ª‚¾‚¯•ª—£‚·‚éB
+// pen <= 0i‚·‚è”²‚¯Ï‚İj‚Ìê‡‚Í CCD ƒXƒC[ƒv‚ÅÕ“Ë‚ğ‹‚ßŠª‚«–ß‚·B
 void ColliderManager::PushOutSphereSphere(Collider* a, Collider* b) {
 	auto* sa = dynamic_cast<SphereCollider*>(a);
 	auto* sb = dynamic_cast<SphereCollider*>(b);
@@ -742,9 +918,9 @@ void ColliderManager::PushOutSphereSphere(Collider* a, Collider* b) {
 	bool ccdResolved = false;
 
 	if (pen > 0.0f) {
-		// é€šå¸¸ã®é‡ãªã‚Šã‚±ãƒ¼ã‚¹
-		// ä¸­å¿ƒé–“è·é›¢ãŒã»ã¼ã‚¼ãƒ­ï¼ˆå®Œå…¨é‡ãªã‚Šï¼‰ã®å ´åˆã¯æ³•ç·šãŒä¸å®šã«ãªã‚‹ãŸã‚
-		// Yè»¸æ–¹å‘ã‚’ãƒ•ã‚©ãƒ¼ãƒ«ãƒãƒƒã‚¯ã¨ã—ã¦ä½¿ã†ã€‚
+		// ’Êí‚Ìd‚È‚èƒP[ƒX
+		// ’†SŠÔ‹——£‚ª‚Ù‚Úƒ[ƒiŠ®‘Sd‚È‚èj‚Ìê‡‚Í–@ü‚ª•s’è‚É‚È‚é‚½‚ß
+		// Y²•ûŒü‚ğƒtƒH[ƒ‹ƒoƒbƒN‚Æ‚µ‚Äg‚¤B
 		if (LenSq(d) > 1e-6f) {
 			n = VScale(d, 1.0f / dist);
 		}
@@ -753,7 +929,7 @@ void ColliderManager::PushOutSphereSphere(Collider* a, Collider* b) {
 		}
 	}
 	else {
-		// CCD: å‰ãƒ•ãƒ¬ãƒ¼ãƒ ä½ç½®ã‹ã‚‰ã®ã‚¹ã‚¤ãƒ¼ãƒ—ã§è¡çªæ™‚åˆ»ã‚’æ±‚ã‚ã‚‹
+		// CCD: ‘OƒtƒŒ[ƒ€ˆÊ’u‚©‚ç‚ÌƒXƒC[ƒv‚ÅÕ“Ë‚ğ‹‚ß‚é
 		auto prevItA = _prevAABBs.find(sa);
 		auto prevItB = _prevAABBs.find(sb);
 		if (prevItA == _prevAABBs.end() || prevItB == _prevAABBs.end()) return;
@@ -761,7 +937,7 @@ void ColliderManager::PushOutSphereSphere(Collider* a, Collider* b) {
 		const VECTOR prevA = prevItA->second.center;
 		const VECTOR prevB = prevItB->second.center;
 
-		// ç›¸å¯¾ç§»å‹•: Aå›ºå®šã§ B ã®ç›¸å¯¾è»Œé“
+		// ‘Š‘ÎˆÚ“®: AŒÅ’è‚Å B ‚Ì‘Š‘Î‹O“¹
 		const VECTOR relPrev = VSub(prevB, prevA);
 		const VECTOR relCurr = VSub(cb, ca);
 		const VECTOR relDir = VSub(relCurr, relPrev);
@@ -775,14 +951,14 @@ void ColliderManager::PushOutSphereSphere(Collider* a, Collider* b) {
 		const float hitT = (-b2 - sqrtDisc) / (2.0f * a2);
 		if (hitT < 0.0f || hitT > 1.0f) return;
 
-		// è¡çªæ™‚åˆ»ã®ä½ç½®ã«å·»ãæˆ»ã™
+		// Õ“Ë‚ÌˆÊ’u‚ÉŠª‚«–ß‚·
 		const VECTOR hitA = VAdd(prevA, VScale(VSub(ca, prevA), hitT));
 		const VECTOR hitB = VAdd(prevB, VScale(VSub(cb, prevB), hitT));
 		const VECTOR hitD = VSub(hitB, hitA);
 		const float hitDist = std::sqrt((std::max)(LenSq(hitD), 1e-8f));
 		n = VScale(hitD, 1.0f / hitDist);
 
-		// è¡çªé¢ã«ã¡ã‚‡ã†ã©æ¥ã™ã‚‹ä½ç½® + å¾®å°ãƒãƒ¼ã‚¸ãƒ³
+		// Õ“Ë–Ê‚É‚¿‚å‚¤‚ÇÚ‚·‚éˆÊ’u + ”÷¬ƒ}[ƒWƒ“
 		const VECTOR targetA = VSub(hitA, VScale(n, 1e-4f));
 		const VECTOR targetB = VAdd(hitB, VScale(n, 1e-4f));
 
@@ -808,7 +984,7 @@ void ColliderManager::PushOutSphereSphere(Collider* a, Collider* b) {
 		sb->UpdateShape();
 	}
 
-	// æ¥è§¦ç‚¹ã¯2çƒã®ä¸­å¿ƒã‚’çµã¶ç·šåˆ†ä¸Šã€åŠå¾„æ¯”ã§å†…åˆ†ã—ãŸä½ç½®
+	// ÚG“_‚Í2‹…‚Ì’†S‚ğŒ‹‚Ôü•ªãA”¼Œa”ä‚Å“à•ª‚µ‚½ˆÊ’u
 	const VECTOR contactPoint = VAdd(sa->GetCenter(), VScale(n, sa->GetRadius()));
 
 	Contact ct;
@@ -817,7 +993,7 @@ void ColliderManager::PushOutSphereSphere(Collider* a, Collider* b) {
 	ct.normal = n;
 	ct.point = contactPoint;
 	ct.penetration = pen;
-	_contacts.push_back(ct);
+	EmitContact(ct);
 
 	if (ccdResolved) return;
 
@@ -844,8 +1020,8 @@ void ColliderManager::PushOutSphereSphere(Collider* a, Collider* b) {
 	sb->UpdateShape();
 }
 
-// Sphere-Box æŠ¼ã—æˆ»ã—ã€‚
-// çƒä¸­å¿ƒã‹ã‚‰OBBã¸ã®æœ€è¿‘ç‚¹ã‚’æ±‚ã‚ã€ãã®å·®ãƒ™ã‚¯ãƒˆãƒ«ã‚’æŠ¼ã—æˆ»ã—æ³•ç·šã«ã™ã‚‹ã€‚
+// Sphere-Box ‰Ÿ‚µ–ß‚µB
+// ‹…’†S‚©‚çOBB‚Ö‚ÌÅ‹ß“_‚ğ‹‚ßA‚»‚Ì·ƒxƒNƒgƒ‹‚ğ‰Ÿ‚µ–ß‚µ–@ü‚É‚·‚éB
 void ColliderManager::PushOutSphereBox(Collider* a, Collider* b) {
 	SphereCollider* s = dynamic_cast<SphereCollider*>(a);
 	BoxCollider* box = dynamic_cast<BoxCollider*>(b);
@@ -867,18 +1043,18 @@ void ColliderManager::PushOutSphereBox(Collider* a, Collider* b) {
 	const VECTOR c = s->GetCenter();
 	const VECTOR d = VSub(c, box->GetCenter());
 	const VECTOR he = box->GetHalfExtents();
-	// çƒä¸­å¿ƒã‚’OBBãƒ­ãƒ¼ã‚«ãƒ«åº§æ¨™ã«æŠ•å½±
+	// ‹…’†S‚ğOBBƒ[ƒJƒ‹À•W‚É“Š‰e
 	float lx = Dot3(d, box->GetAxisX());
 	float ly = Dot3(d, box->GetAxisY());
 	float lz = Dot3(d, box->GetAxisZ());
-	// OBBä¸Šã®æœ€è¿‘ç‚¹ï¼ˆã‚¯ãƒ©ãƒ³ãƒ—ï¼‰
+	// OBBã‚ÌÅ‹ß“_iƒNƒ‰ƒ“ƒvj
 	float cx = std::clamp(lx, -he.x, he.x);
 	float cy = std::clamp(ly, -he.y, he.y);
 	float cz = std::clamp(lz, -he.z, he.z);
 
-	// çƒä¸­å¿ƒãŒBoxå†…éƒ¨ã«ã‚ã‚‹ã‹ã©ã†ã‹åˆ¤å®š
-	// å†…éƒ¨ã«ã‚ã‚‹å ´åˆã€æœ€è¿‘ç‚¹ == çƒä¸­å¿ƒ ã¨ãªã‚Šæ³•ç·šãŒæ±‚ã¾ã‚‰ãªã„ãŸã‚
-	// æœ€å°è²«é€šè»¸ã‚’ä½¿ã£ã¦æ­£ã—ã„åˆ†é›¢æ–¹å‘ã‚’è¨ˆç®—ã™ã‚‹ã€‚
+	// ‹…’†S‚ªBox“à•”‚É‚ ‚é‚©‚Ç‚¤‚©”»’è
+	// “à•”‚É‚ ‚éê‡AÅ‹ß“_ == ‹…’†S ‚Æ‚È‚è–@ü‚ª‹‚Ü‚ç‚È‚¢‚½‚ß
+	// Å¬ŠÑ’Ê²‚ğg‚Á‚Ä³‚µ‚¢•ª—£•ûŒü‚ğŒvZ‚·‚éB
 	const bool centerInside =
 		(std::fabs(lx) <= he.x) &&
 		(std::fabs(ly) <= he.y) &&
@@ -889,8 +1065,8 @@ void ColliderManager::PushOutSphereBox(Collider* a, Collider* b) {
 	bool ccdResolved = false;
 
 	if (centerInside) {
-		// --- çƒä¸­å¿ƒãŒBoxå†…éƒ¨ã«ã‚ã‚‹å ´åˆ ---
-		// å„è»¸ã§ã€Œé¢ã¾ã§ã®è·é›¢ã€ã‚’æ±‚ã‚ã€æœ€ã‚‚æµ…ã„è»¸ã‚’åˆ†é›¢æ–¹å‘ã¨ã™ã‚‹ã€‚
+		// --- ‹…’†S‚ªBox“à•”‚É‚ ‚éê‡ ---
+		// Še²‚Åu–Ê‚Ü‚Å‚Ì‹——£v‚ğ‹‚ßAÅ‚àó‚¢²‚ğ•ª—£•ûŒü‚Æ‚·‚éB
 		const float axes[3] = { lx, ly, lz };
 		const float exts[3] = { he.x, he.y, he.z };
 		const VECTOR axisVecs[3] = { box->GetAxisX(), box->GetAxisY(), box->GetAxisZ() };
@@ -899,19 +1075,19 @@ void ColliderManager::PushOutSphereBox(Collider* a, Collider* b) {
 		int bestAxis = 0;
 		float bestSign = 1.0f;
 		for (int i = 0; i < 3; ++i) {
-			// æ­£æ–¹å‘ã®é¢ã¾ã§ã®è·é›¢
+			// ³•ûŒü‚Ì–Ê‚Ü‚Å‚Ì‹——£
 			const float penPos = exts[i] - axes[i];
-			// è² æ–¹å‘ã®é¢ã¾ã§ã®è·é›¢
+			// •‰•ûŒü‚Ì–Ê‚Ü‚Å‚Ì‹——£
 			const float penNeg = exts[i] + axes[i];
 			if (penPos < minPen) { minPen = penPos; bestAxis = i; bestSign =  1.0f; }
 			if (penNeg < minPen) { minPen = penNeg; bestAxis = i; bestSign = -1.0f; }
 		}
 		n = VScale(axisVecs[bestAxis], bestSign);
-		// penetration = é¢ã¾ã§ã®è·é›¢ + çƒã®åŠå¾„
+		// penetration = –Ê‚Ü‚Å‚Ì‹——£ + ‹…‚Ì”¼Œa
 		pen = minPen + s->GetRadius();
 	}
 	else {
-		// --- çƒä¸­å¿ƒãŒBoxå¤–éƒ¨ã«ã‚ã‚‹å ´åˆï¼ˆé€šå¸¸ã‚±ãƒ¼ã‚¹ï¼‰ ---
+		// --- ‹…’†S‚ªBoxŠO•”‚É‚ ‚éê‡i’ÊíƒP[ƒXj ---
 		VECTOR closest = box->GetCenter();
 		closest = VAdd(closest, VScale(box->GetAxisX(), cx));
 		closest = VAdd(closest, VScale(box->GetAxisY(), cy));
@@ -960,9 +1136,9 @@ void ColliderManager::PushOutSphereBox(Collider* a, Collider* b) {
 		ccdResolved = true;
 	}
 
-	// æ¥è§¦ç‚¹ã¯Boxè¡¨é¢ä¸Šã®æœ€è¿‘ç‚¹ã¨çƒè¡¨é¢ã®ä¸­é–“ç‚¹ã€‚
-	// ã‚¨ãƒƒã‚¸/ã‚³ãƒ¼ãƒŠãƒ¼ãƒ’ãƒƒãƒˆã§ã¯çƒè¡¨é¢ç‚¹ã¨Boxæœ€è¿‘ç‚¹ãŒé›¢ã‚Œã‚‹ãŸã‚
-	// ä¸­é–“ç‚¹ã‚’ä½¿ã†ã“ã¨ã§ rA/rB ã®ç²¾åº¦ã‚’æ”¹å–„ã™ã‚‹ã€‚
+	// ÚG“_‚ÍBox•\–Êã‚ÌÅ‹ß“_‚Æ‹…•\–Ê‚Ì’†ŠÔ“_B
+	// ƒGƒbƒW/ƒR[ƒi[ƒqƒbƒg‚Å‚Í‹…•\–Ê“_‚ÆBoxÅ‹ß“_‚ª—£‚ê‚é‚½‚ß
+	// ’†ŠÔ“_‚ğg‚¤‚±‚Æ‚Å rA/rB ‚Ì¸“x‚ğ‰ü‘P‚·‚éB
 	const VECTOR sphereSurface = VSub(s->GetCenter(), VScale(n, s->GetRadius()));
 	const VECTOR boxSurface = VAdd(s->GetCenter(), VScale(n, pen - s->GetRadius()));
 	const VECTOR contactPoint = VScale(VAdd(sphereSurface, boxSurface), 0.5f);
@@ -973,13 +1149,13 @@ void ColliderManager::PushOutSphereBox(Collider* a, Collider* b) {
 	ct.normal = n;
 	ct.point = contactPoint;
 	ct.penetration = pen;
-	_contacts.push_back(ct);
+	EmitContact(ct);
 
 	if (ccdResolved) {
 		return;
 	}
 
-	// åŒæ–¹å‘ã®æŠ¼ã—æˆ»ã—
+	// ‘o•ûŒü‚Ì‰Ÿ‚µ–ß‚µ
 	const float wS = (!sFixed) ? 1.0f : 0.0f;
 	const float wBox = (!boxFixed) ? 1.0f : 0.0f;
 	const float wSum = wS + wBox;
@@ -1003,9 +1179,9 @@ void ColliderManager::PushOutSphereBox(Collider* a, Collider* b) {
 	box->UpdateShape();
 }
 
-// Box-Box æŠ¼ã—æˆ»ã—ã€‚
-// OBBåŒå£«ã¯ SAT(Separating Axis Theorem) ãƒ™ãƒ¼ã‚¹ã§æœ€å°è²«é€šè»¸ã‚’æ±‚ã‚ã‚‹ã€‚
-// åˆ†é›¢è»¸å€™è£œã¯é¢æ³•ç·š6æœ¬ + è¾ºåŒå£«ã®å¤–ç©9æœ¬ã€‚
+// Box-Box ‰Ÿ‚µ–ß‚µB
+// OBB“¯m‚Í SAT(Separating Axis Theorem) ƒx[ƒX‚ÅÅ¬ŠÑ’Ê²‚ğ‹‚ß‚éB
+// •ª—£²Œó•â‚Í–Ê–@ü6–{ + •Ó“¯m‚ÌŠOÏ9–{B
 void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 	auto* ba = dynamic_cast<BoxCollider*>(a);
 	auto* bb = dynamic_cast<BoxCollider*>(b);
@@ -1050,7 +1226,7 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 	auto ConsiderAxis = [&](const VECTOR& axisW, float dist, float ra, float rb, bool isFaceAxis, int faceOwner = -1, int faceIdx = -1) {
 		if (separated) return; // already found a separating axis
 		const float sep = (ra + rb) - dist;
-		if (sep <= 0.0f) { separated = true; return; } // SAT: separated on this axis â†’ no collision
+		if (sep <= 0.0f) { separated = true; return; } // SAT: separated on this axis ¨ no collision
 		// Face-axis preference: face normals produce stable contact manifolds,
 		// while edge axes can cause sliding objects to be pushed sideways off edges.
 		// An edge axis must have substantially less penetration to override a face axis.
@@ -1254,7 +1430,7 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 		ct.normal = hitNormal;
 		ct.point = contactPt;
 		ct.penetration = 1e-4f;
-		_contacts.push_back(ct);
+		EmitContact(ct);
 		return;
 	}
 
@@ -1326,7 +1502,7 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 
 		// Clip incident polygon against 4 side planes of reference face
 		// using Sutherland-Hodgman algorithm.
-		// Each side plane is defined by a tangent axis and Â±extent.
+		// Each side plane is defined by a tangent axis and }extent.
 		VECTOR clipIn[8], clipOut[8];
 		int clipInCount = 4;
 		for (int i = 0; i < 4; ++i) clipIn[i] = incPoly[i];
@@ -1363,7 +1539,7 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 		const float refFaceSign = (Dot3(refFaceNormal, refAxes[refFaceIdx]) >= 0.0f) ? 1.0f : -1.0f;
 		const VECTOR refFaceCenter = VAdd(refCenter, VScale(refAxes[refFaceIdx], refFaceSign * refExt[refFaceIdx]));
 
-		// Plane normals in world space; distance = dot(refFaceCenter, planeNormal) Â± extent
+		// Plane normals in world space; distance = dot(refFaceCenter, planeNormal) } extent
 		const float refFaceCenterU = Dot3(refFaceCenter, refAxes[refU]);
 		const float refFaceCenterV = Dot3(refFaceCenter, refAxes[refV]);
 
@@ -1380,8 +1556,8 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 
 		// Project clipped points onto reference face plane and keep those behind it.
 		// Each point gets its own penetration depth for accurate per-point correction.
-		// depth > 0  â†’ point is in front of (outside) the reference face
-		// depth <= 0 â†’ point is behind (inside) the reference face â†’ penetrating
+		// depth > 0  ¨ point is in front of (outside) the reference face
+		// depth <= 0 ¨ point is behind (inside) the reference face ¨ penetrating
 		const float refFaceD = Dot3(refFaceCenter, n);
 		for (int i = 0; i < cnt && manifoldCount < 8; ++i) {
 			const float depth = Dot3(clipIn[i], n) - refFaceD;
@@ -1434,7 +1610,7 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 		ct.normal = n;
 		ct.point = manifold[i].pos;
 		ct.penetration = manifold[i].depth;
-		_contacts.push_back(ct);
+		EmitContact(ct);
 	}
 
 	const float wA = (oa && !oa->isStatic) ? 1.0f : 0.0f;
@@ -1460,8 +1636,8 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 	bb->UpdateShape();
 }
 
-// Capsule-Capsule æŠ¼ã—æˆ»ã—ã€‚
-// 2æœ¬ã®ç·šåˆ†ã®æœ€è¿‘ç‚¹åŒå£«ã‚’æ±‚ã‚ã€ãã®æ³•ç·šæ–¹å‘ã¸åŠå¾„å’Œã¶ã‚“åˆ†é›¢ã™ã‚‹ã€‚
+// Capsule-Capsule ‰Ÿ‚µ–ß‚µB
+// 2–{‚Ìü•ª‚ÌÅ‹ß“_“¯m‚ğ‹‚ßA‚»‚Ì–@ü•ûŒü‚Ö”¼Œa˜a‚Ô‚ñ•ª—£‚·‚éB
 void ColliderManager::PushOutCapsuleCapsule(Collider* a, Collider* b) {
 	auto* ca = dynamic_cast<CapsuleCollider*>(a);
 	auto* cb = dynamic_cast<CapsuleCollider*>(b);
@@ -1582,12 +1758,12 @@ void ColliderManager::PushOutCapsuleCapsule(Collider* a, Collider* b) {
 		ct.normal = hitN;
 		ct.point = contactPt;
 		ct.penetration = 1e-4f;
-		_contacts.push_back(ct);
+		EmitContact(ct);
 		return;
 	}
 
 	const VECTOR n = VScale(diff, 1.0f / dist);
-	// æ¥è§¦ç‚¹ã¯2ç·šåˆ†æœ€è¿‘ç‚¹ã®ä¸­ç‚¹
+	// ÚG“_‚Í2ü•ªÅ‹ß“_‚Ì’†“_
 	const VECTOR contactPoint = VScale(VAdd(c1, c2), 0.5f);
 
 	Contact ct;
@@ -1596,7 +1772,7 @@ void ColliderManager::PushOutCapsuleCapsule(Collider* a, Collider* b) {
 	ct.normal = n;
 	ct.point = contactPoint;
 	ct.penetration = pen;
-	_contacts.push_back(ct);
+	EmitContact(ct);
 
 	const float wA = (oa && !oa->isStatic) ? 1.0f : 0.0f;
 	const float wB = (ob && !ob->isStatic) ? 1.0f : 0.0f;
@@ -1621,8 +1797,8 @@ void ColliderManager::PushOutCapsuleCapsule(Collider* a, Collider* b) {
 	cb->UpdateShape();
 }
 
-// Sphere-Capsule æŠ¼ã—æˆ»ã—ã€‚
-// ã‚«ãƒ—ã‚»ãƒ«è»¸ç·šåˆ†ä¸Šã®æœ€è¿‘ç‚¹ã‚’æ±‚ã‚ã€çƒä¸­å¿ƒã¨ã®å·®ã§æ³•ç·šã‚’ä½œã‚‹ã€‚
+// Sphere-Capsule ‰Ÿ‚µ–ß‚µB
+// ƒJƒvƒZƒ‹²ü•ªã‚ÌÅ‹ß“_‚ğ‹‚ßA‹…’†S‚Æ‚Ì·‚Å–@ü‚ğì‚éB
 void ColliderManager::PushOutSphereCapsule(Collider* a, Collider* b) {
 	SphereCollider* s = dynamic_cast<SphereCollider*>(a);
 	CapsuleCollider* c = dynamic_cast<CapsuleCollider*>(b);
@@ -1716,12 +1892,12 @@ void ColliderManager::PushOutSphereCapsule(Collider* a, Collider* b) {
 		ct.normal = hitN;
 		ct.point = contactPt;
 		ct.penetration = 1e-4f;
-		_contacts.push_back(ct);
+		EmitContact(ct);
 		return;
 	}
 
 	VECTOR n = VScale(diff, 1.0f / dist);
-	// æ¥è§¦ç‚¹ã¯çƒè¡¨é¢ä¸Šã®æœ€è¿‘ç‚¹
+	// ÚG“_‚Í‹…•\–Êã‚ÌÅ‹ß“_
 	const VECTOR contactPoint = VSub(s->GetCenter(), VScale(n, s->GetRadius()));
 
 	Contact ct;
@@ -1730,7 +1906,7 @@ void ColliderManager::PushOutSphereCapsule(Collider* a, Collider* b) {
 	ct.normal = n;
 	ct.point = contactPoint;
 	ct.penetration = pen;
-	_contacts.push_back(ct);
+	EmitContact(ct);
 
 	const float wS = (os && !os->isStatic) ? 1.0f : 0.0f;
 	const float wC = (oc && !oc->isStatic) ? 1.0f : 0.0f;
@@ -1755,8 +1931,8 @@ void ColliderManager::PushOutSphereCapsule(Collider* a, Collider* b) {
 	c->UpdateShape();
 }
 
-// Box-Capsule æŠ¼ã—æˆ»ã—ã€‚
-// ã‚«ãƒ—ã‚»ãƒ«ç«¯ç‚¹ã‚’OBBãƒ­ãƒ¼ã‚«ãƒ«ç©ºé–“ã¸ç§»ã—ã€AABBã¨ã®æœ€è¿‘ç‚¹å•é¡Œã«è½ã¨ã—ã¦è¿‘ä¼¼ã™ã‚‹ã€‚
+// Box-Capsule ‰Ÿ‚µ–ß‚µB
+// ƒJƒvƒZƒ‹’[“_‚ğOBBƒ[ƒJƒ‹‹óŠÔ‚ÖˆÚ‚µAAABB‚Æ‚ÌÅ‹ß“_–â‘è‚É—‚Æ‚µ‚Ä‹ß—‚·‚éB
 void ColliderManager::PushOutBoxCapsule(Collider* a, Collider* b) {
 	BoxCollider* box = dynamic_cast<BoxCollider*>(a);
 	CapsuleCollider* cap = dynamic_cast<CapsuleCollider*>(b);
@@ -1882,7 +2058,7 @@ void ColliderManager::PushOutBoxCapsule(Collider* a, Collider* b) {
 		ct.normal = hitNormal;
 		ct.point = hitCenter;
 		ct.penetration = 1e-4f;
-		_contacts.push_back(ct);
+		EmitContact(ct);
 		return;
 	}
 
@@ -1908,7 +2084,7 @@ void ColliderManager::PushOutBoxCapsule(Collider* a, Collider* b) {
 		pen = r + (std::min)({ dx, dy, dz });
 	}
 
-	// æ¥è§¦ç‚¹ã¯OBBè¡¨é¢ä¸Šã®æœ€è¿‘ç‚¹ã‚’ãƒ¯ãƒ¼ãƒ«ãƒ‰ã«æˆ»ã—ãŸä½ç½®
+	// ÚG“_‚ÍOBB•\–Êã‚ÌÅ‹ß“_‚ğƒ[ƒ‹ƒh‚É–ß‚µ‚½ˆÊ’u
 	const VECTOR contactPointW = VAdd(
 		VAdd(VScale(box->GetAxisX(), bestBoxPointL.x), VScale(box->GetAxisY(), bestBoxPointL.y)),
 		VAdd(VScale(box->GetAxisZ(), bestBoxPointL.z), box->GetCenter())
@@ -1920,7 +2096,7 @@ void ColliderManager::PushOutBoxCapsule(Collider* a, Collider* b) {
 	ct.normal = n;
 	ct.point = contactPointW;
 	ct.penetration = pen;
-	_contacts.push_back(ct);
+	EmitContact(ct);
 
 	const float wBox = (obox && !obox->isStatic) ? 1.0f : 0.0f;
 	const float wCap = (ocap && !ocap->isStatic) ? 1.0f : 0.0f;
@@ -1951,14 +2127,14 @@ void ColliderManager::PushOutBoxCapsule(Collider* a, Collider* b) {
 void ColliderManager::CheckSphereHalfPlane(Collider* sphere, Collider* plane) {
 	auto* s = dynamic_cast<SphereCollider*>(sphere);
 	auto* hp = dynamic_cast<HalfPlaneCollider*>(plane);
-	if (!s || !hp) { _narrowHit = false; return; }
+	if (!s || !hp) { _tlNarrowHit = false; return; }
 
 	const HalfPlane& pl = hp->GetPlane();
 	const float dist = Dot3(s->GetCenter(), pl.normal) - pl.d;
 	const float pen = s->GetRadius() - dist;
-	if (pen <= 0.0f) { _narrowHit = false; return; }
+	if (pen <= 0.0f) { _tlNarrowHit = false; return; }
 
-	_narrowHit = true;
+	_tlNarrowHit = true;
 	const VECTOR contactPoint = VSub(s->GetCenter(), VScale(pl.normal, dist));
 	Contact ct;
 	ct.a = sphere;
@@ -1966,7 +2142,7 @@ void ColliderManager::CheckSphereHalfPlane(Collider* sphere, Collider* plane) {
 	ct.normal = pl.normal;
 	ct.point = contactPoint;
 	ct.penetration = pen;
-	_contacts.push_back(ct);
+	EmitContact(ct);
 }
 
 void ColliderManager::PushOutSphereHalfPlane(Collider* sphere, Collider* plane) {
@@ -2014,7 +2190,7 @@ void ColliderManager::PushOutSphereHalfPlane(Collider* sphere, Collider* plane) 
 						ct.normal = pl.normal;
 						ct.point = contactPoint;
 						ct.penetration = 1e-4f;
-						_contacts.push_back(ct);
+						EmitContact(ct);
 					}
 				}
 			}
@@ -2033,7 +2209,7 @@ void ColliderManager::PushOutSphereHalfPlane(Collider* sphere, Collider* plane) 
 void ColliderManager::CheckBoxHalfPlane(Collider* box, Collider* plane) {
 	auto* b = dynamic_cast<BoxCollider*>(box);
 	auto* hp = dynamic_cast<HalfPlaneCollider*>(plane);
-	if (!b || !hp) { _narrowHit = false; return; }
+	if (!b || !hp) { _tlNarrowHit = false; return; }
 
 	const HalfPlane& pl = hp->GetPlane();
 	const VECTOR he = b->GetHalfExtents();
@@ -2044,9 +2220,9 @@ void ColliderManager::CheckBoxHalfPlane(Collider* box, Collider* plane) {
 		std::fabs(Dot3(b->GetAxisZ(), pl.normal)) * he.z;
 	const float dist = Dot3(b->GetCenter(), pl.normal) - pl.d;
 	const float pen = proj - dist;
-	if (pen <= 0.0f) { _narrowHit = false; return; }
+	if (pen <= 0.0f) { _tlNarrowHit = false; return; }
 
-	_narrowHit = true;
+	_tlNarrowHit = true;
 
 	// Multi-point manifold: test all 8 corners, emit contacts for those below the plane.
 	const VECTOR axes[3] = { b->GetAxisX(), b->GetAxisY(), b->GetAxisZ() };
@@ -2070,7 +2246,7 @@ void ColliderManager::CheckBoxHalfPlane(Collider* box, Collider* plane) {
 			ct.normal = pl.normal;
 			ct.point = VSub(corner, VScale(pl.normal, cornerDist));
 			ct.penetration = -cornerDist;
-			_contacts.push_back(ct);
+			EmitContact(ct);
 			++contactCount;
 		}
 	}
@@ -2083,7 +2259,7 @@ void ColliderManager::CheckBoxHalfPlane(Collider* box, Collider* plane) {
 		ct.normal = pl.normal;
 		ct.point = VSub(b->GetCenter(), VScale(pl.normal, dist));
 		ct.penetration = pen;
-		_contacts.push_back(ct);
+		EmitContact(ct);
 	}
 }
 
@@ -2134,7 +2310,7 @@ void ColliderManager::PushOutBoxHalfPlane(Collider* box, Collider* plane) {
 							ct.normal = pl.normal;
 							ct.point = contactPt;
 							ct.penetration = 1e-4f;
-							_contacts.push_back(ct);
+							EmitContact(ct);
 						}
 					}
 				}
@@ -2154,16 +2330,16 @@ void ColliderManager::PushOutBoxHalfPlane(Collider* box, Collider* plane) {
 void ColliderManager::CheckCapsuleHalfPlane(Collider* capsule, Collider* plane) {
 	auto* c = dynamic_cast<CapsuleCollider*>(capsule);
 	auto* hp = dynamic_cast<HalfPlaneCollider*>(plane);
-	if (!c || !hp) { _narrowHit = false; return; }
+	if (!c || !hp) { _tlNarrowHit = false; return; }
 
 	const HalfPlane& pl = hp->GetPlane();
 	const float distBot = Dot3(c->GetBottom(), pl.normal) - pl.d;
 	const float distTop = Dot3(c->GetTop(), pl.normal) - pl.d;
 	const float minDist = (std::min)(distBot, distTop);
 	const float pen = c->GetRadius() - minDist;
-	if (pen <= 0.0f) { _narrowHit = false; return; }
+	if (pen <= 0.0f) { _tlNarrowHit = false; return; }
 
-	_narrowHit = true;
+	_tlNarrowHit = true;
 	const VECTOR closestEnd = (distBot < distTop) ? c->GetBottom() : c->GetTop();
 	const VECTOR contactPoint = VSub(closestEnd, VScale(pl.normal, minDist));
 	Contact ct;
@@ -2172,7 +2348,7 @@ void ColliderManager::CheckCapsuleHalfPlane(Collider* capsule, Collider* plane) 
 	ct.normal = pl.normal;
 	ct.point = contactPoint;
 	ct.penetration = pen;
-	_contacts.push_back(ct);
+	EmitContact(ct);
 }
 
 void ColliderManager::PushOutCapsuleHalfPlane(Collider* capsule, Collider* plane) {
@@ -2220,7 +2396,7 @@ void ColliderManager::PushOutCapsuleHalfPlane(Collider* capsule, Collider* plane
 							ct.normal = pl.normal;
 							ct.point = contactPt;
 							ct.penetration = 1e-4f;
-							_contacts.push_back(ct);
+							EmitContact(ct);
 						}
 					}
 				}
@@ -2238,11 +2414,11 @@ void ColliderManager::PushOutCapsuleHalfPlane(Collider* capsule, Collider* plane
 }
 
 // ============================================================
-//  Compound dispatch â€” recurse into children via BVH
+//  Compound dispatch ? recurse into children via BVH
 // ============================================================
 void ColliderManager::CheckCompoundVsAny(Collider* compound, Collider* other) {
 	auto* comp = dynamic_cast<CompoundCollider*>(compound);
-	if (!comp) { _narrowHit = false; return; }
+	if (!comp) { _tlNarrowHit = false; return; }
 
 	bool anyHit = false;
 	const AABB& otherAABB = other->GetAABB();
@@ -2252,7 +2428,7 @@ void ColliderManager::CheckCompoundVsAny(Collider* compound, Collider* other) {
 		Collider* child = comp->GetChild(childIdx);
 		if (!child) return;
 
-		_narrowHit = false;
+		_tlNarrowHit = false;
 		const auto ck = child->GetKind();
 		const auto ok = other->GetKind();
 
@@ -2278,19 +2454,27 @@ void ColliderManager::CheckCompoundVsAny(Collider* compound, Collider* other) {
 			CheckCapsuleHalfPlane(cp, hp);
 		}
 
-		if (_narrowHit) anyHit = true;
+		if (_tlNarrowHit) anyHit = true;
 	});
 
-	_narrowHit = anyHit;
+	_tlNarrowHit = anyHit;
 }
 
-// 1ãƒ•ãƒ¬ãƒ¼ãƒ ã¶ã‚“ã®ã‚³ãƒ©ã‚¤ãƒ€æ›´æ–°å…¥å£ã€‚
+// 1ƒtƒŒ[ƒ€‚Ô‚ñ‚ÌƒRƒ‰ƒCƒ_XV“üŒûB
 void ColliderManager::Update(float dtSec) {
 	if (IsShuttingDown()) {
 		return;
 	}
+    #ifdef _DEBUG
+	auto _s = PerformanceMonitor::Instance().Scope("Collider.UpdateFrame");
+	#endif
 	_deltaTimeSec = (dtSec > 1e-6f) ? dtSec : 1e-6f;
-	if (_adaptiveCellSize) ComputeAdaptiveCellSize();
+   if (_adaptiveCellSize) {
+		#ifdef _DEBUG
+		auto _cs = PerformanceMonitor::Instance().Scope("Collider.ComputeAdaptiveCellSize");
+		#endif
+		ComputeAdaptiveCellSize();
+	}
 	UpdateAllShapes();
 	CheckDetailedCollisions();
 }
@@ -2321,14 +2505,14 @@ void ColliderManager::ComputeAdaptiveCellSize() {
 	}
 }
 
-// Sphere-Sphere è©³ç´°åˆ¤å®šã€‚
-// è·é›¢äºŒä¹—ã¨åŠå¾„å’ŒäºŒä¹—ã®æ¯”è¼ƒã§ sqrt ã‚’é¿ã‘ã‚‹ã€‚
-// é›¢ã‚Œã¦ã„ã‚‹å ´åˆã§ã‚‚ CCD æ¡ä»¶ã‚’æº€ãŸã›ã°ã‚¹ã‚¤ãƒ¼ãƒ—ãƒ†ã‚¹ãƒˆã§è£œã†ã€‚
+// Sphere-Sphere Ú×”»’èB
+// ‹——£“ñæ‚Æ”¼Œa˜a“ñæ‚Ì”äŠr‚Å sqrt ‚ğ”ğ‚¯‚éB
+// —£‚ê‚Ä‚¢‚éê‡‚Å‚à CCD ğŒ‚ğ–‚½‚¹‚ÎƒXƒC[ƒvƒeƒXƒg‚Å•â‚¤B
 void ColliderManager::CheckSphereSphere(Collider* a, Collider* b) {
 	auto* sa = dynamic_cast<SphereCollider*>(a);
 	auto* sb = dynamic_cast<SphereCollider*>(b);
 	if (!sa || !sb) {
-		_narrowHit = false;
+		_tlNarrowHit = false;
 		return;
 	}
 	const VECTOR ca = sa->GetCenter();
@@ -2336,15 +2520,15 @@ void ColliderManager::CheckSphereSphere(Collider* a, Collider* b) {
 	const VECTOR d = VSub(cb, ca);
 	const float r = sa->GetRadius() + sb->GetRadius();
 	if (LenSq(d) <= r * r) {
-		_narrowHit = true;
+		_tlNarrowHit = true;
 		return;
 	}
 
-	// CCD ãƒ•ã‚©ãƒ¼ãƒ«ãƒãƒƒã‚¯: å‰ãƒ•ãƒ¬ãƒ¼ãƒ ä½ç½®ã‹ã‚‰ã®ã‚¹ã‚¤ãƒ¼ãƒ—ã§é€šéåˆ¤å®š
+	// CCD ƒtƒH[ƒ‹ƒoƒbƒN: ‘OƒtƒŒ[ƒ€ˆÊ’u‚©‚ç‚ÌƒXƒC[ƒv‚Å’Ê‰ß”»’è
 	auto prevItA = _prevAABBs.find(sa);
 	auto prevItB = _prevAABBs.find(sb);
 	if (prevItA == _prevAABBs.end() || prevItB == _prevAABBs.end()) {
-		_narrowHit = false;
+		_tlNarrowHit = false;
 		return;
 	}
 
@@ -2360,33 +2544,33 @@ void ColliderManager::CheckSphereSphere(Collider* a, Collider* b) {
 	const float thrB = sb->ccdDistanceThreshold;
 	const bool useSweep = sa->enableCCD || sb->enableCCD || speedSqA > thrA * thrA || speedSqB > thrB * thrB;
 	if (!useSweep) {
-		_narrowHit = false;
+		_tlNarrowHit = false;
 		return;
 	}
 
-	// ç›¸å¯¾ç§»å‹•ã¨ã—ã¦çƒ-çƒã‚¹ã‚¤ãƒ¼ãƒ—: A ã‚’å›ºå®šã— B ã®ç›¸å¯¾ç§»å‹•ã§åˆ¤å®š
+	// ‘Š‘ÎˆÚ“®‚Æ‚µ‚Ä‹…-‹…ƒXƒC[ƒv: A ‚ğŒÅ’è‚µ B ‚Ì‘Š‘ÎˆÚ“®‚Å”»’è
 	const VECTOR relPrev = VSub(prevB, prevA);
 	const VECTOR relCurr = VSub(cb, ca);
 	const VECTOR relDir = VSub(relCurr, relPrev);
 	const float a2 = LenSq(relDir);
 	if (a2 < 1e-8f) {
-		_narrowHit = false;
+		_tlNarrowHit = false;
 		return;
 	}
 	const float b2 = 2.0f * Dot3(relPrev, relDir);
 	const float c2 = LenSq(relPrev) - r * r;
 	const float disc = b2 * b2 - 4.0f * a2 * c2;
 	if (disc < 0.0f) {
-		_narrowHit = false;
+		_tlNarrowHit = false;
 		return;
 	}
 	const float sqrtDisc = std::sqrt(disc);
 	const float t0 = (-b2 - sqrtDisc) / (2.0f * a2);
-	_narrowHit = (t0 >= 0.0f && t0 <= 1.0f);
+	_tlNarrowHit = (t0 >= 0.0f && t0 <= 1.0f);
 }
 
-// Sphere-Box è©³ç´°åˆ¤å®šã€‚
-// çƒä¸­å¿ƒã‹ã‚‰ OBB ä¸Šã®æœ€è¿‘ç‚¹ã‚’æ±‚ã‚ã€ãã®è·é›¢ãŒåŠå¾„ä»¥å†…ã‹ã‚’åˆ¤å®šã™ã‚‹ã€‚
+// Sphere-Box Ú×”»’èB
+// ‹…’†S‚©‚ç OBB ã‚ÌÅ‹ß“_‚ğ‹‚ßA‚»‚Ì‹——£‚ª”¼ŒaˆÈ“à‚©‚ğ”»’è‚·‚éB
 void ColliderManager::CheckSphereBox(Collider* a, Collider* b) {
 	SphereCollider* s = dynamic_cast<SphereCollider*>(a);
 	BoxCollider* box = dynamic_cast<BoxCollider*>(b);
@@ -2395,7 +2579,7 @@ void ColliderManager::CheckSphereBox(Collider* a, Collider* b) {
 		box = dynamic_cast<BoxCollider*>(a);
 	}
 	if (!s || !box) {
-		_narrowHit = false;
+		_tlNarrowHit = false;
 		return;
 	}
 
@@ -2416,8 +2600,8 @@ void ColliderManager::CheckSphereBox(Collider* a, Collider* b) {
 	closest = VAdd(closest, VScale(box->GetAxisZ(), z));
 
 	const VECTOR diff = VSub(c, closest);
-	_narrowHit = (LenSq(diff) <= r * r);
-	if (_narrowHit) return;
+	_tlNarrowHit = (LenSq(diff) <= r * r);
+	if (_tlNarrowHit) return;
 
 	auto prevIt = _prevAABBs.find(s);
 	if (prevIt == _prevAABBs.end()) return;
@@ -2432,16 +2616,16 @@ void ColliderManager::CheckSphereBox(Collider* a, Collider* b) {
 	const bool useSweep = s->enableCCD || box->enableCCD || speedSq > thr * thr;
 	if (!useSweep) return;
 
-	_narrowHit = SweepSphereAgainstBox(prevCenter, c, r, box, nullptr, nullptr, nullptr);
+	_tlNarrowHit = SweepSphereAgainstBox(prevCenter, c, r, box, nullptr, nullptr, nullptr);
 }
 
-// Box-Box è©³ç´°åˆ¤å®šã€‚
-// SAT ã«ã‚ˆã‚Šã€Œåˆ†é›¢è»¸ãŒ1æœ¬ã§ã‚‚ã‚ã‚Œã°éè¡çªã€ã¨åˆ¤å®šã™ã‚‹ã€‚
+// Box-Box Ú×”»’èB
+// SAT ‚É‚æ‚èu•ª—£²‚ª1–{‚Å‚à‚ ‚ê‚Î”ñÕ“Ëv‚Æ”»’è‚·‚éB
 void ColliderManager::CheckBoxBox(Collider* a, Collider* b) {
 	BoxCollider* ba = dynamic_cast<BoxCollider*>(a);
 	BoxCollider* bb = dynamic_cast<BoxCollider*>(b);
 	if (!ba || !bb) {
-		_narrowHit = false;
+		_tlNarrowHit = false;
 		return;
 	}
 
@@ -2478,71 +2662,71 @@ void ColliderManager::CheckBoxBox(Collider* a, Collider* b) {
 	for (int i =0; i <3; ++i) {
 		ra = aExt[i];
 		rb = bExt[0] * AbsR[i][0] + bExt[1] * AbsR[i][1] + bExt[2] * AbsR[i][2];
-		if (std::fabs(t[i]) > ra + rb) { _narrowHit = false; return; }
+		if (std::fabs(t[i]) > ra + rb) { _tlNarrowHit = false; return; }
 	}
 
 	for (int j =0; j <3; ++j) {
 		ra = aExt[0] * AbsR[0][j] + aExt[1] * AbsR[1][j] + aExt[2] * AbsR[2][j];
 		rb = bExt[j];
 		tval = std::fabs(t[0] * R[0][j] + t[1] * R[1][j] + t[2] * R[2][j]);
-		if (tval > ra + rb) { _narrowHit = false; return; }
+		if (tval > ra + rb) { _tlNarrowHit = false; return; }
 	}
 
 	ra = aExt[1] * AbsR[2][0] + aExt[2] * AbsR[1][0];
 	rb = bExt[1] * AbsR[0][2] + bExt[2] * AbsR[0][1];
 	tval = std::fabs(t[2] * R[1][0] - t[1] * R[2][0]);
-	if (tval > ra + rb) { _narrowHit = false; return; }
+	if (tval > ra + rb) { _tlNarrowHit = false; return; }
 
 	ra = aExt[1] * AbsR[2][1] + aExt[2] * AbsR[1][1];
 	rb = bExt[0] * AbsR[0][2] + bExt[2] * AbsR[0][0];
 	tval = std::fabs(t[2] * R[1][1] - t[1] * R[2][1]);
-	if (tval > ra + rb) { _narrowHit = false; return; }
+	if (tval > ra + rb) { _tlNarrowHit = false; return; }
 
 	ra = aExt[1] * AbsR[2][2] + aExt[2] * AbsR[1][2];
 	rb = bExt[0] * AbsR[0][1] + bExt[1] * AbsR[0][0];
 	tval = std::fabs(t[2] * R[1][2] - t[1] * R[2][2]);
-	if (tval > ra + rb) { _narrowHit = false; return; }
+	if (tval > ra + rb) { _tlNarrowHit = false; return; }
 
 	ra = aExt[0] * AbsR[2][0] + aExt[2] * AbsR[0][0];
 	rb = bExt[1] * AbsR[1][2] + bExt[2] * AbsR[1][1];
 	tval = std::fabs(t[0] * R[2][0] - t[2] * R[0][0]);
-	if (tval > ra + rb) { _narrowHit = false; return; }
+	if (tval > ra + rb) { _tlNarrowHit = false; return; }
 
 	ra = aExt[0] * AbsR[2][1] + aExt[2] * AbsR[0][1];
 	rb = bExt[0] * AbsR[1][2] + bExt[2] * AbsR[1][0];
 	tval = std::fabs(t[0] * R[2][1] - t[2] * R[0][1]);
-	if (tval > ra + rb) { _narrowHit = false; return; }
+	if (tval > ra + rb) { _tlNarrowHit = false; return; }
 
 	ra = aExt[0] * AbsR[2][2] + aExt[2] * AbsR[0][2];
 	rb = bExt[0] * AbsR[1][1] + bExt[1] * AbsR[1][0];
 	tval = std::fabs(t[0] * R[2][2] - t[2] * R[0][2]);
-	if (tval > ra + rb) { _narrowHit = false; return; }
+	if (tval > ra + rb) { _tlNarrowHit = false; return; }
 
 	ra = aExt[0] * AbsR[1][0] + aExt[1] * AbsR[0][0];
 	rb = bExt[1] * AbsR[2][2] + bExt[2] * AbsR[2][1];
 	tval = std::fabs(t[1] * R[0][0] - t[0] * R[1][0]);
-	if (tval > ra + rb) { _narrowHit = false; return; }
+	if (tval > ra + rb) { _tlNarrowHit = false; return; }
 
 	ra = aExt[0] * AbsR[1][1] + aExt[1] * AbsR[0][1];
 	rb = bExt[0] * AbsR[2][2] + bExt[2] * AbsR[2][0];
 	tval = std::fabs(t[1] * R[0][1] - t[0] * R[1][1]);
-	if (tval > ra + rb) { _narrowHit = false; return; }
+	if (tval > ra + rb) { _tlNarrowHit = false; return; }
 
 	ra = aExt[0] * AbsR[1][2] + aExt[1] * AbsR[0][2];
 	rb = bExt[0] * AbsR[2][1] + bExt[1] * AbsR[2][0];
 	tval = std::fabs(t[1] * R[0][2] - t[0] * R[1][2]);
-	if (tval > ra + rb) { _narrowHit = false; return; }
+	if (tval > ra + rb) { _tlNarrowHit = false; return; }
 
-	_narrowHit = true;
+	_tlNarrowHit = true;
 }
 
-// Capsule-Capsule è©³ç´°åˆ¤å®šã€‚
-// ç·šåˆ†é–“æœ€è¿‘ç‚¹è·é›¢ã¨åŠå¾„å’Œã®æ¯”è¼ƒã€‚
+// Capsule-Capsule Ú×”»’èB
+// ü•ªŠÔÅ‹ß“_‹——£‚Æ”¼Œa˜a‚Ì”äŠrB
 void ColliderManager::CheckCapsuleCapsule(Collider* a, Collider* b) {
 	auto* ca = dynamic_cast<CapsuleCollider*>(a);
 	auto* cb = dynamic_cast<CapsuleCollider*>(b);
 	if (!ca || !cb) {
-		_narrowHit = false;
+		_tlNarrowHit = false;
 		return;
 	}
 
@@ -2595,11 +2779,11 @@ void ColliderManager::CheckCapsuleCapsule(Collider* a, Collider* b) {
 	const VECTOR c2 = VAdd(p2, VScale(d2, t));
 	const VECTOR diff = VSub(c1, c2);
 
-	_narrowHit = (LenSq(diff) <= r * r);
+	_tlNarrowHit = (LenSq(diff) <= r * r);
 }
 
-// Sphere-Capsule è©³ç´°åˆ¤å®šã€‚
-// ã‚«ãƒ—ã‚»ãƒ«è»¸ç·šåˆ†ä¸Šã®æœ€è¿‘ç‚¹ã‚’æ±‚ã‚ã€çƒä¸­å¿ƒã¨ã®å·®ã§æ³•ç·šã‚’ä½œã‚‹ã€‚
+// Sphere-Capsule Ú×”»’èB
+// ƒJƒvƒZƒ‹²ü•ªã‚ÌÅ‹ß“_‚ğ‹‚ßA‹…’†S‚Æ‚Ì·‚Å–@ü‚ğì‚éB
 void ColliderManager::CheckSphereCapsule(Collider* a, Collider* b) {
 	SphereCollider* s = dynamic_cast<SphereCollider*>(a);
 	CapsuleCollider* c = dynamic_cast<CapsuleCollider*>(b);
@@ -2608,7 +2792,7 @@ void ColliderManager::CheckSphereCapsule(Collider* a, Collider* b) {
 		c = dynamic_cast<CapsuleCollider*>(a);
 	}
 	if (!s || !c) {
-		_narrowHit = false;
+		_tlNarrowHit = false;
 		return;
 	}
 
@@ -2627,11 +2811,11 @@ void ColliderManager::CheckSphereCapsule(Collider* a, Collider* b) {
 	const VECTOR closest = VAdd(p, VScale(seg, t));
 	const VECTOR diff = VSub(s->GetCenter(), closest);
 	const float r = s->GetRadius() + c->GetRadius();
-	_narrowHit = (LenSq(diff) <= r * r);
+	_tlNarrowHit = (LenSq(diff) <= r * r);
 }
 
-// Box-Capsule è©³ç´°åˆ¤å®šã€‚
-// ã‚«ãƒ—ã‚»ãƒ«ç·šåˆ†ã‚’ OBB ãƒ­ãƒ¼ã‚«ãƒ«ã«å¤‰æ›ã—ã€AABB ã¨ã®æœ€è¿‘è·é›¢ã‚’è¿‘ä¼¼è©•ä¾¡ã™ã‚‹ã€‚
+// Box-Capsule Ú×”»’èB
+// ƒJƒvƒZƒ‹ü•ª‚ğ OBB ƒ[ƒJƒ‹‚É•ÏŠ·‚µAAABB ‚Æ‚ÌÅ‹ß‹——£‚ğ‹ß—•]‰¿‚·‚éB
 void ColliderManager::CheckBoxCapsule(Collider* a, Collider* b) {
 	BoxCollider* box = dynamic_cast<BoxCollider*>(a);
 	CapsuleCollider* cap = dynamic_cast<CapsuleCollider*>(b);
@@ -2640,7 +2824,7 @@ void ColliderManager::CheckBoxCapsule(Collider* a, Collider* b) {
 		cap = dynamic_cast<CapsuleCollider*>(a);
 	}
 	if (!box || !cap) {
-		_narrowHit = false;
+		_tlNarrowHit = false;
 		return;
 	}
 
@@ -2699,10 +2883,10 @@ void ColliderManager::CheckBoxCapsule(Collider* a, Collider* b) {
 	}
 
 	const float r = cap->GetRadius();
-	_narrowHit = (best <= r * r);
+	_tlNarrowHit = (best <= r * r);
 }
 
-// ãƒ‡ãƒãƒƒã‚°æç”»ã€‚
+// ƒfƒoƒbƒO•`‰æB
 void ColliderManager::DrawDebugAll() {
 	for (auto* collider : _colliders) {
 		if (!collider) continue;
@@ -2710,7 +2894,7 @@ void ColliderManager::DrawDebugAll() {
 	}
 }
 
-// broad-phase ç”¨ AABB ã®ãƒ‡ãƒãƒƒã‚°æç”»ã€‚
+// broad-phase —p AABB ‚ÌƒfƒoƒbƒO•`‰æB
 void ColliderManager::DrawDebugAABBAll() {
 	for (auto* collider : _colliders) {
 		if (!collider) continue;
@@ -2718,7 +2902,7 @@ void ColliderManager::DrawDebugAABBAll() {
 	}
 }
 
-// ç®¡ç†å¯¾è±¡ã¸ã®ç™»éŒ²ã€‚
+// ŠÇ—‘ÎÛ‚Ö‚Ì“o˜^B
 void ColliderManager::RegisterCollider(Collider* collider) {
 	if (IsShuttingDown()) {
 		return;
@@ -2729,8 +2913,8 @@ void ColliderManager::RegisterCollider(Collider* collider) {
 	_colliders.push_back(collider);
 }
 
-// ç®¡ç†å¯¾è±¡ã‹ã‚‰ã®è§£é™¤ã€‚
-// ãƒšã‚¢é›†åˆã¨å‰å›AABBã‚‚ä¸€ç·’ã«æƒé™¤ã—ã¦ dangling ã‚’é˜²ãã€‚
+// ŠÇ—‘ÎÛ‚©‚ç‚Ì‰ğœB
+// ƒyƒAW‡‚Æ‘O‰ñAABB‚àˆê‚É‘|œ‚µ‚Ä dangling ‚ğ–h‚®B
 void ColliderManager::UnregisterCollider(Collider* collider) {
 	if (IsShuttingDown()) {
 		return;
@@ -2763,21 +2947,21 @@ void ColliderManager::UnregisterCollider(Collider* collider) {
 	}
 }
 
-// Layer / Mask ãƒ•ã‚£ãƒ«ã‚¿ã€‚
-// false ã§ã¯ãªã true ã‚’è¿”ã—ãŸæ™‚ã«ã€Œè¡çªã•ã›ãªã„ã€è¨­è¨ˆã«ãªã£ã¦ã„ã‚‹ç‚¹ã«æ³¨æ„ã€‚
+// Layer / Mask ƒtƒBƒ‹ƒ^B
+// false ‚Å‚Í‚È‚­ true ‚ğ•Ô‚µ‚½‚ÉuÕ“Ë‚³‚¹‚È‚¢vİŒv‚É‚È‚Á‚Ä‚¢‚é“_‚É’ˆÓB
 bool ColliderManager::CheckLayerMaskCollisions(Collider* a, Collider* b) {
 	if ((a->layer & b->mask) ==0) return true;
 	if ((b->layer & a->mask) ==0) return true;
 	return false;
 }
 
-// ç¾åœ¨AABBåŒå£«ã®é€šå¸¸åˆ¤å®šã€‚
+// Œ»İAABB“¯m‚Ì’Êí”»’èB
 bool ColliderManager::CheckAABBCollisions(Collider* a, Collider* b) {
 	return !IntersectAABBWorld(a->GetAABB(), b->GetAABB());
 }
 
-// swept AABB åŒå£«ã®åˆ¤å®šã€‚
-// broad-phase ã§ã®å–ã‚Šã“ã¼ã—æŠ‘åˆ¶ç”¨ã§ã‚ã‚Šã€ã“ã‚Œè‡ªä½“ã¯é€£ç¶šè¡çªåˆ¤å®šã§ã¯ãªã„ã€‚
+// swept AABB “¯m‚Ì”»’èB
+// broad-phase ‚Å‚Ìæ‚è‚±‚Ú‚µ—}§—p‚Å‚ ‚èA‚±‚ê©‘Ì‚Í˜A‘±Õ“Ë”»’è‚Å‚Í‚È‚¢B
 bool ColliderManager::CheckAABBCollisionsSwept(Collider* a, Collider* b) {
 	return !IntersectAABBWorld(GetSweptAABB(a), GetSweptAABB(b));
 }

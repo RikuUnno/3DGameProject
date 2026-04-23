@@ -148,6 +148,7 @@
     <ClCompile Include="CameraManager.cpp" />
     <ClCompile Include="CapsuleCollider.cpp" />
     <ClCompile Include="ColliderManager.cpp" />
+    <ClCompile Include="ColliderManagerThreadSafe.cpp" />
     <ClCompile Include="Debug Class.cpp" />
     <ClCompile Include="HalfPlaneCollider.cpp" />
     <ClCompile Include="Math\Quaternion.cpp" />
@@ -158,9 +159,9 @@
     <ClCompile Include="MenuScene.cpp" />
     <ClCompile Include="ObjectManager.cpp" />
     <ClCompile Include="ObjectPool.cpp" />
+    <ClCompile Include="PerformanceMonitor.cpp" />
     <ClCompile Include="PhysicsBody.cpp" />
     <ClCompile Include="PhysicsDebugClass.cpp" />
-    <ClCompile Include="PhysicsLabScene.cpp" />
     <ClCompile Include="PhysicsManager.cpp" />
     <ClCompile Include="PhysicsScene.cpp" />
     <ClCompile Include="Raycast.cpp" />
@@ -209,10 +210,10 @@
     <ClInclude Include="ObjectPool.h" />
     <ClInclude Include="ObjectPoolDebugClass.h" />
     <ClInclude Include="ObjectPoolScene.h" />
+    <ClInclude Include="PerformanceMonitor.h" />
     <ClInclude Include="PhysicsBody.h" />
     <ClInclude Include="PhysicsController.h" />
     <ClInclude Include="PhysicsDebugClass.h" />
-    <ClInclude Include="PhysicsLabScene.h" />
     <ClInclude Include="PhysicsManager.h" />
     <ClInclude Include="PhysicsMaterial.h" />
     <ClInclude Include="PhysicsScene.h" />
@@ -243,6 +244,12 @@
     <Text Include="現状追加一覧.txt" />
     <Text Include="生成と再利用(オブジェクト).txt" />
     <Text Include="生成アルゴリズム.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="docs\MultithreadFlowDiagram.md" />
+    <None Include="docs\PhysicsSystemComprehensiveAnalysis.md" />
+    <None Include="docs\Week1-2_Completion_Report.md" />
+    <None Include="docs\Week1-2_Implementation_Progress.md" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

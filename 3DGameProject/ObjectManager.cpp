@@ -248,7 +248,7 @@ void ObjectManager::UpdateAll(float dtSec) {
 
 	ThreadPool::Instance().ParallelFor(0, count, [&](size_t i) {
 		snapshot[i]->Update(dtSec);
-	}, 4);
+	}, 16);
 }
 
 void ObjectManager::DrawAll() {

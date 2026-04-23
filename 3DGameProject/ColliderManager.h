@@ -150,7 +150,22 @@ private:
 
 	mutable std::mutex _mtx;							// スレッド安全用ミューテックス
 	std::vector<Collider*> _colliders{}; 	// 登録コライダー群
-	bool _narrowHit = false; 			// 詳細判定結果
+	bool _narrowHit = false; 			// 詳細判定結果 (serial fallback)
 	std::vector<Contact> _contacts; // 今フレームの接触情報
 	std::unordered_map<Collider*, AABB> _prevAABBs; // 前フレームのAABB（CCD用）
+
+	// ================================================================
+	//  Week 1-2: Narrow Phase Parallelization
+	// ================================================================
+	// During parallel narrow phase each CheckXxx writes to _tlNarrowHit/_tlContactOut.
+	// Serial mode: _tlContactOut == nullptr -> EmitContact falls back to _contacts.
+	static thread_local bool                  _tlNarrowHit;
+	static thread_local std::vector<Contact>* _tlContactOut; // nullptr = serial mode
+
+	// Output helper used by ALL CheckXxx functions.
+	// Replaces direct _contacts.push_back() calls to support both serial and parallel modes.
+	inline void EmitContact(const Contact& ct) {
+		if (_tlContactOut) _tlContactOut->push_back(ct);
+		else               _contacts.push_back(ct);
+	}
 };

@@ -43,6 +43,9 @@ public:
 	}
 
 	void End() override {
+		for (auto* ball : _liveBalls) {
+			if (ball) ObjectManager::Instance().Release(ball);
+		}
 		_liveBalls.clear();
 	}
 
@@ -123,10 +126,12 @@ private:
 	void ReleaseExpiredBalls_() {
 		for (auto it = _liveBalls.begin(); it != _liveBalls.end();) {
 			auto* ball = *it;
-			if (!ball || !ball->IsActive() || ball->IsExpired()) {
-				if (ball && ball->IsActive()) {
-					ObjectManager::Instance().Release(ball);
-				}
+			if (!ball) {
+				it = _liveBalls.erase(it);
+				continue;
+			}
+			if (!ball->IsActive() || ball->IsExpired()) {
+				ObjectManager::Instance().Release(ball);
 				it = _liveBalls.erase(it);
 				continue;
 			}

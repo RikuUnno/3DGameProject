@@ -1,46 +1,48 @@
 #pragma once
+
 #include <vector>
 #include <functional>
 #include <memory>
 #include <mutex>
-#include <string>
 
 class GameObject;
 
+// GameObject の生成/破棄コストを削減するためのオブジェクトプール。
+// Acquire でプールから取り出し（なければ creator で新規生成）、
+// Release でプールへ返却する。プールが満杯なら delete する。
 class ObjectPool {
 public:
-	using Creator = std::function<std::unique_ptr<GameObject>()>;   // オブジェクト生成関数
-	using Deleter = std::function<void(GameObject*)>;               // カスタムデリータ
-	using UniquePtr = std::unique_ptr<GameObject, Deleter>;         // カスタムデリータ付きユニークポインタ
+    using Creator   = std::function<std::unique_ptr<GameObject>()>;
+    using Deleter   = std::function<void(GameObject*)>;
+    using UniquePtr = std::unique_ptr<GameObject, Deleter>;
 
-	ObjectPool() = default; // デフォルトコンストラクタ
-	explicit ObjectPool(Creator creator, size_t maxSize = 64); // コンストラクタ
+    ObjectPool() = default;
+    explicit ObjectPool(Creator creator, size_t maxSize = 64);
 
-	// Acquire: プールにあれば取り出し、なければ creator で生成
-	UniquePtr Acquire(bool* wasCreated = nullptr);
+    // プールから取得。空なら creator で新規生成。
+    // wasCreated が非 null なら新規生成かどうかを返す。
+    UniquePtr Acquire(bool* wasCreated = nullptr);
 
-	// Release: 生ポインタを pool に戻す（Deleter を介して呼ばれる）
-	void Release(GameObject* obj);
+    // プールへ返却（満杯なら delete）。Deleter を介して自動呼び出しされる。
+    void Release(GameObject* obj);
 
-	// プール内（未使用）の数
-	size_t Size() const;
-	void SetMaxSize(size_t maxSize);
+    size_t Size() const;
+    void   SetMaxSize(size_t maxSize);
 
-	// freeList を全破棄（使用中のオブジェクトには触れない）
-	void Clear();
+    // 未使用ストックを全破棄（使用中オブジェクトには触れない）
+    void Clear();
 
-	// 指定秒以上「未使用」のストックを削除（使用中のオブジェクトには触れない）
-	// 戻り値: 削除した個数
-	size_t TrimUnused(double maxIdleSeconds, double nowSeconds);
+    // maxIdleSeconds 以上未使用のストックを削除。戻り値: 削除した個数。
+    size_t TrimUnused(double maxIdleSeconds, double nowSeconds);
 
 private:
-	struct FreeEntry {
-		GameObject* obj{};
-		double lastReleasedSec{}; // freeList に戻った時刻（秒）
-	};
+    struct FreeEntry {
+        GameObject* obj{};
+        double lastReleasedSec{};
+    };
 
-	Creator _creator; // オブジェクト生成関数
-	std::vector<FreeEntry> _freeList; // プール内の利用可能オブジェクトリスト
-	size_t _maxSize =64; // プールの最大サイズ
-	mutable std::mutex _mtx; // スレッド安全用ミューテックス
+    Creator                _creator;
+    std::vector<FreeEntry> _freeList;
+    size_t                 _maxSize = 64;
+    mutable std::mutex     _mtx;
 };

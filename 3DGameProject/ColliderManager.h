@@ -155,6 +155,36 @@ private:
 	std::unordered_map<Collider*, AABB> _prevAABBs; // 前フレームのAABB（CCD用）
 
 	// ================================================================
+	//  SpatialPartitioning 永続バッファ（毎フレームの heap 確保を抑制）
+	//  毎フレーム clear()/resize() のみ行い、capacity は保持する。
+	// ================================================================
+	struct CellKey {
+		int x{}, y{}, z{};
+		bool operator==(const CellKey& o) const noexcept { return x == o.x && y == o.y && z == o.z; }
+	};
+	struct CellHash {
+		size_t operator()(const CellKey& k) const noexcept {
+			size_t h = 1469598103934665603ull;
+			h ^= static_cast<size_t>(k.x) + 0x9e3779b97f4a7c15ull + (h << 6) + (h >> 2);
+			h ^= static_cast<size_t>(k.y) + 0x9e3779b97f4a7c15ull + (h << 6) + (h >> 2);
+			h ^= static_cast<size_t>(k.z) + 0x9e3779b97f4a7c15ull + (h << 6) + (h >> 2);
+			return h;
+		}
+	};
+	struct CellEntry { CellKey key; int colliderIdx; };
+	struct CandidatePair { int a; int b; };
+
+	std::vector<Collider*>                               _snapshotBuf;       // UpdateAllShapes 用
+	std::vector<Collider*>                               _activeBuf;         // フィルタ済みコライダ
+	std::vector<AABB>                                    _sweptAABBsBuf;     // swept AABB
+	std::vector<std::vector<CellEntry>>                  _perColliderCellsBuf; // セル分解結果
+	std::unordered_map<CellKey, std::vector<int>, CellHash> _gridBuf;        // 空間グリッド
+	std::vector<CandidatePair>                           _candidatesBuf;     // broad-phase 候補ペア
+	std::vector<uint64_t>                                _seenPairsBuf;      // 重複除去用
+	std::vector<uint8_t>                                 _perPairHitBuf;     // narrow-phase ヒット結果（uint8_t: vector<bool>の並列書き込み競合を回避）
+	std::vector<std::vector<Contact>>                    _perPairContactsBuf; // narrow-phase 接触点
+
+	// ================================================================
 	//  Week 1-2: Narrow Phase Parallelization
 	// ================================================================
 	// During parallel narrow phase each CheckXxx writes to _tlNarrowHit/_tlContactOut.

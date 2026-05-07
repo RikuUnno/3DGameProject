@@ -13,12 +13,7 @@
 #include <cmath>
 #include <cfloat>
 
-// ================================================================
-//  Week 1-2: Narrow Phase Parallelization - thread_local definitions
-// ================================================================
-// Each worker thread has its own _tlNarrowHit and _tlContactOut.
-// The parallel narrow-phase loop sets these before calling CheckXxx,
-// allowing CheckXxx to write results without any mutex or shared state.
+// --- 静的メンバ定義 ---
 thread_local bool                  ColliderManager::_tlNarrowHit   = false;
 thread_local std::vector<ColliderManager::Contact>* ColliderManager::_tlContactOut = nullptr;
 
@@ -58,6 +53,7 @@ namespace {
 		);
 	}
 
+	// OBBローカル空間のベクトルをワールド空間に変換。
 	inline VECTOR FromObbLocalVector(const VECTOR& localVector, const BoxCollider* box) noexcept {
 		VECTOR v = VGet(0, 0, 0);
 		v = VAdd(v, VScale(box->GetAxisX(), localVector.x));
@@ -66,6 +62,7 @@ namespace {
 		return v;
 	}
 
+	// 線分（球の中心の移動）と OBB のスイープテスト。
 	inline bool SweepSphereAgainstBox(
 		const VECTOR& prevCenter,
 		const VECTOR& currCenter,
@@ -139,13 +136,7 @@ namespace {
 		return parentOwner;
 	}
 
-	// ============================================================
-	//  Swept Box-Box TOI (linear SAT sweep)
-	// ============================================================
-	// Returns earliest time t in [0,1] when two OBBs first overlap along
-	// their relative linear motion, using a swept separating-axis test.
-	// prevCenterA/prevCenterB are previous-frame centers; currCenterA/B current.
-	// Axes and half-extents are assumed constant (rotation CCD omitted here).
+	// 線分（Aの中心の移動）と OBB-OBB のスイープテスト。
 	inline bool SweepBoxAgainstBox(
 		const VECTOR& prevCenterA, const VECTOR& currCenterA,
 		const BoxCollider* ba,
@@ -154,7 +145,7 @@ namespace {
 		float* outHitT, VECTOR* outNormalWorld) noexcept
 	{
 		if (!ba || !bb) return false;
-		// Relative motion: A fixed, B moves by (relVel)
+		// 相対速度を求める
 		const VECTOR moveA = VSub(currCenterA, prevCenterA);
 		const VECTOR moveB = VSub(currCenterB, prevCenterB);
 		const VECTOR relVel = VSub(moveB, moveA);
@@ -166,7 +157,7 @@ namespace {
 		const VECTOR Axes_A[3] = { A0, A1, A2 };
 		const VECTOR Axes_B[3] = { B0, B1, B2 };
 
-		// Separation vector at t=0
+		// 初期分離ベクトル（t=0の中心間ベクトル）
 		const VECTOR t0Sep = VSub(prevCenterB, prevCenterA);
 
 		float tFirst = 0.0f, tLast = 1.0f;
@@ -175,23 +166,23 @@ namespace {
 
 		auto TestAxis = [&](const VECTOR& axis) -> bool {
 			const float axisLen = Len3(axis);
-			if (axisLen < 1e-5f) return true; // Degenerate axis, skip
+			if (axisLen < 1e-5f) return true; // ほぼゼロベクトルは無視（平行な軸同士のクロスプロダクトがこれに該当する）
 			const VECTOR n = VScale(axis, 1.0f / axisLen);
 
-			// Project extents of A and B onto axis
+			// 各ボックスの半幅を軸に投影して、分離距離を求める
 			float rA = 0.0f, rB = 0.0f;
 			for (int i = 0; i < 3; ++i) {
 				rA += std::fabs(Dot3(Axes_A[i], n)) * aExt[i];
 				rB += std::fabs(Dot3(Axes_B[i], n)) * bExt[i];
 			}
-			const float d0 = Dot3(t0Sep, n); // Separation at t=0
-			const float v = Dot3(relVel, n);  // Relative velocity along axis
+			const float d0 = Dot3(t0Sep, n); // 初期分離距離（t=0の中心間ベクトルの投影）
+			const float v = Dot3(relVel, n);  // 軸方向の相対速度
 
-			const float s = rA + rB; // Combined extent
-			// Overlap range: d0 + v*t in [-s, s]
+			const float s = rA + rB; // 結合された半幅
+			// 重なり範囲: d0 + v*t in [-s, s]
 			float tEnter, tExit;
 			if (std::fabs(v) < 1e-8f) {
-				if (d0 < -s || d0 > s) return false; // Separated, no relative motion on this axis
+				if (d0 < -s || d0 > s) return false; // 分離, この軸上で相対運動なし
 				tEnter = 0.0f;
 				tExit = 1.0f;
 			} else {
@@ -210,10 +201,10 @@ namespace {
 			return tFirst <= tLast;
 		};
 
-		// Test 6 face normals
+		// 6つの面法線をテスト
 		for (int i = 0; i < 3; ++i) { if (!TestAxis(Axes_A[i])) return false; }
 		for (int i = 0; i < 3; ++i) { if (!TestAxis(Axes_B[i])) return false; }
-		// Test 9 edge-edge cross products
+		// 9つのエッジ-エッジのクロス積をテスト
 		for (int i = 0; i < 3; ++i) {
 			for (int j = 0; j < 3; ++j) {
 				if (!TestAxis(VCross(Axes_A[i], Axes_B[j]))) return false;
@@ -228,23 +219,14 @@ namespace {
 		return true;
 	}
 
-	// ============================================================
-	//  Swept Sphere-Sphere with angular extent consideration
-	// ============================================================
-	// Conservative radius expansion: r_effective = r + angularSpeed * maxExtent * dt
-	// This accounts for the fact that a rotating body's surface sweeps a larger
-	// volume than a purely linearly-moving one.
+	// 球の回転による見かけの拡大を計算する。
 	inline float ComputeAngularExpansion(const VECTOR& angVel, float halfExtent, float dt) noexcept {
 		const float angSpeed = Len3(angVel);
-		// The maximum surface displacement due to rotation is angSpeed * halfExtent * dt
+		// 角速度が速いほど、半径方向の拡大が大きくなる。dt を掛けることで、フレーム時間に応じた拡大量になる。
 		return angSpeed * halfExtent * dt;
 	}
 
-	// ============================================================
-	//  Improved SweepSphereAgainstBox with GJK-like corner refinement
-	// ============================================================
-	// After the slab test finds a hit, refine the contact point for corners/edges
-	// by computing the closest point on the box to the sphere center at the TOI.
+	// 線分（球の中心の移動）と OBB のスイープテスト。角速度による見かけの拡大を考慮して、より正確な衝突時間と法線を求める。
 	inline bool SweepSphereAgainstBoxRefined(
 		const VECTOR& prevCenter,
 		const VECTOR& currCenter,
@@ -256,7 +238,7 @@ namespace {
 	{
 		if (!box) return false;
 
-		// First pass: slab test (Minkowski-expanded box)
+		// 第一パス: 面ベースのスイープテストで大まかな衝突時間と法線を求める
 		const VECTOR p0 = ToObbLocal(prevCenter, box);
 		const VECTOR p1 = ToObbLocal(currCenter, box);
 		const VECTOR d = VSub(p1, p0);
@@ -300,13 +282,13 @@ namespace {
 
 		if (tMin < 0.0f || tMin > 1.0f) return false;
 
-		// Second pass: corner/edge refinement
-		// Compute sphere center at TOI
+		// 第二パス: コーナー/エッジの補正
+		// 衝突時刻での球の中心を計算
 		const VECTOR hitLocal = VAdd(p0, VScale(d, tMin));
 		const float heArr[3] = { he.x, he.y, he.z };
 		const float hitArr[3] = { hitLocal.x, hitLocal.y, hitLocal.z };
 
-		// Closest point on actual box (not Minkowski-expanded) to sphere center
+		// 衝突点をOBBの中心から見たときの座標を、OBBの半サイズでクランプして、最も近いOBB表面上の点を求める。
 		float closest[3];
 		int outsideAxes = 0;
 		for (int i = 0; i < 3; ++i) {
@@ -315,12 +297,12 @@ namespace {
 		}
 
 		if (outsideAxes >= 2) {
-			// Corner or edge hit: recompute normal from sphere-center to closest point
+			// 2軸以上でOBBの外に出ている場合は、コーナー/エッジの法線を採用する。
 			const VECTOR closestPt = VGet(closest[0], closest[1], closest[2]);
 			const VECTOR diff = VSub(hitLocal, closestPt);
 			const float diffLen = Len3(diff);
 			if (diffLen > 1e-6f) {
-				// Verify the closest point distance ? radius
+				// 面ベースの法線が、コーナー/エッジの法線に比べて大きく外れている場合は、コーナー/エッジの法線を採用する。
 				if (diffLen <= radius + 0.1f) {
 					hitNormalLocal = VScale(diff, 1.0f / diffLen);
 				}
@@ -462,17 +444,16 @@ AABB ColliderManager::GetSweptAABB(Collider* collider) const {
 	sweep.max.y = (std::max)(sweep.max.y, it->second.max.y);
 	sweep.max.z = (std::max)(sweep.max.z, it->second.max.z);
 
-	// Angular expansion: if the collider's owner has a PhysicsBody with angular
-	// velocity, expand the swept AABB to account for rotation-induced surface motion.
+	// 回転による見かけの拡大を考慮するため、もしコライダにオーナーがいて Transform が回転しているなら、
+	// AABBの対角線の半分を最大拡大量の目安として、前回AABBと今回AABBのサイズ変化から見かけの拡大を推測し、sweep AABBをさらに拡大する。
 	if (collider->owner) {
-		// Estimate max extent from AABB diagonal
+		// AABBの対角線の半分を最大拡大量の目安とする。
 		const float ex = (curr.max.x - curr.min.x) * 0.5f;
 		const float ey = (curr.max.y - curr.min.y) * 0.5f;
 		const float ez = (curr.max.z - curr.min.z) * 0.5f;
 		const float maxExtent = std::sqrt(ex * ex + ey * ey + ez * ez);
-		// Use prevAABB displacement as proxy for angular expansion
-		// (actual angular velocity from PhysicsBody not accessible here,
-		//  so use extent growth between frames as heuristic)
+		// 前回AABBと今回AABBのサイズ変化から見かけの拡大を推測する。
+		// 厳密な角速度がわからないので、前回AABBの対角線の半分と今回AABBの対角線の半分の差を見かけの拡大とする（回転が速いほどサイズ変化が大きくなる傾向があるため）。
 		const float prevEx = (it->second.max.x - it->second.min.x) * 0.5f;
 		const float prevEy = (it->second.max.y - it->second.min.y) * 0.5f;
 		const float prevEz = (it->second.max.z - it->second.min.z) * 0.5f;
@@ -501,10 +482,10 @@ void ColliderManager::UpdateAllShapes() {
 	// _colliders のスナップショットをロック下で取得し、
 	// ParallelFor はロック外で実行する。
 	// Register/Unregister が並行しても _colliders を破壊しない。
-	std::vector<Collider*> snapshot;
+	auto& snapshot = _snapshotBuf;
 	{
 		std::lock_guard lk(_mtx);
-		snapshot = _colliders;
+		snapshot.assign(_colliders.begin(), _colliders.end());
 	}
 	const size_t count = snapshot.size();
 	if (count == 0) return;
@@ -534,23 +515,7 @@ void ColliderManager::SpatialPartitioning() {
 	#endif
 	const int currentSceneId = SceneManager::Instance().CurrentSceneId();
 
-	struct CellKey {
-		int x{};
-		int y{};
-		int z{};
-		bool operator==(const CellKey& o) const noexcept { return x == o.x && y == o.y && z == o.z; }
-	};
-	struct CellHash {
-		size_t operator()(const CellKey& k) const noexcept {
-			size_t h =1469598103934665603ull;
-			h ^= static_cast<size_t>(k.x) +0x9e3779b97f4a7c15ull + (h <<6) + (h >>2);
-			h ^= static_cast<size_t>(k.y) +0x9e3779b97f4a7c15ull + (h <<6) + (h >>2);
-			h ^= static_cast<size_t>(k.z) +0x9e3779b97f4a7c15ull + (h <<6) + (h >>2);
-			return h;
-		}
-	};
-
-	const float cellSize = (_cellSize >0.01f) ? _cellSize :0.01f;
+	const float cellSize = (_cellSize > 0.01f) ? _cellSize : 0.01f;
 	constexpr int kCellLimit = 100000;
 	auto ToCell = [&](float v) -> int {
 		if (!std::isfinite(v)) return 0;
@@ -560,13 +525,14 @@ void ColliderManager::SpatialPartitioning() {
 		return static_cast<int>(c);
 	};
 
-    // --- フィルタ済みコライダーの収集（ロック下でスナップショット） ---
-	std::vector<Collider*> active;
+	// --- フィルタ済みコライダーの収集（ロック下でスナップショット） ---
+	auto& active = _activeBuf;
 	{
 		#ifdef _DEBUG
 		auto _s = PerformanceMonitor::Instance().Scope("Collider.ActiveCollect");
 		#endif
 		std::lock_guard lk(_mtx);
+		active.clear();
 		active.reserve(_colliders.size());
 		for (auto* c : _colliders) {
 			if (!c) continue;
@@ -579,7 +545,8 @@ void ColliderManager::SpatialPartitioning() {
 	}
 
  // --- swept AABB のプリコンピュート（並列） ---
-	std::vector<AABB> sweptAABBs(active.size());
+	auto& sweptAABBs = _sweptAABBsBuf;
+	sweptAABBs.resize(active.size());
 	{
 		#ifdef _DEBUG
 		auto _s = PerformanceMonitor::Instance().Scope("Collider.SweptAABB");
@@ -590,10 +557,11 @@ void ColliderManager::SpatialPartitioning() {
 	}
 
    // --- グリッド構築 ---
-	// Phase 1: compute per-collider cell lists in parallel
-	// Each collider gets a list of CellKeys it touches.
-	struct CellEntry { CellKey key; int colliderIdx; };
-	std::vector<std::vector<CellEntry>> perColliderCells(active.size());
+	// Phase 1: 各コライダの swept AABB をセルに分解してリスト化（並列で高速化）
+	// 大きすぎるAABBは中心点のみで登録して、極端なセル爆発を防止する。
+	auto& perColliderCells = _perColliderCellsBuf;
+	if (perColliderCells.size() < active.size()) perColliderCells.resize(active.size());
+	for (size_t i = 0; i < active.size(); ++i) perColliderCells[i].clear();
 	{
 		#ifdef _DEBUG
 		auto _s = PerformanceMonitor::Instance().Scope("Collider.GridCellCompute");
@@ -638,32 +606,34 @@ void ColliderManager::SpatialPartitioning() {
 		}, 64);
 	}
 
-	// Phase 2: merge per-collider cell lists into grid (serial, but data is ready)
-	std::unordered_map<CellKey, std::vector<int>, CellHash> grid;
+	// Phase 2: コライダインデックスをセルに集約してグリッドを構築（シングルスレッドで簡単に）
+	auto& grid = _gridBuf;
+	grid.clear();
 	{
 		#ifdef _DEBUG
 		auto _s = PerformanceMonitor::Instance().Scope("Collider.GridMerge");
 		#endif
 		size_t totalEntries = 0;
-		for (const auto& cells : perColliderCells) totalEntries += cells.size();
+		for (size_t i = 0; i < active.size(); ++i) totalEntries += perColliderCells[i].size();
 		grid.reserve(totalEntries);
-		for (const auto& cells : perColliderCells) {
-			for (const auto& entry : cells) {
+		for (size_t i = 0; i < active.size(); ++i) {
+			for (const auto& entry : perColliderCells[i]) {
 				grid[entry.key].push_back(entry.colliderIdx);
 			}
 		}
 	}
 
  // --- Step 1: 候補ペア列挙 (broad-phase) ---
-	struct CandidatePair { int a; int b; };
-	std::vector<CandidatePair> candidates;
+	auto& candidates = _candidatesBuf;
+	candidates.clear();
 	{
 		#ifdef _DEBUG
 		auto _s = PerformanceMonitor::Instance().Scope("Collider.BroadPhase");
 		#endif
-		// Use sorted vector + dedup instead of unordered_set for small counts
-		// (avoids hash table allocation overhead with < ~200 colliders)
-		std::vector<uint64_t> seenPairs;
+		// 同じセルにいるコライダペアを列挙し、AABBの重なりをチェックして候補ペアに追加。
+		// 同じペアが複数のセルにまたがって存在する可能性があるため、ペアIDを作って重複を後で削除する。
+		auto& seenPairs = _seenPairsBuf;
+		seenPairs.clear();
 		seenPairs.reserve(active.size() * 2);
 		auto makePairId = [](int ai, int bi) -> uint64_t {
 			const auto lo = static_cast<uint32_t>((std::min)(ai, bi));
@@ -690,9 +660,9 @@ void ColliderManager::SpatialPartitioning() {
 				}
 			}
 		}
-		// Remove duplicate pairs (from objects spanning multiple grid cells)
+		// 重複するペアを削除（複数のセルにまたがるオブジェクトからの重複を排除） 
 		if (candidates.size() > 1) {
-			// Sort by pair id, then remove duplicates
+			// ペアIDでソートしてから、隣接するペアIDが同じものを排除する。安定ソートは不要なので std::sort で十分。
 			std::vector<size_t> order(candidates.size());
 			for (size_t i = 0; i < order.size(); ++i) order[i] = i;
 			std::sort(order.begin(), order.end(), [&](size_t a, size_t b) {
@@ -729,8 +699,11 @@ void ColliderManager::SpatialPartitioning() {
 
 		// --- Phase A: 並列 narrow-phase ---
 		// 各 candidate のヒット結果と接触点を格納するバッファを確保
-		std::vector<bool>                   perPairHit(numCandidates, false);
-		std::vector<std::vector<Contact>>   perPairContacts(numCandidates);
+		auto& perPairHit = _perPairHitBuf;
+		perPairHit.assign(numCandidates, 0);
+		auto& perPairContacts = _perPairContactsBuf;
+		if (perPairContacts.size() < numCandidates) perPairContacts.resize(numCandidates);
+		for (size_t i = 0; i < numCandidates; ++i) perPairContacts[i].clear();
 
 		ThreadPool::Instance().ParallelForBarrier(0, numCandidates, [&](size_t ci) {
 			const int ai = candidates[ci].a;
@@ -1219,23 +1192,22 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 	float bestPen = FLT_MAX;
 	VECTOR bestAxisW = VGet(1,0,0);
 	bool bestAxisIsFace = false;
-	int bestFaceOwner = -1; // 0 = face of A, 1 = face of B, -1 = edge
-	int bestFaceIndex = -1; // which axis (0,1,2)
-	bool separated = false; // SAT: set to true if separated on any axis
+	int bestFaceOwner = -1; // 0 = Aの面, 1 = Bの面
+	int bestFaceIndex = -1; // 面インデックス (0,1,2)
+	bool separated = false; // 分離軸が見つかったかどうか。見つかった時点で以降の軸は無視して早期リターンするためのフラグ。
 
 	auto ConsiderAxis = [&](const VECTOR& axisW, float dist, float ra, float rb, bool isFaceAxis, int faceOwner = -1, int faceIdx = -1) {
-		if (separated) return; // already found a separating axis
+		if (separated) return; // すでに分離軸が見つかっている場合は無視
 		const float sep = (ra + rb) - dist;
-		if (sep <= 0.0f) { separated = true; return; } // SAT: separated on this axis → no collision
-		// Face-axis preference: face normals produce stable contact manifolds,
-		// while edge axes can cause sliding objects to be pushed sideways off edges.
-		// An edge axis must have substantially less penetration to override a face axis.
+		if (sep <= 0.0f) { separated = true; return; } // 分離軸が見つかった場合は以降の軸を無視して早期リターン
+		// もし候補がエッジ軸で、現在のベストが面軸なら、面軸の方を優先する。ただし、面軸に対して十分なマージン（相対的にも絶対的にも）を持ってエッジ軸が優れている場合は、エッジ軸を選ぶ。
+		// このルールは、面軸がエッジ軸よりも安定していて、より意味のある衝突情報を提供する傾向があるためです。
+		// ただし、エッジ軸が面軸よりもはるかに優れている場合（例えば、面軸のpenetrationが非常に小さく、エッジ軸のpenetrationが大きい場合）には、エッジ軸を選択することもあります。
 		if (!isFaceAxis && bestAxisIsFace) {
-			// Edge must beat face by both a relative AND absolute margin
+			// 面軸に対して十分なマージンを持ってエッジ軸が優れているかどうかの判断
 			if (sep >= bestPen * 0.9f - 0.005f) return;
 		}
-		// If candidate is a face axis and current best is an edge axis,
-		// prefer the face axis unless the edge has much less penetration.
+		// 候補が面軸で、現在のベストがエッジ軸なら、面軸を優先する。ただし、エッジ軸の方が十分に優れている場合は、エッジ軸を選ぶ。
 		if (isFaceAxis && !bestAxisIsFace) {
 			bestPen = sep;
 			bestAxisW = axisW;
@@ -1381,7 +1353,7 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 	}
 
 	if (separated || bestPen == FLT_MAX || bestPen <=0.0f) {
-		// CCD: If no overlap at current position, try swept SAT
+		// 分離軸が見つかった場合、または貫通深さがゼロ以下の場合は、CCDスイープで衝突時刻を求めて巻き戻す。
 		auto prevItA = _prevAABBs.find(ba);
 		auto prevItB = _prevAABBs.find(bb);
 		if (prevItA == _prevAABBs.end() || prevItB == _prevAABBs.end()) return;
@@ -1403,10 +1375,10 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 		VECTOR hitNormal = VGet(0, 1, 0);
 		if (!SweepBoxAgainstBox(prevCenterA, ba->GetCenter(), ba, prevCenterB, bb->GetCenter(), bb, &hitT, &hitNormal)) return;
 
-		// Backstep both boxes to TOI position
+		// 衝突時刻の位置に巻き戻す + 微小マージン分だけ押し戻す
 		const VECTOR hitCenterA = VAdd(prevCenterA, VScale(moveA, hitT));
 		const VECTOR hitCenterB = VAdd(prevCenterB, VScale(moveB, hitT));
-		// Separate by a small margin along the hit normal
+		// 衝突面にちょうど接する位置 + 微小マージン
 		if (oa && !oa->isStatic) {
 			VECTOR p = oa->transform.LocalPosition();
 			p = VAdd(p, VSub(hitCenterA, ba->GetCenter()));
@@ -1422,7 +1394,7 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 		ba->UpdateShape();
 		bb->UpdateShape();
 
-		// Emit contact at TOI
+		// 接触点は2Boxの中心を結ぶ線分上、微小マージン分だけ離れた位置
 		const VECTOR contactPt = VScale(VAdd(hitCenterA, hitCenterB), 0.5f);
 		Contact ct;
 		ct.a = ba;
@@ -1440,18 +1412,15 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 	}
 	const float pen = bestPen;
 
-	// --- Contact manifold generation ---
-	// For face-axis contacts, generate up to 4 contact points by clipping
-	// the incident face polygon against the reference face extents.
-	// For edge-edge, use a single midpoint.
+	// 最小貫通軸が面軸の場合は、接触面の交差部分が接触領域になる。
 	struct ManifoldPoint { VECTOR pos; float depth; };
 	ManifoldPoint manifold[8];
 	int manifoldCount = 0;
 
 	if (bestAxisIsFace) {
-		// Determine reference face (the one whose normal was selected) and incident face.
-		// Reference box = the one whose face normal won.
-		// Incident box  = the other one; pick its face most anti-parallel to n.
+		// 最小貫通軸が面軸の場合、接触面の交差部分が接触領域になる。
+		// まず、基準面（reference face）と被参照面（incident face）を決める。
+		// 基準面は、衝突法線が面法線と同じ向きの面。被参照面は、もう一方のBoxの面。
 		const VECTOR* refAxes;
 		const float*  refExt;
 		VECTOR        refCenter;
@@ -1470,12 +1439,12 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 		}
 
 		const int refFaceIdx = bestFaceIndex;
-		// The two tangent axes of the reference face
+		// 基準面の2つの接線軸
 		const int refU = (refFaceIdx + 1) % 3;
 		const int refV = (refFaceIdx + 2) % 3;
 
-		// Find incident face: the face of the incident box most anti-parallel to n.
-		// We want the face whose outward normal has the smallest (most negative) dot with n.
+		// 被参照面を見つける: incident boxの面で、法線がnに最も反平行な面
+		// 外向き法線がnと最も負のドット積を持つ面を選ぶ
 		int incFaceIdx = 0;
 		float minDot = FLT_MAX;
 		for (int i = 0; i < 3; ++i) {
@@ -1484,13 +1453,13 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 			float nd = -d;
 			if (nd < minDot) { minDot = nd; incFaceIdx = i; }
 		}
-		// Determine sign: the incident face is on the side of incBox that faces the refBox.
-		// Its outward normal should be anti-parallel to n.
+		// incFaceIdxが、被参照面の法線がnと最も反平行な面のインデックス。
+		// この面の法線は incAxes[incFaceIdx] または -incAxes[incFaceIdx] のどちらかで、nと反平行な方を選ぶ。
 		const float incSign = (Dot3(n, incAxes[incFaceIdx]) < 0.0f) ? 1.0f : -1.0f;
 		const int incU = (incFaceIdx + 1) % 3;
 		const int incV = (incFaceIdx + 2) % 3;
 
-		// Build incident face polygon (4 vertices) in world space
+		// 被参照面の4頂点を求める
 		VECTOR incPoly[4];
 		const float signs[4][2] = { {-1,-1}, {1,-1}, {1,1}, {-1,1} };
 		for (int i = 0; i < 4; ++i) {
@@ -1500,9 +1469,9 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 			incPoly[i] = VAdd(incPoly[i], VScale(incAxes[incV], signs[i][1] * incExt[incV]));
 		}
 
-		// Clip incident polygon against 4 side planes of reference face
-		// using Sutherland-Hodgman algorithm.
-		// Each side plane is defined by a tangent axis and ±extent.
+		// 基準面の4辺で被参照面のポリゴンをクリップして、接触領域を求める。
+		// Sutherland-Hodgmanアルゴリズムを使用。
+		// 各辺の平面は、接線軸と±extentで定義される。
 		VECTOR clipIn[8], clipOut[8];
 		int clipInCount = 4;
 		for (int i = 0; i < 4; ++i) clipIn[i] = incPoly[i];
@@ -2362,7 +2331,7 @@ void ColliderManager::PushOutCapsuleHalfPlane(Collider* capsule, Collider* plane
 	const float minDist = (std::min)(distBot, distTop);
 	const float pen = c->GetRadius() - minDist;
 	if (pen <= 0.0f) {
-		// CCD: capsule may have tunneled through the half-plane
+		// CCD:はしごの両端が半平面を貫通している可能性。カプセル中心の前フレーム位置を見て、片側にいて今は反対側にいるなら要注意。
 		auto prevIt = _prevAABBs.find(c);
 		if (prevIt != _prevAABBs.end()) {
 			float dt = _deltaTimeSec;
@@ -2414,7 +2383,7 @@ void ColliderManager::PushOutCapsuleHalfPlane(Collider* capsule, Collider* plane
 }
 
 // ============================================================
-//  Compound dispatch ? recurse into children via BVH
+// Compound vs Any: check each child against the other, with AABB culling
 // ============================================================
 void ColliderManager::CheckCompoundVsAny(Collider* compound, Collider* other) {
 	auto* comp = dynamic_cast<CompoundCollider*>(compound);
@@ -2423,7 +2392,7 @@ void ColliderManager::CheckCompoundVsAny(Collider* compound, Collider* other) {
 	bool anyHit = false;
 	const AABB& otherAABB = other->GetAABB();
 
-	// Use BVH query if available, otherwise fall back to linear scan
+	// Compound の子供たちと other を全てチェック。子供のAABBと otherAABB が重なっているものだけ narrow-phase へ。
 	comp->QueryOverlapping(otherAABB, [&](size_t childIdx) {
 		Collider* child = comp->GetChild(childIdx);
 		if (!child) return;
@@ -2479,8 +2448,8 @@ void ColliderManager::Update(float dtSec) {
 	CheckDetailedCollisions();
 }
 
-// Adaptive cell size: compute from average collider extent.
-// Uses the median half-extent * 2 as cell size, clamped to [1, 32].
+// セルサイズの自動調整。大まかな目安として、コライダの半径や半辺の中央値を基にする。
+// 極端に小さい/大きいコライダは無視して、平均的なサイズを取る。
 void ColliderManager::ComputeAdaptiveCellSize() {
 	if (_colliders.empty()) return;
 	float totalExtent = 0.0f;

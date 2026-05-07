@@ -5,297 +5,294 @@
 #include "Time.h"
 #include "ThreadPool.h"
 #include <algorithm>
-#include <iostream>
-#include <functional>
 
 #ifdef _DEBUG
 #include "DxLib.h"
 #endif
 
-// ObjectManager はシングルトンでオブジェクトの所有・再利用管理を行う。
-// - Factory: 生成責務（ObjectFactory）に委譲してオブジェクトを作る。
-// - Pool: 再利用可能な型は ObjectPool を通して Acquire/Release する。
-// - 内部コンテナ objects_ は ObjectPool::UniquePtr を保持する（カスタムデリータ許容）。
-// スレッド安全のため内部操作は mtx_ で保護する。
-
 ObjectManager& ObjectManager::Instance() noexcept {
-	static ObjectManager inst;
-	return inst;
+    static ObjectManager inst;
+    return inst;
 }
 
 ObjectManager::~ObjectManager() {
-	_objects.clear();
-	_pools.clear();
+    _objects.clear();
+    _pools.clear();
 }
 
-// 指定キーでプールを登録する。
-// - key に対して ObjectPool を生成する。creator は ObjectFactory::Create を利用する。
-// - maxSize はプールの最大保持数（満杯時は破棄される）
-void ObjectManager::RegisterPool(const std::string& key, size_t maxSize) {
-	std::lock_guard lk(_mtx);
-	if (_pools.find(key) == _pools.end()) {
-		// プール用の Creator を生成（Factory::Create を利用）
-		auto poolCreator = [key]() -> std::unique_ptr<GameObject> {
-			return ObjectFactory::Instance().Create(key);
-			};
-		_pools[key] = std::make_unique<ObjectPool>(poolCreator, maxSize);
-	}
+// ---- 内部ヘルパー: オブジェクトを _objects / _idIndex に登録 ----------------
+
+static int AssignId(GameObject* obj, std::atomic<int>& nextId,
+    std::unordered_map<int, GameObject*>& idIndex)
+{
+    int id = obj->GetId();
+    if (id < 0) {
+        id = nextId.fetch_add(1, std::memory_order_relaxed);
+        obj->SetId(id);
+    }
+    idIndex.emplace(id, obj);
+    return id;
 }
+
+// ---- プール登録 --------------------------------------------------------------
+
+void ObjectManager::RegisterPool(const std::string& key, size_t maxSize) {
+    std::lock_guard lk(_mtx);
+    if (_pools.count(key)) return;
+    auto poolCreator = [key]() -> std::unique_ptr<GameObject> {
+        return ObjectFactory::Instance().Create(key);
+    };
+    _pools.emplace(key, std::make_unique<ObjectPool>(poolCreator, maxSize));
+}
+
+// ---- シーン ID ---------------------------------------------------------------
 
 void ObjectManager::SetCurrentSceneId(int sceneId) {
-	std::lock_guard lk(_mtx);
-	_currentSceneId = sceneId;
+    std::lock_guard lk(_mtx);
+    _currentSceneId = sceneId;
 }
 
 int ObjectManager::CurrentSceneId() const {
-	std::lock_guard lk(_mtx);
-	return _currentSceneId;
+    std::lock_guard lk(_mtx);
+    return _currentSceneId;
 }
 
-void ObjectManager::ReleaseBySceneId(int sceneId) {
-	// 注意: Release は objects_ を eraseするので、イテレータを使うループでまとめて処理する
-	std::lock_guard lk(_mtx);
-	for (auto it = _objects.begin(); it != _objects.end(); ) {
-		GameObject* obj = it->get();
-		if (!obj || obj->_ownerSceneId != sceneId) {
-			++it;
-			continue;
-		}
+// ---- Spawn ------------------------------------------------------------------
+// 1) プールがあれば Acquire → OnAcquire
+// 2) なければ Factory::Create → OnAcquire
+// どちらも _objects / _idIndex に登録して raw ポインタを返す。
 
-		// シーン終了時フック（コメント通り：終了時に一度だけ）
-		obj->End();
-
-		if (!obj->_poolKey.empty()) {
-			obj->OnRelease();
-			obj->SetActive(false);
-			it = _objects.erase(it);
-			continue;
-		}
-		obj->OnDestroy();
-#ifdef _DEBUG
-		++_debugTotalDeleted;
-#endif
-		obj->SetActive(false);
-		it = _objects.erase(it);
-	}
-}
-
-// Spawn: オブジェクトを取得して Manager が所有する。
-// フロー:
-// 1) まずプールがあれば Acquire() して OnAcquire(params) を呼ぶ。
-// 2) プールが無い/空なら Factory::Create(key, params) による生成を行う。
-// どちらの場合も最終的に内部 objects_ に所有権を移して raw ポインタを返す。
-// - 所有権ルール: 呼び出し側は返却（Release）を ObjectManager に委ねる。
 GameObject* ObjectManager::Spawn(const std::string& key, const VariantMap& params) {
-	std::unique_ptr<GameObject> up;
+    std::lock_guard lk(_mtx);
 
-	//1) try pool
-	{
-		std::lock_guard lk(_mtx);
-		auto pit = _pools.find(key);
-		if (pit != _pools.end()) {
-			bool wasCreated = false;
-			auto u = pit->second->Acquire(&wasCreated);
-			if (u) {
-				GameObject* raw = u.get();
-				raw->SetActive(true);
-				raw->_poolKey = key;
-				raw->_ownerSceneId = _currentSceneId;
-				raw->OnAcquire(params);
-				_objects.push_back(std::move(u));
+    ObjectPool::UniquePtr up;
+    bool wasCreated = false;
+
+    auto pit = _pools.find(key);
+    if (pit != _pools.end()) {
+        up = pit->second->Acquire(&wasCreated);
+    }
+
+    if (!up) {
+        // プール未登録 or プール空かつ creator なし → Factory 直接生成
+        auto raw_up = ObjectFactory::Instance().Create(key, params);
+        if (!raw_up) return nullptr;
+        up = ObjectPool::UniquePtr(
+            raw_up.release(),
+            ObjectPool::Deleter([](GameObject* p) { delete p; })
+        );
+        wasCreated = true;
+    }
+
+    if (!up) return nullptr;
+
+    GameObject* raw = up.get();
+    raw->SetActive(true);
+    raw->_poolKey      = (pit != _pools.end()) ? key : std::string{};
+    raw->_ownerSceneId = _currentSceneId;
+    raw->OnAcquire(params);
+
+    AssignId(raw, _nextId, _idIndex);
+    _objects.emplace(raw, std::move(up));
+
 #ifdef _DEBUG
-				++_debugTotalAcquire;
-				if (wasCreated) {
-					++_debugTotalCreated;
-				}
+    ++_debugTotalAcquire;
+    if (wasCreated) ++_debugTotalCreated;
 #endif
-				return raw;
-			}
-		}
-	}
-
-	//2) fallback to factory create
-	up = ObjectFactory::Instance().Create(key, params);
-	if (!up) return nullptr;
-
-	up->SetActive(true);
-	up->_poolKey.clear();
-	up->_ownerSceneId = CurrentSceneId();
-	up->OnAcquire(params);
-	GameObject* raw = up.get();
-	{
-		std::lock_guard lk(_mtx);
-		_objects.push_back(
-			ObjectPool::UniquePtr(
-				up.release(),
-				ObjectPool::Deleter([](GameObject* p) { delete p; })
-			)
-		);
-#ifdef _DEBUG
-		++_debugTotalAcquire;
-		++_debugTotalCreated;
-#endif
-	}
-	return raw;
+    return raw;
 }
+
+// ---- Release ----------------------------------------------------------------
+// O(1): raw ポインタキーで直接 erase。
 
 void ObjectManager::Release(GameObject* obj) {
-	if (!obj) return;
-	std::lock_guard lk(_mtx);
-	auto it = std::find_if(_objects.begin(), _objects.end(),
-		[obj](const ObjectPool::UniquePtr& up) { return up.get() == obj; });
-	if (it == _objects.end()) return;
+    if (!obj) return;
+    std::lock_guard lk(_mtx);
 
-	std::string key = obj->_poolKey;
-	if (!key.empty()) {
-		obj->OnRelease();
-		obj->SetActive(false);
-		_objects.erase(it);
-		return;
-	}
-	(*it)->OnDestroy();
+    auto it = _objects.find(obj);
+    if (it == _objects.end()) return;
+
+    _idIndex.erase(obj->GetId());
+
+    if (!obj->_poolKey.empty()) {
+        obj->OnRelease();
+        obj->SetActive(false);
+    } else {
+        obj->OnDestroy();
 #ifdef _DEBUG
-	++_debugTotalDeleted;
+        ++_debugTotalDeleted;
 #endif
-	(*it)->SetActive(false);
-	_objects.erase(it);
+        obj->SetActive(false);
+    }
+    _objects.erase(it);
+}
+
+// ---- シーン一括 Release -----------------------------------------------------
+
+void ObjectManager::ReleaseBySceneId(int sceneId) {
+    std::lock_guard lk(_mtx);
+    for (auto it = _objects.begin(); it != _objects.end(); ) {
+        GameObject* obj = it->first;
+        if (!obj || obj->_ownerSceneId != sceneId) { ++it; continue; }
+
+        obj->End();
+        _idIndex.erase(obj->GetId());
+
+        if (!obj->_poolKey.empty()) {
+            obj->OnRelease();
+        } else {
+            obj->OnDestroy();
+#ifdef _DEBUG
+            ++_debugTotalDeleted;
+#endif
+        }
+        obj->SetActive(false);
+        it = _objects.erase(it);
+    }
+}
+
+// ---- FindById / RemoveById --------------------------------------------------
+// O(1): _idIndex のセカンダリインデックスで検索。
+
+GameObject* ObjectManager::FindById(int id) const {
+    std::lock_guard lk(_mtx);
+    auto it = _idIndex.find(id);
+    return (it != _idIndex.end()) ? it->second : nullptr;
 }
 
 bool ObjectManager::RemoveById(int id) {
-	std::lock_guard lk(_mtx);
-	auto it = std::find_if(_objects.begin(), _objects.end(),
-		[id](const ObjectPool::UniquePtr& up) { return up && up->GetId() == id; });
-	if (it == _objects.end()) return false;
-	(*it)->OnDestroy();
+    std::lock_guard lk(_mtx);
+    auto idIt = _idIndex.find(id);
+    if (idIt == _idIndex.end()) return false;
+
+    GameObject* obj = idIt->second;
+    _idIndex.erase(idIt);
+
+    auto objIt = _objects.find(obj);
+    if (objIt != _objects.end()) {
+        obj->OnDestroy();
 #ifdef _DEBUG
-	++_debugTotalDeleted;
+        ++_debugTotalDeleted;
 #endif
-	_objects.erase(it);
-	return true;
+        _objects.erase(objIt);
+    }
+    return true;
 }
 
-bool ObjectManager::ClearPool(const std::string& key) {
-	std::lock_guard lk(_mtx);
-	auto it = _pools.find(key);
-	if (it == _pools.end() || !it->second) return false;
-#ifdef _DEBUG
-	//クリア前に消える数を加算
-	_debugTotalDeleted += it->second->Size();
-#endif
-	it->second->Clear();
-	return true;
-}
-
-size_t ObjectManager::TrimPoolUnused(const std::string& key, double maxIdleSeconds) {
-	const double now = Time::Instance().GetTotalTime();
-	std::lock_guard lk(_mtx);
-	auto it = _pools.find(key);
-	if (it == _pools.end() || !it->second) return 0;
-	const size_t removed = it->second->TrimUnused(maxIdleSeconds, now);
-#ifdef _DEBUG
-	_debugTotalDeleted += removed;
-#endif
-	return removed;
-}
-
-size_t ObjectManager::TrimAllPoolsUnused(double maxIdleSeconds) {
-	const double now = Time::Instance().GetTotalTime();
-	std::lock_guard lk(_mtx);
-	size_t total = 0;
-	for (auto& [k, pool] : _pools) {
-		if (!pool) continue;
-		const size_t removed = pool->TrimUnused(maxIdleSeconds, now);
-		total += removed;
-#ifdef _DEBUG
-		_debugTotalDeleted += removed;
-#endif
-	}
-	return total;
-}
-
-bool ObjectManager::UnregisterPool(const std::string& key) {
-	std::lock_guard lk(_mtx);
-	for (const auto& up : _objects) {
-		if (up && up->_poolKey == key) return false;
-	}
-	auto it = _pools.find(key);
-	if (it == _pools.end()) return false;
-#ifdef _DEBUG
-	if (it->second) _debugTotalDeleted += it->second->Size();
-#endif
-	if (it->second) it->second->Clear();
-	_pools.erase(it);
-	return true;
-}
+// ---- UpdateAll / DrawAll ----------------------------------------------------
 
 void ObjectManager::UpdateAll(float dtSec) {
-	// raw ポインタのスナップショットをロック下で取得し、
-	// ParallelFor はロック外で実行する。
-	// これにより obj->Update() 内で Spawn/Release を呼んでもデッドロックしない。
-	std::vector<GameObject*> snapshot;
-	{
-		std::lock_guard lk(_mtx);
-		snapshot.reserve(_objects.size());
-		for (auto& up : _objects) {
-			GameObject* obj = up.get();
-			if (obj && obj->IsActive()) {
-				snapshot.push_back(obj);
-			}
-		}
-	}
-	const size_t count = snapshot.size();
-	if (count == 0) return;
+    // スナップショットをロック内で構築し、ロック外で並列 Update する。
+    // → Update 中に Spawn/Release が呼ばれてもデッドロックしない。
+    {
+        std::lock_guard lk(_mtx);
+        _snapshotBuf.clear();
+        for (auto& [ptr, up] : _objects) {
+            if (ptr && ptr->IsActive())
+                _snapshotBuf.push_back(ptr);
+        }
+    }
 
-	ThreadPool::Instance().ParallelFor(0, count, [&](size_t i) {
-		snapshot[i]->Update(dtSec);
-	}, 16);
+    const size_t count = _snapshotBuf.size();
+    if (count == 0) return;
+
+    ThreadPool::Instance().ParallelFor(0, count, [&](size_t i) {
+        _snapshotBuf[i]->Update(dtSec);
+    }, 16);
 }
 
 void ObjectManager::DrawAll() {
-	std::lock_guard lk(_mtx);
-	for (auto& up : _objects) {
-		GameObject* obj = up.get();
-		if (!obj) continue;
-		if (!obj->IsActive()) continue;
-		obj->Draw();
-	}
+    std::lock_guard lk(_mtx);
+    for (auto& [ptr, up] : _objects) {
+        if (ptr && ptr->IsActive()) ptr->Draw();
+    }
 }
 
-GameObject* ObjectManager::FindById(int id) const {
-	std::lock_guard lk(_mtx);
-	auto it = std::find_if(_objects.begin(), _objects.end(),
-		[id](const ObjectPool::UniquePtr& up) { return up && up->GetId() == id; });
-	return (it == _objects.end()) ? nullptr : it->get();
+// ---- プールメンテナンス -----------------------------------------------------
+
+bool ObjectManager::ClearPool(const std::string& key) {
+    std::lock_guard lk(_mtx);
+    auto it = _pools.find(key);
+    if (it == _pools.end() || !it->second) return false;
+#ifdef _DEBUG
+    _debugTotalDeleted += it->second->Size();
+#endif
+    it->second->Clear();
+    return true;
 }
+
+size_t ObjectManager::TrimPoolUnused(const std::string& key, double maxIdleSeconds) {
+    const double now = Time::Instance().GetTotalTime();
+    std::lock_guard lk(_mtx);
+    auto it = _pools.find(key);
+    if (it == _pools.end() || !it->second) return 0;
+    const size_t removed = it->second->TrimUnused(maxIdleSeconds, now);
+#ifdef _DEBUG
+    _debugTotalDeleted += removed;
+#endif
+    return removed;
+}
+
+size_t ObjectManager::TrimAllPoolsUnused(double maxIdleSeconds) {
+    const double now = Time::Instance().GetTotalTime();
+    std::lock_guard lk(_mtx);
+    size_t total = 0;
+    for (auto& [k, pool] : _pools) {
+        if (!pool) continue;
+        const size_t removed = pool->TrimUnused(maxIdleSeconds, now);
+        total += removed;
+#ifdef _DEBUG
+        _debugTotalDeleted += removed;
+#endif
+    }
+    return total;
+}
+
+bool ObjectManager::UnregisterPool(const std::string& key) {
+    std::lock_guard lk(_mtx);
+    // 使用中オブジェクトが残っていれば登録解除しない
+    for (const auto& [ptr, up] : _objects) {
+        if (up && up->_poolKey == key) return false;
+    }
+    auto it = _pools.find(key);
+    if (it == _pools.end()) return false;
+#ifdef _DEBUG
+    if (it->second) _debugTotalDeleted += it->second->Size();
+#endif
+    if (it->second) it->second->Clear();
+    _pools.erase(it);
+    return true;
+}
+
+// ---- デバッグ表示 -----------------------------------------------------------
 
 #ifdef _DEBUG
 void ObjectManager::DebugDraw(int x, int y) const {
-	std::lock_guard lk(_mtx);
+    std::lock_guard lk(_mtx);
 
-	const int leftX = x;
-	const int rightX = x + 360;
-	const int lineH = 16;
-	int leftY = y;
-	int rightY = y;
+    const int lineH  = 16;
+    const int rightX = x + 360;
+    int leftY  = y;
+    int rightY = y;
 
-	DrawFormatString(leftX, leftY, GetColor(255, 255, 0), "[ObjectManager] 現在オブジェクト数: %d", (int)_objects.size());
-	leftY += lineH;
-	DrawFormatString(leftX, leftY, GetColor(255, 255, 0), "[ObjectManager] 取得数(現状): %d", (int)_debugTotalAcquire);
-	leftY += lineH;
-	DrawFormatString(leftX, leftY, GetColor(255, 255, 0), "[ObjectManager] 生成数(Factory): %d", (int)_debugTotalCreated);
-	leftY += lineH;
-	DrawFormatString(leftX, leftY, GetColor(255, 255, 0), "[ObjectManager] 累計削除数(破棄数): %d", (int)_debugTotalDeleted);
-	leftY += lineH;
-	DrawFormatString(leftX, leftY, GetColor(255, 255, 0), "[ObjectManager] 現在SceneId: %d", _currentSceneId);
-	leftY += lineH;
-	DrawFormatString(leftX, leftY, GetColor(255, 255, 0), "[ObjectManager] プール数: %d", (int)_pools.size());
+    DrawFormatString(x, leftY, GetColor(255,255,0),
+        "[ObjectManager] objects:%d", (int)_objects.size()); leftY += lineH;
+    DrawFormatString(x, leftY, GetColor(255,255,0),
+        "[ObjectManager] acquire:%d", (int)_debugTotalAcquire); leftY += lineH;
+    DrawFormatString(x, leftY, GetColor(255,255,0),
+        "[ObjectManager] created:%d", (int)_debugTotalCreated); leftY += lineH;
+    DrawFormatString(x, leftY, GetColor(255,255,0),
+        "[ObjectManager] deleted:%d", (int)_debugTotalDeleted); leftY += lineH;
+    DrawFormatString(x, leftY, GetColor(255,255,0),
+        "[ObjectManager] sceneId:%d", _currentSceneId); leftY += lineH;
+    DrawFormatString(x, leftY, GetColor(255,255,0),
+        "[ObjectManager] pools:%d",   (int)_pools.size());
 
-	DrawFormatString(rightX, rightY, GetColor(255, 255, 0), "[Pool] 未使用ストック");
-	rightY += lineH;
-	for (const auto& [key, pool] : _pools) {
-		const size_t freeCount = pool ? pool->Size() : 0;
-		DrawFormatString(rightX, rightY, GetColor(200, 255, 200), "%s : %d", key.c_str(), (int)freeCount);
-		rightY += lineH;
-	}
+    DrawFormatString(rightX, rightY, GetColor(255,255,0), "[Pool] free stock"); rightY += lineH;
+    for (const auto& [key, pool] : _pools) {
+        DrawFormatString(rightX, rightY, GetColor(200,255,200),
+            "%s : %d", key.c_str(), pool ? (int)pool->Size() : 0);
+        rightY += lineH;
+    }
 }
 #endif

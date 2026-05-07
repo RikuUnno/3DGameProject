@@ -265,9 +265,6 @@
     <Filter Include="ソース ファイル\System\Physics\Manager">
       <UniqueIdentifier>{10f48bca-570b-47e0-8f2e-abe200bacedd}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ソース ファイル\System\Physics\Physics">
-      <UniqueIdentifier>{12dae0e3-04fb-4122-ab04-df21bd3f6473}</UniqueIdentifier>
-    </Filter>
     <Filter Include="ヘッダー ファイル\System\Physics">
       <UniqueIdentifier>{d214e332-2bf8-408b-8ad5-c9a7a6025a9e}</UniqueIdentifier>
     </Filter>
@@ -276,9 +273,6 @@
     </Filter>
     <Filter Include="ヘッダー ファイル\System\Physics\Manager">
       <UniqueIdentifier>{d5726ec0-9358-49c5-ab35-47c608226a3a}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\System\Physics\Controller">
-      <UniqueIdentifier>{872021c7-169d-4368-9b87-87fc43a60b4f}</UniqueIdentifier>
     </Filter>
     <Filter Include="ヘッダー ファイル\Debug\Camera">
       <UniqueIdentifier>{650d5627-6884-41ae-9af5-993c35f94c1f}</UniqueIdentifier>
@@ -373,6 +367,27 @@
     <Filter Include="ヘッダー ファイル\System\Collision\ContactManifold">
       <UniqueIdentifier>{e562289a-8c07-4770-b24f-a28018cce1db}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ヘッダー ファイル\System\Physics\Manager\Internal">
+      <UniqueIdentifier>{f081de8f-6dd2-4a65-9fa9-356f38110c82}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Physics\Body">
+      <UniqueIdentifier>{12dae0e3-04fb-4122-ab04-df21bd3f6473}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Physics\Cntacts">
+      <UniqueIdentifier>{07458843-204f-4a7d-b54a-f2faa504e7ce}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Physics\Islands">
+      <UniqueIdentifier>{c7ddf9ed-7059-43c8-bc6b-2d46ac86eca0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Physics\Integration">
+      <UniqueIdentifier>{44d77cad-9af7-4639-a05d-86c35dafe3ca}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Physics\Solver">
+      <UniqueIdentifier>{f093d02d-ee73-4a16-9cbc-92d9883588d2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Physics\Ccd">
+      <UniqueIdentifier>{4f4431ce-ad93-4f37-86a6-1bdc56899565}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -398,12 +413,6 @@
     </ClCompile>
     <ClCompile Include="ObjectFactory.cpp">
       <Filter>ソース ファイル\System\Object\Factory</Filter>
-    </ClCompile>
-    <ClCompile Include="ObjectManager.cpp">
-      <Filter>ソース ファイル\System\Object\Manager</Filter>
-    </ClCompile>
-    <ClCompile Include="ObjectPool.cpp">
-      <Filter>ソース ファイル\System\Object\ObjectPool</Filter>
     </ClCompile>
     <ClCompile Include="ObjectController.cpp">
       <Filter>ソース ファイル\System\Object\Controller</Filter>
@@ -454,7 +463,7 @@
       <Filter>ソース ファイル\Scene\Transition</Filter>
     </ClCompile>
     <ClCompile Include="PhysicsBody.cpp">
-      <Filter>ソース ファイル\System\Physics\Physics</Filter>
+      <Filter>ソース ファイル\System\Physics\Body</Filter>
     </ClCompile>
     <ClCompile Include="PhysicsDebugClass.cpp">
       <Filter>ソース ファイル\Debug\Physics</Filter>
@@ -476,6 +485,30 @@
     </ClCompile>
     <ClCompile Include="ColliderManagerThreadSafe.cpp">
       <Filter>ソース ファイル\System\Collision\Manager\ThreadSafe</Filter>
+    </ClCompile>
+    <ClCompile Include="ObjectManager.cpp">
+      <Filter>ソース ファイル\System\Object\Manager</Filter>
+    </ClCompile>
+    <ClCompile Include="ObjectPool.cpp">
+      <Filter>ソース ファイル\System\Object\ObjectPool</Filter>
+    </ClCompile>
+    <ClCompile Include="3DGameProject\PhysicsManager.cpp">
+      <Filter>ソース ファイル\System\Physics\Manager</Filter>
+    </ClCompile>
+    <ClCompile Include="3DGameProject\PhysicsContacts.cpp">
+      <Filter>ソース ファイル\System\Physics\Cntacts</Filter>
+    </ClCompile>
+    <ClCompile Include="3DGameProject\PhysicsIslands.cpp">
+      <Filter>ソース ファイル\System\Physics\Islands</Filter>
+    </ClCompile>
+    <ClCompile Include="3DGameProject\PhysicsIntegration.cpp">
+      <Filter>ソース ファイル\System\Physics\Integration</Filter>
+    </ClCompile>
+    <ClCompile Include="3DGameProject\PhysicsSolver.cpp">
+      <Filter>ソース ファイル\System\Physics\Solver</Filter>
+    </ClCompile>
+    <ClCompile Include="3DGameProject\PhysicsCcd.cpp">
+      <Filter>ソース ファイル\System\Physics\Ccd</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -508,12 +541,6 @@
     </ClInclude>
     <ClInclude Include="GameObject.h">
       <Filter>ヘッダー ファイル\System\Object\GameObject</Filter>
-    </ClInclude>
-    <ClInclude Include="ObjectManager.h">
-      <Filter>ヘッダー ファイル\System\Object\Manager</Filter>
-    </ClInclude>
-    <ClInclude Include="ObjectPool.h">
-      <Filter>ヘッダー ファイル\System\Object\ObjectPool</Filter>
     </ClInclude>
     <ClInclude Include="ObjectController.h">
       <Filter>ヘッダー ファイル\System\Object\Controller</Filter>
@@ -593,9 +620,6 @@
     <ClInclude Include="PhysicsManager.h">
       <Filter>ヘッダー ファイル\System\Physics\Manager</Filter>
     </ClInclude>
-    <ClInclude Include="PhysicsController.h">
-      <Filter>ヘッダー ファイル\System\Physics\Controller</Filter>
-    </ClInclude>
     <ClInclude Include="PhysicsBody.h">
       <Filter>ヘッダー ファイル\System\Physics\Physics</Filter>
     </ClInclude>
@@ -653,6 +677,15 @@
     <ClInclude Include="ThreadPool.h">
       <Filter>ヘッダー ファイル\System\Thread\Pool</Filter>
     </ClInclude>
+    <ClInclude Include="ObjectManager.h">
+      <Filter>ヘッダー ファイル\System\Object\Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="ObjectPool.h">
+      <Filter>ヘッダー ファイル\System\Object\ObjectPool</Filter>
+    </ClInclude>
+    <ClInclude Include="3DGameProject\PhysicsManager_Internal.h">
+      <Filter>ヘッダー ファイル\System\Physics\Manager\Internal</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="オブジェクト構造想定.txt">
@@ -682,11 +715,5 @@
     <Text Include="Object_Manual_Reference.txt">
       <Filter>メモ\リファレンス・マニュアル\Object</Filter>
     </Text>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="docs\MultithreadFlowDiagram.md" />
-    <None Include="docs\PhysicsSystemComprehensiveAnalysis.md" />
-    <None Include="docs\Week1-2_Completion_Report.md" />
-    <None Include="docs\Week1-2_Implementation_Progress.md" />
   </ItemGroup>
 </Project>

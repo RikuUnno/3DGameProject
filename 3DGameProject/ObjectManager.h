@@ -1,7 +1,9 @@
 #pragma once
+
 #include <vector>
 #include <memory>
 #include <unordered_map>
+#include <atomic>
 #include <mutex>
 #include <string>
 #include "ObjectPool.h"
@@ -12,65 +14,67 @@ using VariantMap = std::unordered_map<std::string, std::string>;
 
 class ObjectManager : public Manager {
 public:
-	// シングルトンインスタンス取得
-	static ObjectManager& Instance() noexcept;
+    static ObjectManager& Instance() noexcept;
 
-	// オブジェクト管理 API
-	GameObject* Spawn(const std::string& key, const VariantMap& params = {});   // オブジェクト取得
-	void RegisterPool(const std::string& key, size_t maxSize = 64);             // プール登録
-	void Release(GameObject* obj);                                              // オブジェクト返却
-	void UpdateAll(float dtSec);											// 可変FPS対応：全オブジェクト更新
-	void DrawAll();                                                             // 全オブジェクト描画
-	GameObject* FindById(int id) const;                                         // ID で検索
-	bool RemoveById(int id);                                                    // ID で削除
+    // オブジェクト取得（プールがあれば再利用、なければ Factory 生成）
+    GameObject* Spawn(const std::string& key, const VariantMap& params = {});
+    // プール登録
+    void RegisterPool(const std::string& key, size_t maxSize = 64);
+    // オブジェクト返却（プールキーがあれば返却、なければ破棄）
+    void Release(GameObject* obj);
 
-	// ---- Scene integration ----
-	// 現在アクティブなシーンID（Spawnされたオブジェクトの ownerSceneId を設定する）
-	void SetCurrentSceneId(int sceneId);
-	int CurrentSceneId() const;
-	// 指定シーンIDに所属するオブジェクトを一括で Releaseする（シーン終了用）
-	void ReleaseBySceneId(int sceneId);
+    void UpdateAll(float dtSec);
+    void DrawAll();
 
-	// ---- Pool maintenance (generic / safe) ----
-	// 未使用ストック（freeList）のみを破棄する
-	bool ClearPool(const std::string& key);
-	// 指定秒以上未使用のストックを破棄する（戻り値: 削除数）
-	size_t TrimPoolUnused(const std::string& key, double maxIdleSeconds);
-	// 全プールに対して TrimUnused を実行（戻り値: 総削除数）
-	size_t TrimAllPoolsUnused(double maxIdleSeconds);
-	// プール登録解除する（freeList は破棄）。使用中が残っている場合は false.
-	bool UnregisterPool(const std::string& key);
+    GameObject* FindById(int id) const;
+    bool        RemoveById(int id);
 
-	// Manager
-	void Update(float dt) override { UpdateAll(dt); }
+    // 現在アクティブなシーン ID（Spawn されたオブジェクトの ownerSceneId に付与）
+    void SetCurrentSceneId(int sceneId);
+    int  CurrentSceneId() const;
+    // 指定シーン ID のオブジェクトを一括 Release（シーン終了時に使用）
+    void ReleaseBySceneId(int sceneId);
+
+    bool   ClearPool(const std::string& key);
+    size_t TrimPoolUnused(const std::string& key, double maxIdleSeconds);
+    size_t TrimAllPoolsUnused(double maxIdleSeconds);
+    // プール登録解除（使用中オブジェクトが残っている場合は false を返す）
+    bool   UnregisterPool(const std::string& key);
+
+    void Update(float dt) override { UpdateAll(dt); }
 
 #ifdef _DEBUG
-	// デバッグ表示（Releaseではコンパイルされない）
-	void DebugDraw(int x = 10, int y = 90) const;
+    void DebugDraw(int x = 10, int y = 90) const;
 #endif
 
-	// コピー禁止
-	ObjectManager(const ObjectManager&) = delete;
-	ObjectManager& operator=(const ObjectManager&) = delete;
+    ObjectManager(const ObjectManager&) = delete;
+    ObjectManager& operator=(const ObjectManager&) = delete;
 
 private:
-	// コンストラクタ・デストラクタ
-	ObjectManager() = default;
-	virtual ~ObjectManager();
+    ObjectManager() = default;
+    virtual ~ObjectManager();
 
-	// _objects は ObjectPool::UniquePtr を保持する（プール経由/外部経由の両方を格納可能）
-	std::vector<ObjectPool::UniquePtr> _objects;
+    // --- オブジェクト管理コンテナ ---
+    // raw ポインタキーにすることで Release/FindByPtr が O(1) になる。
+    std::unordered_map<GameObject*, ObjectPool::UniquePtr> _objects;
 
-	// プール管理コンテナ
-	std::unordered_map<std::string, std::unique_ptr<class ObjectPool>> _pools; // key -> ObjectPool
-	mutable std::mutex _mtx; // スレッド安全用ミューテックス
+    // ID → ptr のセカンダリインデックス（FindById / RemoveById 用）
+    std::unordered_map<int, GameObject*> _idIndex;
 
-	int _currentSceneId = 0; // 現在のシーンID
+    // UpdateAll 用永続スナップショットバッファ（毎フレームの heap 確保を排除）
+    std::vector<GameObject*> _snapshotBuf;
+
+    // プール管理
+    std::unordered_map<std::string, std::unique_ptr<ObjectPool>> _pools;
+
+    mutable std::mutex _mtx;
+
+    int             _currentSceneId = 0;
+    std::atomic<int> _nextId{ 1 }; // Spawn 時に自動付与する一意 ID
 
 #ifdef _DEBUG
-	// デバッグ用カウント
-	size_t _debugTotalAcquire = 0;
-	size_t _debugTotalCreated = 0;
-	size_t _debugTotalDeleted = 0;
+    size_t _debugTotalAcquire = 0;
+    size_t _debugTotalCreated = 0;
+    size_t _debugTotalDeleted = 0;
 #endif
 };

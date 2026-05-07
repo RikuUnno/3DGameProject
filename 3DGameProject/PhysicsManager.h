@@ -5,6 +5,7 @@
 #include <mutex>
 #include <future>
 #include <unordered_map>
+#include <unordered_set>
 #include <cstdint>
 #include <algorithm>
 
@@ -25,53 +26,63 @@ class Collider;
 //   - ソルバーイテレーション開始時に前フレームの lambda で速度を初期化 (warm-start)
 //   - イテレーション中は Δλ ではなく累積λ をクランプ (λ_new = max(λ_old + Δλ, 0))
 struct SolverContact {
-	// 識別
-	Collider* colA = nullptr;
-	Collider* colB = nullptr;
+	// ============================================================
+	// === ホットパス（ソルバー反復で毎回アクセス）: 先頭 128B = 2 キャッシュライン ===
+	// ============================================================
 
-	// 幾何
-	VECTOR normal   = VGet(0,1,0);
-	VECTOR point    = VGet(0,0,0);
-	VECTOR rA       = VGet(0,0,0); // point - centerA
-	VECTOR rB       = VGet(0,0,0); // point - centerB
-	float  penetration = 0.0f;
+	// Body ポインタ・逆質量（インパルス適用に必須）
+	PhysicsBody* bodyA = nullptr;       // @ 0   (8B)
+	PhysicsBody* bodyB = nullptr;       // @ 8   (8B)
+	float invA = 0.0f;                  // @ 16  (4B)
+	float invB = 0.0f;                  // @ 20  (4B)
 
-	// キャッシュ済みソルバー定数（BuildSolverContacts で計算）
-	float effectiveInvMassN  = 0.0f; // 法線方向
-	float effectiveInvMassT1 = 0.0f; // 摩擦方向1
-	float effectiveInvMassT2 = 0.0f; // 摩擦方向2
-	float restitution = 0.0f;
-	float friction    = 0.0f;
-	float staticFriction = 0.0f; // static friction (for static/kinetic transition)
-	VECTOR tangent1 = VGet(1,0,0);
-	VECTOR tangent2 = VGet(0,0,1);
-	float normalBias = 0.0f; // Baumgarte velocity bias
+	// 有効逆質量（BuildSolverContacts で事前計算）
+	float effectiveInvMassN  = 0.0f;   // @ 24  (4B)
+	float effectiveInvMassT1 = 0.0f;   // @ 28  (4B)
+	float effectiveInvMassT2 = 0.0f;   // @ 32  (4B)
 
-	// Body ポインタ（毎フレーム解決）
-	PhysicsBody* bodyA = nullptr;
-	PhysicsBody* bodyB = nullptr;
-	float invA = 0.0f;
-	float invB = 0.0f;
+	// バイアス・摩擦係数
+	float normalBias     = 0.0f;       // @ 36  (4B)
+	float restitution    = 0.0f;       // @ 40  (4B)
+	float friction       = 0.0f;       // @ 44  (4B)
+	float staticFriction = 0.0f;       // @ 48  (4B)
 
 	// 累積インパルス（warm-start / クランプ用）
-	float normalLambda   = 0.0f;
-	float frictionLambda1 = 0.0f;
-	float frictionLambda2 = 0.0f;
+	float normalLambda    = 0.0f;      // @ 52  (4B)
+	float frictionLambda1 = 0.0f;      // @ 56  (4B)
+	float frictionLambda2 = 0.0f;      // @ 60  (4B)
+	//  ↑ ここまで 64B = キャッシュライン 1
 
-	// Split impulse (position correction without affecting velocity)
-	float splitNormalLambda = 0.0f;
-	float splitBias = 0.0f;
+	// 法線・腕ベクトル・接線（速度計算・インパルス適用に使用）
+	VECTOR normal   = VGet(0,1,0);     // @ 64  (12B)
+	VECTOR rA       = VGet(0,0,0);     // @ 76  (12B)
+	VECTOR rB       = VGet(0,0,0);     // @ 88  (12B)
+	VECTOR tangent1 = VGet(1,0,0);     // @ 100 (12B)
+	VECTOR tangent2 = VGet(0,0,1);     // @ 112 (12B)
+	bool   speculative = false;        // @ 124 (1B + 3B padding)
+	//  ↑ ここまで 128B = キャッシュライン 1-2
 
-	// 接触点のローカル座標（マッチング用）
-	VECTOR localA = VGet(0,0,0); // colA ローカル
-	VECTOR localB = VGet(0,0,0); // colB ローカル
+	// ============================================================
+	// === コールドパス（位置補正・マッチングのみ使用）: 128B 以降 ===
+	// ============================================================
 
-	// アイランドID（BuildIslands で割り当て）
-	int islandId = -1;
+	// Split impulse（位置補正フェーズのみ）
+	float splitNormalLambda = 0.0f;    // @ 128
+	float splitBias         = 0.0f;    // @ 132
+	float penetration       = 0.0f;    // @ 136
 
-	// Speculative CCD: true if this contact was generated speculatively
-	// (penetration was predicted, not measured)
-	bool speculative = false;
+	// アイランド ID
+	int islandId = -1;                 // @ 140
+
+	// 接触点・ローカル座標（Warm-start マッチング用）
+	VECTOR point  = VGet(0,0,0);       // @ 144
+	VECTOR localA = VGet(0,0,0);       // @ 156
+	VECTOR localB = VGet(0,0,0);       // @ 168
+
+	// コライダー識別子（マッチング・イベント用）
+	Collider* colA = nullptr;          // @ 180
+	Collider* colB = nullptr;          // @ 188
+	// 合計 196B = 3 キャッシュライン（ホットデータは先頭 2 本に収まる）
 };
 
 // ============================================================
@@ -214,11 +225,18 @@ private:
 	int UFFind(int x) noexcept;
 	void UFUnite(int a, int b) noexcept;
 
+	// BuildIslands の変化検出キャッシュ（前フレームとグラフが同じなら再構築スキップ）
+	size_t _prevIslandBodyCount = 0;
+	size_t _prevContactHash     = ~size_t(0); // 初回は必ず再構築
+
 	// Island splitting threshold: islands larger than this are split for parallel PGS
 	// With ~50 objects, splitting small islands wastes more time than it saves.
 	static constexpr int kIslandSplitThreshold = 64;
 	// Constraint batching threshold: islands with more contacts get graph-colored batches
 	static constexpr int kBatchingThreshold = 32;
+	// 小バッチのシリアル実行閾値: これ未満のバッチは ParallelForBarrier を使わずシリアル解
+	// バリアのセットアップコスト（notify_all + spin）が並列効果を上回る下限
+	static constexpr int kBatchParallelThreshold = 16;
 
 private:
 	std::atomic_bool _shuttingDown{ false };
@@ -271,4 +289,56 @@ private:
 	bool _asyncEnabled = false;
 	std::future<void> _asyncFuture{};
 	void RunAsyncStep(float dt);
+
+	// ============================================================
+	//  永続バッファ（毎フレームの heap 確保を抑制）
+	//  clear()/resize() のみ行い capacity は保持する。
+	// ============================================================
+	// BuildSolverContacts 用
+	struct PrevKey {
+		Collider* a; Collider* b;
+		bool operator==(const PrevKey& o) const noexcept { return a == o.a && b == o.b; }
+	};
+	struct PrevHash {
+		size_t operator()(const PrevKey& k) const noexcept {
+			return (reinterpret_cast<size_t>(k.a) >> 4) ^ (reinterpret_cast<size_t>(k.b) << 1);
+		}
+	};
+	struct TaggedContact { SolverContact sc; bool valid = false; };
+	// ResolveToiEvents 用
+	struct ToiEvent {
+		PhysicsBody* body = nullptr;
+		float toi = 1.0f;
+		VECTOR toiPosition{};
+		VECTOR clampedVelocity{};
+	};
+
+	std::vector<PhysicsController*>                       _ctrlSnapshotBuf;
+	std::unordered_multimap<PrevKey, size_t, PrevHash>    _prevContactMapBuf;
+	std::vector<TaggedContact>                            _buildContactResultsBuf;
+	std::vector<size_t>                                   _islandOrderBuf;
+	std::unordered_map<PhysicsBody*, int>                 _bodyIndexBuf;
+	std::unordered_map<int, int>                          _rootToIslandBuf;
+	std::vector<VECTOR>                                   _pseudoVelBuf;
+	std::unordered_map<PhysicsBody*, size_t>              _bodyIdxBuf;
+	std::vector<ToiEvent>                                 _toiEventsBuf;
+	std::unordered_set<PhysicsBody*>                      _specCoveredBodiesBuf;
+	std::vector<SolverContact>                            _specContactsBuf;
+
+	// ============================================================
+	//  SplitLargeIsland 永続バッファ（毎呼出の heap 確保を排除）
+	// ============================================================
+	std::unordered_map<PhysicsBody*, int> _splitLocalIdxBuf;
+	std::vector<std::vector<int>>         _splitAdjBuf;
+	std::vector<int>                      _splitColorBuf;
+	std::vector<int>                      _splitQueueBuf;
+	std::vector<PhysicsBody*>             _splitOrigBodiesBuf;
+	std::vector<int>                      _splitOrigContactsBuf;
+
+	// ============================================================
+	//  BuildConstraintBatches 永続バッファ（毎呼出の heap 確保を排除）
+	// ============================================================
+	std::unordered_map<PhysicsBody*, std::vector<int>> _batchBodyToContactsBuf;
+	std::vector<int>                                   _batchContactColorBuf;
+	std::vector<int>                                   _batchUsedColorEpochBuf;
 };

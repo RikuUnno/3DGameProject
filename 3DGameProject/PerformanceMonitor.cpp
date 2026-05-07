@@ -1,5 +1,4 @@
 #include "PerformanceMonitor.h"
-#include "PerformanceMonitor.h"
 #include "DxLib.h"
 #include "ThreadPool.h"
 

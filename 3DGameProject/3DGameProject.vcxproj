@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -77,13 +77,13 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>C:\DxLib_VC\InThaProjectFile</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\DxLib_VC\FilesToIncludeInTheProject</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\DxLib_VC\InThaProjectFile</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\DxLib_VC\FilesToIncludeInTheProject</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -95,13 +95,13 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>C:\DxLib_VC\InThaProjectFile</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\DxLib_VC\FilesToIncludeInTheProject</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\DxLib_VC\InThaProjectFile</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\DxLib_VC\FilesToIncludeInTheProject</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -111,13 +111,13 @@
       <PreprocessorDefinitions>_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>C:\DxLib_VC\InThaProjectFile</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\DxLib_VC\FilesToIncludeInTheProject</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\DxLib_VC\InThaProjectFile</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\DxLib_VC\FilesToIncludeInTheProject</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -129,13 +129,13 @@
       <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>C:\DxLib_VC\InThaProjectFile</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\DxLib_VC\FilesToIncludeInTheProject</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\DxLib_VC\InThaProjectFile</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\DxLib_VC\FilesToIncludeInTheProject</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -163,6 +163,11 @@
     <ClCompile Include="PhysicsBody.cpp" />
     <ClCompile Include="PhysicsDebugClass.cpp" />
     <ClCompile Include="PhysicsManager.cpp" />
+    <ClCompile Include="PhysicsIntegration.cpp" />
+    <ClCompile Include="PhysicsContacts.cpp" />
+    <ClCompile Include="PhysicsIslands.cpp" />
+    <ClCompile Include="PhysicsSolver.cpp" />
+    <ClCompile Include="PhysicsCcd.cpp" />
     <ClCompile Include="PhysicsScene.cpp" />
     <ClCompile Include="Raycast.cpp" />
     <ClCompile Include="SceneManager.cpp" />
@@ -212,9 +217,9 @@
     <ClInclude Include="ObjectPoolScene.h" />
     <ClInclude Include="PerformanceMonitor.h" />
     <ClInclude Include="PhysicsBody.h" />
-    <ClInclude Include="PhysicsController.h" />
     <ClInclude Include="PhysicsDebugClass.h" />
     <ClInclude Include="PhysicsManager.h" />
+    <ClInclude Include="PhysicsManager_Internal.h" />
     <ClInclude Include="PhysicsMaterial.h" />
     <ClInclude Include="PhysicsScene.h" />
     <ClInclude Include="Pool.h" />
@@ -244,12 +249,6 @@
     <Text Include="現状追加一覧.txt" />
     <Text Include="生成と再利用(オブジェクト).txt" />
     <Text Include="生成アルゴリズム.txt" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="docs\MultithreadFlowDiagram.md" />
-    <None Include="docs\PhysicsSystemComprehensiveAnalysis.md" />
-    <None Include="docs\Week1-2_Completion_Report.md" />
-    <None Include="docs\Week1-2_Implementation_Progress.md" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -63,12 +63,19 @@ void PhysicsManager::SolveAllIslands(float stepDt) {
     const size_t islandCount = _islands.size();
 
     // 接触数降順でソート（重いアイランドを先に処理してテール待機を削減）
+    // キャッシュ: 前回と同じサイズなら再ソートスキップ
     auto& islandOrder = _islandOrderBuf;
-    islandOrder.resize(islandCount);
-    for (size_t i = 0; i < islandCount; ++i) islandOrder[i] = i;
-    std::sort(islandOrder.begin(), islandOrder.end(), [&](size_t a, size_t b) {
-        return _islands[a].contactIndices.size() > _islands[b].contactIndices.size();
-    });
+    static size_t prevIslandCount = 0;
+    const bool needsSort = (islandCount != prevIslandCount);
+    prevIslandCount = islandCount;
+
+    if (needsSort || islandOrder.size() != islandCount) {
+        islandOrder.resize(islandCount);
+        for (size_t i = 0; i < islandCount; ++i) islandOrder[i] = i;
+        std::sort(islandOrder.begin(), islandOrder.end(), [&](size_t a, size_t b) {
+            return _islands[a].contactIndices.size() > _islands[b].contactIndices.size();
+        });
+    }
 
     // パス1: 小アイランド（constraintBatches なし）→ アイランド単位で並列
     ThreadPool::Instance().ParallelForBarrierHeavy(0, islandCount, [&](size_t orderIdx) {
@@ -262,8 +269,9 @@ void PhysicsManager::SplitImpulseCorrection(float /*stepDt*/) {
 void PhysicsManager::PropagateIslandSleep() {
     const size_t islandCount = _islands.size();
     if (islandCount > 0) {
-        ThreadPool::Instance().ParallelForBarrierHeavy(0, islandCount, [&](size_t i) {
-            auto& island = _islands[i];
+        auto& islands = _islands;  // ローカル参照を作成
+        ThreadPool::Instance().ParallelForBarrierHeavy(0, islandCount, [&islands](size_t i) {
+            auto& island = islands[i];
             bool anyAwake = false;
             for (auto* body : island.bodies) {
                 if (body && body->IsDynamic() && !body->_isSleeping) { anyAwake = true; break; }
@@ -279,8 +287,9 @@ void PhysicsManager::PropagateIslandSleep() {
     const size_t bodyCount = _bodies.size();
     if (bodyCount > 0) {
         const float stepDt = _fixedDeltaTime;
-        ThreadPool::Instance().ParallelForBarrier(0, bodyCount, [&](size_t idx) {
-            PhysicsBody* body = _bodies[idx];
+        auto& bodies = _bodies;  // ローカル参照を作成
+        ThreadPool::Instance().ParallelForBarrier(0, bodyCount, [this, &bodies, stepDt](size_t idx) {
+            PhysicsBody* body = bodies[idx];
             if (!body) return;
             if (body->_isSleeping) {
                 if (LenSq(body->_velocity) > 1e-8f || LenSq(body->_angularVelocity) > 1e-8f)

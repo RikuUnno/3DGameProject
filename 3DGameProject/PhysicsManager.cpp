@@ -108,16 +108,18 @@ void PhysicsManager::RunAsyncStep(float dt) {
 
 void PhysicsManager::BuildLookupCaches() {
     _bodyByOwner.clear();
-    if (_bodyByOwner.bucket_count() < _bodies.size())
-        _bodyByOwner.reserve(_bodies.size());
+    const size_t bodySize = _bodies.size();
+    if (bodySize > 0 && _bodyByOwner.bucket_count() < bodySize * 2)
+        _bodyByOwner.reserve(bodySize);
     for (auto* body : _bodies) {
         if (!body || !body->_owner) continue;
         _bodyByOwner.emplace(body->_owner, body);
     }
     _colliderByOwner.clear();
     const auto& colliders = ColliderManager::Instance().GetColliders();
-    if (_colliderByOwner.bucket_count() < colliders.size())
-        _colliderByOwner.reserve(colliders.size());
+    const size_t colSize = colliders.size();
+    if (colSize > 0 && _colliderByOwner.bucket_count() < colSize * 2)
+        _colliderByOwner.reserve(colSize);
     for (auto* col : colliders) {
         if (!col || !col->owner) continue;
         _colliderByOwner.emplace(col->owner, col);

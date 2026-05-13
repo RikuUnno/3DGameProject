@@ -318,6 +318,16 @@ void PerformanceMonitor::Update() {
     UpdateMemory();
     UpdateGpu();
     UpdateThreads();
+
+    // 詳細ログ自動保存（1秒に1回、遅いフレーム検出時）
+    if (_detailedLoggingEnabled && _frameTimeMs > 50.0f) {
+        static int64_t s_lastDetailedLog = 0;
+        const int64_t now = NowMicroseconds();
+        if (now - s_lastDetailedLog > 1000000LL) {
+            s_lastDetailedLog = now;
+            SaveDetailedLog();
+        }
+    }
 }
 
 // ============================================================
@@ -497,6 +507,125 @@ void PerformanceMonitor::UpdateThreads() {
         th.prevKernel = curKernel;
         th.prevUser   = curUser;
     }
+}
+
+// ============================================================
+//  詳細ログ保存
+// ============================================================
+void PerformanceMonitor::SaveDetailedLog(const char* filename) const {
+    std::string fname;
+    if (filename) {
+        fname = filename;
+    } else {
+        // 自動ファイル名生成: PerformanceLog_YYYYMMDD_HHMMSS.txt
+        char buf[128];
+        SYSTEMTIME st;
+        GetLocalTime(&st);
+        sprintf_s(buf, "PerformanceLog_%04d%02d%02d_%02d%02d%02d.txt",
+            st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
+        fname = buf;
+    }
+
+    std::ofstream ofs(fname, std::ios::out | std::ios::app);
+    if (!ofs) return;
+
+    const uint64_t frame = _frameIndex.load(std::memory_order_relaxed);
+
+    ofs << "\n========================================\n";
+    ofs << "[DETAILED LOG] Frame: " << frame << "\n";
+    ofs << "========================================\n";
+
+    // タイムスタンプ
+    {
+        SYSTEMTIME st;
+        GetLocalTime(&st);
+        ofs << "Timestamp: " << st.wYear << "/" << st.wMonth << "/" << st.wDay
+            << " " << st.wHour << ":" << st.wMinute << ":" << st.wSecond << "\n";
+    }
+
+    // シーン情報
+    ofs << "\n--- Scene Information ---\n";
+    ofs << "Current Scene: " << _currentSceneName << "\n";
+
+    // パフォーマンス概要
+    ofs << "\n--- Performance Summary ---\n";
+    ofs << "FPS: " << _fps << "\n";
+    ofs << "Frame Time: " << _frameTimeMs << " ms\n";
+    ofs << "CPU Usage: " << _cpuPercent << " %\n";
+    ofs << "GPU Usage: " << _gpuPercent << " %\n";
+
+    // メモリ使用量
+    ofs << "\n--- Memory Usage ---\n";
+    ofs << "Working Set: " << _workingSetMB << " MB\n";
+    ofs << "Virtual Memory: " << _virtualMemMB << " MB\n";
+    ofs << "GPU Dedicated: " << _gpuDedicatedMB << " MB\n";
+    ofs << "GPU Shared: " << _gpuSharedMB << " MB\n";
+
+    // システム情報
+    ofs << "\n--- System Information ---\n";
+    ofs << "Processor Count: " << _processorCount << "\n";
+
+    // メモリ情報(物理/仮想総量)
+    MEMORYSTATUSEX memStatus;
+    memStatus.dwLength = sizeof(memStatus);
+    if (GlobalMemoryStatusEx(&memStatus)) {
+        ofs << "Total Physical Memory: " << (memStatus.ullTotalPhys / (1024.0 * 1024.0)) << " MB\n";
+        ofs << "Available Physical Memory: " << (memStatus.ullAvailPhys / (1024.0 * 1024.0)) << " MB\n";
+        ofs << "Memory Load: " << memStatus.dwMemoryLoad << " %\n";
+    }
+
+    // ThreadPool情報
+    ofs << "\n--- ThreadPool Status ---\n";
+    ofs << "Worker Count: " << _threadWorkerCount << "\n";
+    ofs << "Queue Size: " << _threadQueueSize << "\n";
+
+    // スレッド詳細
+    ofs << "\n--- Thread Details ---\n";
+    for (const auto& t : _threads) {
+        ofs << "[" << t.name << "] ";
+        ofs << "TID=" << t.threadId << " ";
+        ofs << "CPU=" << t.cpuPercent << "% ";
+        ofs << "Kernel=" << t.kernelTimeUs << "us ";
+        ofs << "User=" << t.userTimeUs << "us\n";
+    }
+
+    // スレッド状態
+    ofs << "\n--- Thread States ---\n";
+    {
+        std::lock_guard<std::mutex> lk(_threadStateMtx);
+        for (const auto& [tid, st] : _threadStates) {
+            ofs << "TID=" << tid << " State=[" << st.state << "] ";
+            ofs << "LastUpdate=" << st.lastUpdateUs << "us\n";
+        }
+    }
+
+    // セクション詳細(全セクション、ソート済み)
+    ofs << "\n--- Profiling Sections (All) ---\n";
+    {
+        std::lock_guard<std::mutex> lk(_sectionMtx);
+        std::vector<SectionInfo> secs;
+        secs.reserve(_sections.size());
+        for (const auto& name : _sectionOrder) {
+            auto it = _sections.find(name);
+            if (it == _sections.end()) continue;
+            const auto& st = it->second;
+            secs.push_back(SectionInfo{ name, st.timeUs, st.calls });
+        }
+        std::sort(secs.begin(), secs.end(), [](const SectionInfo& a, const SectionInfo& b) {
+            return a.timeUs > b.timeUs;
+        });
+        for (const auto& s : secs) {
+            ofs << s.name << ": ";
+            ofs << "Time=" << s.timeUs << "us ";
+            ofs << "Calls=" << s.calls;
+            if (s.calls > 0) {
+                ofs << " Avg=" << (s.timeUs / s.calls) << "us";
+            }
+            ofs << "\n";
+        }
+    }
+
+    ofs << "\n========================================\n\n";
 }
 
 // ============================================================

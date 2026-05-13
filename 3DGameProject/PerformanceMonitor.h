@@ -59,6 +59,18 @@ public:
     bool IsVisible() const noexcept { return _visible; }
     void ToggleVisible() noexcept { _visible = !_visible; }
 
+    // --- 詳細ログ機能 ---
+    // 詳細ログの有効化/無効化(デフォルト: 無効)
+    void EnableDetailedLogging(bool enable) noexcept { _detailedLoggingEnabled = enable; }
+    bool IsDetailedLoggingEnabled() const noexcept { return _detailedLoggingEnabled; }
+
+    // 詳細ログを手動保存(ファイル名省略時は自動生成)
+    void SaveDetailedLog(const char* filename = nullptr) const;
+
+    // 現在のシーン名を設定(SceneManagerから呼ばれる)
+    void SetCurrentSceneName(std::string_view sceneName) noexcept { _currentSceneName = sceneName; }
+    std::string GetCurrentSceneName() const noexcept { return _currentSceneName; }
+
     // --- 取得API ---
     float CpuUsagePercent()  const noexcept { return _cpuPercent; }
     float GpuUsagePercent()  const noexcept { return _gpuPercent; }
@@ -203,4 +215,8 @@ private:
     std::atomic<uint64_t> _frameIndex{ 0 };
     std::atomic<bool> _watchdogStarted{ false };
     std::atomic<bool> _watchdogStop{ false };
+
+    // 詳細ログ機能
+    bool _detailedLoggingEnabled = false;
+    std::string _currentSceneName = "Unknown";
 };

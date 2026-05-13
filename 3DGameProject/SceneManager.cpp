@@ -1,6 +1,7 @@
 #include "SceneManager.h"
 #include "ObjectManager.h"
 #include "CameraManager.h"
+#include "PerformanceMonitor.h"
 
 // シングルトン取得
 SceneManager& SceneManager::Instance() noexcept {
@@ -42,6 +43,8 @@ void SceneManager::ChangeScene(std::unique_ptr<IScene> scene) {
 		scene->Awake();
 		scene->Start();
 		_stack.push_back(std::move(scene));
+		// PerformanceMonitorにシーン名を設定
+		PerformanceMonitor::Instance().SetCurrentSceneName(_stack.back()->Name());
 	}
 }
 
@@ -53,6 +56,8 @@ void SceneManager::PushScene(std::unique_ptr<IScene> scene) {
 		scene->Awake();
 		scene->Start();
 		_stack.push_back(std::move(scene));
+		// PerformanceMonitorにシーン名を設定
+		PerformanceMonitor::Instance().SetCurrentSceneName(_stack.back()->Name());
 	}
 }
 
@@ -68,6 +73,10 @@ void SceneManager::PopScene() {
 	_stack.pop_back();
 	if (!_stack.empty()) {
 		_stack.back()->OnResume();
+		// PerformanceMonitorにシーン名を設定
+		PerformanceMonitor::Instance().SetCurrentSceneName(_stack.back()->Name());
+	} else {
+		PerformanceMonitor::Instance().SetCurrentSceneName("NoScene");
 	}
 }
 

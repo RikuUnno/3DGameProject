@@ -73,8 +73,10 @@ void PhysicsManager::BuildIslands() {
     // 通常パス: 完全再構築
     auto& bodyIndex = _bodyIndexBuf;
     bodyIndex.clear();
-    if (bodyIndex.bucket_count() < _bodies.size()) bodyIndex.reserve(_bodies.size());
-    for (int i = 0; i < static_cast<int>(_bodies.size()); ++i) {
+    const size_t bodySize = _bodies.size();
+    if (bodySize > 0 && bodyIndex.bucket_count() < bodySize * 2)
+        bodyIndex.reserve(bodySize);
+    for (int i = 0; i < static_cast<int>(bodySize); ++i) {
         if (_bodies[i]) bodyIndex.emplace(_bodies[i], i);
     }
 

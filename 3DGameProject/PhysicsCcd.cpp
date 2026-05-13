@@ -22,7 +22,8 @@ void PhysicsManager::GenerateSpeculativeContacts(float stepDt) {
         }
     };
     std::unordered_set<ColPairKey, ColPairHash> existingPairs;
-    existingPairs.reserve(_solverContacts.size());
+    const size_t scSize = _solverContacts.size();
+    if (scSize > 0) existingPairs.reserve(scSize);
     for (const auto& sc : _solverContacts) {
         if (!sc.speculative && sc.colA && sc.colB)
             existingPairs.insert({sc.colA, sc.colB});

@@ -1,0 +1,38 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "cppbuild",
+            "label": "DxLibビルド (g++)",
+            "command": "g++",
+            "args": [
+                "-fdiagnostics-color=always",
+                "-g",
+                "${file}",
+                "-o",
+                "${fileDirname}\\${fileBasenameNoExtension}.exe",
+                // ↓ここからDxLibの設定（パスは自分の環境に合わせてください）
+                "-I", "C:\\DxLib_GCC\\FilesToIncludeInTheProjectGCC",
+                "-L", "C:\\DxLib_GCC\\FilesToIncludeInTheProjectGCC",
+                "-lDxLib", "-lDxDirectX", "-lDxUseCLib", "-lJpeg", "-lPng", "-lzlib",
+                "-ltiff", "-ltheora_static", "-lvorbis_static", "-lvorbisfile_static",
+                "-logg_static", "-lbulletcollision_static", "-lbulletdynamics_static",
+                "-lbulletmath_static", "-lopusfile_static", "-lopus_static",
+                "-lsilk_common_static", "-lsilk_float_static", "-lgdi32", "-lole32",
+                "-lwinmm", "-luuid", "-lstdc++",
+                "-mwindows"
+            ],
+            "options": {
+                "cwd": "${fileDirname}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "detail": "DxLib用のカスタムビルドタスクです。"
+        }
+    ]
+}

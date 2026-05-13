@@ -11,8 +11,9 @@ void PhysicsManager::BuildSolverContacts(float stepDt) {
 
     auto& prevMap = _prevContactMapBuf;
     prevMap.clear();
-    if (prevMap.bucket_count() < _prevSolverContacts.size())
-        prevMap.reserve(_prevSolverContacts.size());
+    const size_t needed = _prevSolverContacts.size();
+    if (needed > 0 && prevMap.bucket_count() < needed * 2)
+        prevMap.reserve(needed);
     for (size_t i = 0; i < _prevSolverContacts.size(); ++i) {
         const auto& p = _prevSolverContacts[i];
         prevMap.emplace(PrevKey{p.colA, p.colB}, i);

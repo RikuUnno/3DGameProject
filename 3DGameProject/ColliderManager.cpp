@@ -451,13 +451,13 @@ AABB ColliderManager::GetSweptAABB(Collider* collider) const {
 		const float ex = (curr.max.x - curr.min.x) * 0.5f;
 		const float ey = (curr.max.y - curr.min.y) * 0.5f;
 		const float ez = (curr.max.z - curr.min.z) * 0.5f;
-		const float maxExtent = std::sqrt(ex * ex + ey * ey + ez * ez);
+		const float currExtentSq = ex * ex + ey * ey + ez * ez;
 		// 前回AABBと今回AABBのサイズ変化から見かけの拡大を推測する。
-		// 厳密な角速度がわからないので、前回AABBの対角線の半分と今回AABBの対角線の半分の差を見かけの拡大とする（回転が速いほどサイズ変化が大きくなる傾向があるため）。
 		const float prevEx = (it->second.max.x - it->second.min.x) * 0.5f;
 		const float prevEy = (it->second.max.y - it->second.min.y) * 0.5f;
 		const float prevEz = (it->second.max.z - it->second.min.z) * 0.5f;
-		const float extentGrowth = std::fabs(maxExtent - std::sqrt(prevEx*prevEx + prevEy*prevEy + prevEz*prevEz));
+		const float prevExtentSq = prevEx*prevEx + prevEy*prevEy + prevEz*prevEz;
+		const float extentGrowth = std::fabs(std::sqrt(currExtentSq) - std::sqrt(prevExtentSq));
 		if (extentGrowth > 0.01f) {
 			const float angExpansion = extentGrowth * 1.5f;
 			sweep.min.x -= angExpansion;
@@ -494,7 +494,7 @@ void ColliderManager::UpdateAllShapes() {
 		Collider* c = snapshot[i];
 		if (!c) return;
 		c->UpdateShape();
-	}, 64);
+	}, 32);
 }
 
 // 今フレームの衝突候補を再構築。
@@ -553,7 +553,7 @@ void ColliderManager::SpatialPartitioning() {
 		#endif
 		ThreadPool::Instance().ParallelForBarrier(0, active.size(), [&](size_t i) {
 			sweptAABBs[i] = GetSweptAABB(active[i]);
-		}, 64);
+		}, 32);
 	}
 
    // --- グリッド構築 ---
@@ -595,7 +595,9 @@ void ColliderManager::SpatialPartitioning() {
 				return;
 			}
 
-			perColliderCells[i].reserve(static_cast<size_t>(dx * dy * dz));
+			const size_t cellCount = static_cast<size_t>(dx * dy * dz);
+			if (perColliderCells[i].capacity() < cellCount)
+				perColliderCells[i].reserve(cellCount);
 			for (int z = minZ; z <= maxZ; ++z) {
 				for (int y = minY; y <= maxY; ++y) {
 					for (int x = minX; x <= maxX; ++x) {
@@ -606,7 +608,7 @@ void ColliderManager::SpatialPartitioning() {
 		}, 64);
 	}
 
-	// Phase 2: コライダインデックスをセルに集約してグリッドを構築（シングルスレッドで簡単に）
+	// Phase 2: コライダインデックスをセルに集約してグリッドを構築（並列化）
 	auto& grid = _gridBuf;
 	grid.clear();
 	{
@@ -615,11 +617,36 @@ void ColliderManager::SpatialPartitioning() {
 		#endif
 		size_t totalEntries = 0;
 		for (size_t i = 0; i < active.size(); ++i) totalEntries += perColliderCells[i].size();
-		grid.reserve(totalEntries);
-		for (size_t i = 0; i < active.size(); ++i) {
-			for (const auto& entry : perColliderCells[i]) {
-				grid[entry.key].push_back(entry.colliderIdx);
+		if (totalEntries > 0 && grid.bucket_count() < totalEntries * 2)
+			grid.reserve(totalEntries);
+
+		if (active.size() < 100) {
+			for (size_t i = 0; i < active.size(); ++i) {
+				for (const auto& entry : perColliderCells[i]) {
+					grid[entry.key].push_back(entry.colliderIdx);
+				}
 			}
+		} else {
+			std::mutex gridMutex;
+			const size_t batchSize = 32;
+			ThreadPool::Instance().ParallelForBarrier(0, (active.size() + batchSize - 1) / batchSize, [&](size_t batchIdx) {
+				const size_t startIdx = batchIdx * batchSize;
+				const size_t endIdx = (std::min)(startIdx + batchSize, active.size());
+
+				std::vector<std::pair<CellKey, int>> localEntries;
+				for (size_t i = startIdx; i < endIdx; ++i) {
+					for (const auto& entry : perColliderCells[i]) {
+						localEntries.emplace_back(entry.key, entry.colliderIdx);
+					}
+				}
+
+				if (!localEntries.empty()) {
+					std::lock_guard lk(gridMutex);
+					for (const auto& [key, idx] : localEntries) {
+						grid[key].push_back(idx);
+					}
+				}
+			}, 1);
 		}
 	}
 
@@ -653,33 +680,35 @@ void ColliderManager::SpatialPartitioning() {
 					if (sa.min.y > sb.max.y || sa.max.y < sb.min.y) continue;
 					if (sa.min.z > sb.max.z || sa.max.z < sb.min.z) continue;
 
-					if (CheckLayerMaskCollisions(active[ai], active[bi])) continue;
+									if (CheckLayerMaskCollisions(active[ai], active[bi])) continue;
 
-					seenPairs.push_back(makePairId(ai, bi));
-					candidates.push_back({ai, bi});
-				}
-			}
-		}
-		// 重複するペアを削除（複数のセルにまたがるオブジェクトからの重複を排除） 
-		if (candidates.size() > 1) {
-			// ペアIDでソートしてから、隣接するペアIDが同じものを排除する。安定ソートは不要なので std::sort で十分。
-			std::vector<size_t> order(candidates.size());
-			for (size_t i = 0; i < order.size(); ++i) order[i] = i;
-			std::sort(order.begin(), order.end(), [&](size_t a, size_t b) {
-				return seenPairs[a] < seenPairs[b];
-			});
-			std::vector<CandidatePair> unique;
-			unique.reserve(candidates.size());
-			uint64_t prevId = ~uint64_t(0);
-			for (size_t idx : order) {
-				if (seenPairs[idx] != prevId) {
-					prevId = seenPairs[idx];
-					unique.push_back(candidates[idx]);
-				}
-			}
-			candidates.swap(unique);
-		}
-	}
+									seenPairs.push_back(makePairId(ai, bi));
+									candidates.push_back({ai, bi});
+								}
+							}
+						}
+						// 重複するペアを削除（ソート+uniqueで高速化）
+						if (candidates.size() > 1) {
+							// seenPairsをソートして重複を削除
+							std::vector<size_t> indices(candidates.size());
+							for (size_t i = 0; i < indices.size(); ++i) indices[i] = i;
+
+							std::sort(indices.begin(), indices.end(), [&](size_t a, size_t b) {
+								return seenPairs[a] < seenPairs[b];
+							});
+
+							std::vector<CandidatePair> unique;
+							unique.reserve(candidates.size());
+							uint64_t prevPairId = UINT64_MAX;
+							for (size_t idx : indices) {
+								if (seenPairs[idx] != prevPairId) {
+									unique.push_back(candidates[idx]);
+									prevPairId = seenPairs[idx];
+								}
+							}
+							candidates.swap(unique);
+						}
+					}
 
 	// --- Step 2: ナロウフェーズ判定 (Week 1-2: 並列化) ---
 	// ================================================================
@@ -744,9 +773,9 @@ void ColliderManager::SpatialPartitioning() {
 				CheckCompoundVsAny(comp, other);
 			}
 
-			perPairHit[ci] = _tlNarrowHit;
-			_tlContactOut  = nullptr; // スレッドローカルをリセット
-		}, 16); // grainSize=16: narrow-phase は重いので小さめに
+					perPairHit[ci] = _tlNarrowHit;
+					_tlContactOut  = nullptr; // スレッドローカルをリセット
+				}, 16); // grainSize=16: バリア待機コストとのバランス
 
 		// --- Phase B: シリアルマージ + push-out ---
 		// ヒットしたペアの接触点を _contacts に統合し、ペア登録と押し戻しを実行
@@ -801,13 +830,18 @@ void ColliderManager::ProcessPairEvents() {
 // 詳細判定一式。
 // 最後に現在AABBを保存し、次フレームの swept AABB 計算に使う。
 void ColliderManager::CheckDetailedCollisions() {
-    #ifdef _DEBUG
+	#ifdef _DEBUG
 	auto _s = PerformanceMonitor::Instance().Scope("Collider.CheckDetailedCollisions");
 	#endif
 	BuildCurrentPairs();
 	ProcessPairEvents();
 
-	for (auto* c : _colliders) {
+	auto& snapshot = _snapshotBuf;
+	{
+		std::lock_guard lk(_mtx);
+		snapshot.assign(_colliders.begin(), _colliders.end());
+	}
+	for (auto* c : snapshot) {
 		if (!c) continue;
 		_prevAABBs[c] = c->GetAABB();
 	}
@@ -2434,11 +2468,14 @@ void ColliderManager::Update(float dtSec) {
 	if (IsShuttingDown()) {
 		return;
 	}
-    #ifdef _DEBUG
+	#ifdef _DEBUG
 	auto _s = PerformanceMonitor::Instance().Scope("Collider.UpdateFrame");
 	#endif
 	_deltaTimeSec = (dtSec > 1e-6f) ? dtSec : 1e-6f;
-   if (_adaptiveCellSize) {
+
+	// Adaptive cell size: 毎フレーム計算すると高負荷なので、30フレームごとに更新
+	static int frameCounter = 0;
+	if (_adaptiveCellSize && (++frameCounter % 30 == 0)) {
 		#ifdef _DEBUG
 		auto _cs = PerformanceMonitor::Instance().Scope("Collider.ComputeAdaptiveCellSize");
 		#endif
@@ -2451,10 +2488,15 @@ void ColliderManager::Update(float dtSec) {
 // セルサイズの自動調整。大まかな目安として、コライダの半径や半辺の中央値を基にする。
 // 極端に小さい/大きいコライダは無視して、平均的なサイズを取る。
 void ColliderManager::ComputeAdaptiveCellSize() {
-	if (_colliders.empty()) return;
+	auto& snapshot = _snapshotBuf;
+	{
+		std::lock_guard lk(_mtx);
+		if (_colliders.empty()) return;
+		snapshot.assign(_colliders.begin(), _colliders.end());
+	}
 	float totalExtent = 0.0f;
 	int count = 0;
-	for (auto* c : _colliders) {
+	for (auto* c : snapshot) {
 		if (!c) continue;
 		const AABB& aabb = c->GetAABB();
 		const float ex = aabb.max.x - aabb.min.x;

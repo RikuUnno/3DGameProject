@@ -127,6 +127,10 @@ public:
 	void RegisterBody(PhysicsBody* body);
 	void UnregisterBody(PhysicsBody* body);
 
+	// モニター用公開API
+	const std::vector<PhysicsBody*>& GetBodies() const noexcept { return _bodies; }
+	const std::vector<PhysicsIsland>& GetIslands() const noexcept { return _islands; }
+
 	// Ground half-plane
 	void SetGroundPlaneEnabled(bool enabled) noexcept { _groundPlaneEnabled = enabled; }
 	bool IsGroundPlaneEnabled() const noexcept { return _groundPlaneEnabled; }

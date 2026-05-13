@@ -197,7 +197,13 @@ void PhysicsManager::UpdateSleepState(PhysicsBody* body, float stepDt) {
 
     const float lSq = body->_sleepLinearThreshold  * body->_sleepLinearThreshold;
     const float aSq = body->_sleepAngularThreshold * body->_sleepAngularThreshold;
-    if (LenSq(body->_velocity) > lSq || LenSq(body->_angularVelocity) > aSq) { body->WakeUp(); return; }
+
+    // 速度判定: XZ平面の速度のみでチェック（Y軸の重力は無視）
+    const VECTOR velXZ = VGet(body->_velocity.x, 0, body->_velocity.z);
+    if (LenSq(velXZ) > lSq || LenSq(body->_angularVelocity) > aSq) { 
+        body->_sleepTimer = 0.0f;
+        return; 
+    }
 
     body->_sleepTimer += stepDt;
     if (body->_sleepTimer >= body->_sleepTimeThreshold) body->Sleep();

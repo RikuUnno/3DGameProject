@@ -60,11 +60,15 @@ public:
     void ToggleVisible() noexcept { _visible = !_visible; }
 
     // --- 詳細ログ機能 ---
-    // 詳細ログの有効化/無効化(デフォルト: 無効)
+    // 自動保存有効化/無効化(デフォルト: 無効)
     void EnableDetailedLogging(bool enable) noexcept { _detailedLoggingEnabled = enable; }
     bool IsDetailedLoggingEnabled() const noexcept { return _detailedLoggingEnabled; }
 
-    // 詳細ログを手動保存(ファイル名省略時は自動生成)
+    // 自動保存間隔設定(秒)
+    void SetAutoSaveInterval(float seconds) noexcept { _autoSaveIntervalSec = seconds; }
+    float GetAutoSaveInterval() const noexcept { return _autoSaveIntervalSec; }
+
+    // 詳細ログを手動保存(ファイル名省略時はデフォルト)
     void SaveDetailedLog(const char* filename = nullptr) const;
 
     // 現在のシーン名を設定(SceneManagerから呼ばれる)
@@ -218,5 +222,6 @@ private:
 
     // 詳細ログ機能
     bool _detailedLoggingEnabled = false;
+    float _autoSaveIntervalSec = 5.0f; // 自動保存間隔(秒)
     std::string _currentSceneName = "Unknown";
 };

@@ -60,18 +60,51 @@ namespace {
     PhysicsDebugClass* SpawnPhysicsBox(const VariantMap& params) {
         auto* obj = SpawnPhysicsObject(PhysicsDebugBox::StaticPoolKey(), params);
         RegisterDynamicObject_(obj, _dynamicBoxes, _maxDynamicBoxCount);
+        // CCD有効化とスリープ設定
+        if (obj) {
+            auto* body = obj->GetPhysicsBody();
+            if (body && !body->_isKinematic) {
+                body->_ccdQuality = CcdQuality::Bullet;
+                body->_allowedPenetrationDepth = 0.01f;
+                body->_sleepLinearThreshold = 0.01f;
+                body->_sleepAngularThreshold = 0.01f;
+                body->_sleepTimeThreshold = 0.3f;
+            }
+        }
         return obj;
     }
 
     PhysicsDebugClass* SpawnPhysicsSphere(const VariantMap& params) {
         auto* obj = SpawnPhysicsObject(PhysicsDebugSphere::StaticPoolKey(), params);
         RegisterDynamicObject_(obj, _dynamicSpheres, _maxDynamicSphereCount);
+        // CCD有効化とスリープ設定
+        if (obj) {
+            auto* body = obj->GetPhysicsBody();
+            if (body && !body->_isKinematic) {
+                body->_ccdQuality = CcdQuality::Bullet;
+                body->_allowedPenetrationDepth = 0.01f;
+                body->_sleepLinearThreshold = 0.01f;
+                body->_sleepAngularThreshold = 0.01f;
+                body->_sleepTimeThreshold = 0.3f;
+            }
+        }
         return obj;
     }
 
     PhysicsDebugClass* SpawnPhysicsCapsule(const VariantMap& params) {
         auto* obj = SpawnPhysicsObject(PhysicsDebugCapsule::StaticPoolKey(), params);
         RegisterDynamicObject_(obj, _dynamicCapsules, _maxDynamicCapsuleCount);
+        // CCD有効化とスリープ設定
+        if (obj) {
+            auto* body = obj->GetPhysicsBody();
+            if (body && !body->_isKinematic) {
+                body->_ccdQuality = CcdQuality::Bullet;
+                body->_allowedPenetrationDepth = 0.01f;
+                body->_sleepLinearThreshold = 0.01f;
+                body->_sleepAngularThreshold = 0.01f;
+                body->_sleepTimeThreshold = 0.3f;
+            }
+        }
         return obj;
     }
 

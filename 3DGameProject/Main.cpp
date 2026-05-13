@@ -13,6 +13,7 @@
 #include "BgmManager.h"
 #include "SceneTransition.h"
 #include "PerformanceMonitor.h"
+#include "PhysicsMonitor.h"
 
 void LightingInit() {
 	SetUseZBuffer3D(TRUE);
@@ -58,6 +59,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	// 最初のカメラを作成（シーンIDはタイトルシーンのもの）
 	CameraManager::Instance().CreateCamera(SceneManager::Instance().CurrentSceneId());
 
+	// モニター自動保存設定
+	PerformanceMonitor::Instance().EnableDetailedLogging(true);
+	PerformanceMonitor::Instance().SetAutoSaveInterval(5.0f); // 5秒ごと
+	PhysicsMonitor::Instance().EnableAutoSave(true);
+	PhysicsMonitor::Instance().SetAutoSaveInterval(5.0f); // 5秒ごと
+
 	constexpr double kPoolTrimIntervalSec =1.0; // プールトリム間隔（秒）
 	constexpr double kPoolMaxIdleSec =10.0;     // プール最大アイドル時間（秒）	
 	double poolTrimAccumSec = 0.0;				// トリム間隔の累積時間
@@ -98,6 +105,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		// パフォーマンスモニタ更新
 		PerformanceMonitor::Instance().Update();
 
+		// 物理モニタ更新
+		PhysicsMonitor::Instance().Update(dt);
+
 		// プールの定期トリム
 		poolTrimAccumSec += dt;
 		if (poolTrimAccumSec >= kPoolTrimIntervalSec) {
@@ -129,6 +139,20 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 			PerformanceMonitor::Instance().ToggleVisible();
 		}
 		PerformanceMonitor::Instance().Draw(10, 10);
+
+		// 物理モニタ描画 (F4 で ON/OFF)
+		if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_F4)) {
+			PhysicsMonitor::Instance().ToggleVisible();
+		}
+		PhysicsMonitor::Instance().Draw(500, 10);
+
+		// ログ保存 (F5: 物理、F6: パフォーマンス)
+		if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_F5)) {
+			PhysicsMonitor::Instance().SaveDetailedLog();
+		}
+		if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_F6)) {
+			PerformanceMonitor::Instance().SaveDetailedLog();
+		}
 #endif
 
 		ScreenFlip();

@@ -319,11 +319,12 @@ void PerformanceMonitor::Update() {
     UpdateGpu();
     UpdateThreads();
 
-    // 詳細ログ自動保存（1秒に1回、遅いフレーム検出時）
-    if (_detailedLoggingEnabled && _frameTimeMs > 50.0f) {
+    // 詳細ログ自動保存（設定された間隔で保存）
+    if (_detailedLoggingEnabled) {
         static int64_t s_lastDetailedLog = 0;
         const int64_t now = NowMicroseconds();
-        if (now - s_lastDetailedLog > 1000000LL) {
+        const int64_t intervalUs = static_cast<int64_t>(_autoSaveIntervalSec * 1000000LL);
+        if (now - s_lastDetailedLog > intervalUs) {
             s_lastDetailedLog = now;
             SaveDetailedLog();
         }
@@ -517,16 +518,10 @@ void PerformanceMonitor::SaveDetailedLog(const char* filename) const {
     if (filename) {
         fname = filename;
     } else {
-        // 自動ファイル名生成: PerformanceLog_YYYYMMDD_HHMMSS.txt
-        char buf[128];
-        SYSTEMTIME st;
-        GetLocalTime(&st);
-        sprintf_s(buf, "PerformanceLog_%04d%02d%02d_%02d%02d%02d.txt",
-            st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
-        fname = buf;
+        fname = "PerformanceLog.txt";
     }
 
-    std::ofstream ofs(fname, std::ios::out | std::ios::app);
+    std::ofstream ofs(fname, std::ios::out | std::ios::trunc);
     if (!ofs) return;
 
     const uint64_t frame = _frameIndex.load(std::memory_order_relaxed);

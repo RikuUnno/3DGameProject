@@ -30,7 +30,7 @@ void PhysicsManager::SetSolverIterations(int solverIterations) noexcept {
 
 int PhysicsManager::ComputeAdaptiveIterations() const noexcept {
     const int contactCount = static_cast<int>(_solverContacts.size());
-    int adaptive = _minSolverIterations + contactCount / 10;
+    int adaptive = _minSolverIterations + contactCount / 8;
     adaptive = (std::max)(adaptive, _minSolverIterations);
     adaptive = (std::min)(adaptive, _maxSolverIterations);
     return (std::max)(adaptive, (std::min)(_solverIterations, _maxSolverIterations));
@@ -152,18 +152,16 @@ void PhysicsManager::StepSimulation(float stepDt) {
 #endif
 
 #ifdef _DEBUG
-    { auto _s = PerformanceMonitor::Instance().Scope("Physics.ResolveToiEvents");        ResolveToiEvents(stepDt); }
     { auto _s = PerformanceMonitor::Instance().Scope("Physics.BuildSolverContacts");     BuildSolverContacts(stepDt); }
-    if (_speculativeCcdEnabled) {
+    if (_havokCcdEnabled || _speculativeCcdEnabled) {
         auto _s = PerformanceMonitor::Instance().Scope("Physics.GenerateSpeculativeContacts");
         GenerateSpeculativeContacts(stepDt);
     }
     { auto _s = PerformanceMonitor::Instance().Scope("Physics.BuildIslands");  BuildIslands(); }
     { auto _s = PerformanceMonitor::Instance().Scope("Physics.WarmStart");     WarmStart(); }
 #else
-    ResolveToiEvents(stepDt);
     BuildSolverContacts(stepDt);
-    if (_speculativeCcdEnabled) GenerateSpeculativeContacts(stepDt);
+    if (_havokCcdEnabled || _speculativeCcdEnabled) GenerateSpeculativeContacts(stepDt);
     BuildIslands();
     WarmStart();
 #endif

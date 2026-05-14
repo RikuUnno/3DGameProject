@@ -140,40 +140,8 @@ void PhysicsManager::IntegrateBodies(float stepDt) {
         ClampMagnitude(body->_velocity, body->_maxLinearSpeed);
         if (!body->_freezeRotation) ClampMagnitude(body->_angularVelocity, body->_maxAngularSpeed);
 
-        // CCD 速度クランプ
-        if (body->_detectContinuous && body->_ccdQuality >= CcdQuality::Default) {
-            Collider* col = CachedFindCollider(body->_owner);
-            if (col) {
-                const float minHE = GetColliderMinHalfExtent(col);
-                const float allowedPen = (body->_allowedPenetrationDepth > 0.0f)
-                    ? body->_allowedPenetrationDepth : (minHE * 0.8f);
-                const float linearSpeed  = Len3(body->_velocity);
-                const float angularSpeed = Len3(body->_angularVelocity);
-                float maxHE = minHE;
-                if (col->GetKind() == Collider::Kind::Box) {
-                    const VECTOR he = static_cast<const BoxCollider*>(col)->GetHalfExtents();
-                    maxHE = std::sqrt(he.x*he.x + he.y*he.y + he.z*he.z);
-                } else if (col->GetKind() == Collider::Kind::Capsule) {
-                    const auto* cap = static_cast<const CapsuleCollider*>(col);
-                    maxHE = cap->GetRadius() + Len3(VSub(cap->GetTop(), cap->GetBottom())) * 0.5f;
-                }
-                const float angularSurfaceSpeed = angularSpeed * maxHE;
-                const float effectiveSpeed = linearSpeed + angularSurfaceSpeed;
-                if (stepDt > 1e-6f && effectiveSpeed > 1e-6f) {
-                    const float toi = allowedPen / effectiveSpeed;
-                    if (toi < stepDt) {
-                        const float qualityScale = (body->_ccdQuality == CcdQuality::Critical) ? 0.5f : 1.0f;
-                        const float clampDisp    = allowedPen * qualityScale;
-                        const float linearFraction = linearSpeed / effectiveSpeed;
-                        ClampMagnitude(body->_velocity, clampDisp * linearFraction / stepDt);
-                        if (!body->_freezeRotation && angularSurfaceSpeed > 1e-6f && maxHE > 1e-6f) {
-                            const float maxAngSpeed = clampDisp * (1.0f - linearFraction) / (maxHE * stepDt);
-                            ClampMagnitude(body->_angularVelocity, maxAngSpeed);
-                        }
-                    }
-                }
-            }
-        }
+        // CCD 速度クランプは無効化（Speculative Contactsのみ使用）
+        // Speculative Contactsが予測接触を生成するため、速度制限は不要
 
         VECTOR pos = body->_owner->transform.LocalPosition();
         pos = VAdd(pos, VScale(body->_velocity, stepDt));

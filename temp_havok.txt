@@ -1,5 +1,4 @@
-#include "PhysicsCcd.h"
-#include "PhysicsManager_Internal.h"
+﻿#include "HavokStyleCCD.h"
 #include "SphereCollider.h"
 #include "BoxCollider.h"
 #include "CapsuleCollider.h"
@@ -9,12 +8,30 @@
 #include <cfloat>
 
 namespace {
+    inline float Dot3(const VECTOR& a, const VECTOR& b) noexcept {
+        return a.x * b.x + a.y * b.y + a.z * b.z;
+    }
+
+    inline float LenSq(const VECTOR& v) noexcept {
+        return Dot3(v, v);
+    }
+
+    inline float Len3(const VECTOR& v) noexcept {
+        return std::sqrt((std::max)(LenSq(v), 0.0f));
+    }
+
+    inline VECTOR SafeNormalize(const VECTOR& v, const VECTOR& fallback = VGet(1, 0, 0)) noexcept {
+        const float len = Len3(v);
+        return (len > 1e-6f) ? VScale(v, 1.0f / len) : fallback;
+    }
+
     inline float Clamp(float value, float minVal, float maxVal) noexcept {
         return (std::max)(minVal, (std::min)(value, maxVal));
     }
 }
 
-float PhysicsCcd::ComputeTOI_SphereSphere(
+// Sphere vs Sphere TOI (2つの移動する球の最初の衝突時刻)
+float HavokStyleCCD::ComputeTOI_SphereSphere(
     const VECTOR& centerA0, const VECTOR& centerA1, float radiusA,
     const VECTOR& centerB0, const VECTOR& centerB1, float radiusB,
     VECTOR* outHitNormal,
@@ -61,13 +78,15 @@ float PhysicsCcd::ComputeTOI_SphereSphere(
     return toi;
 }
 
-float PhysicsCcd::ComputeTOI_SphereBox(
+// Sphere vs Box TOI (簡易版: AABBに拡張した球とレイキャスト)
+float HavokStyleCCD::ComputeTOI_SphereBox(
     const VECTOR& sphereStart, const VECTOR& sphereEnd, float radius,
     const VECTOR& boxCenter, const VECTOR& boxHalfExtents,
     const VECTOR& boxAxisX, const VECTOR& boxAxisY, const VECTOR& boxAxisZ,
     VECTOR* outHitNormal,
     VECTOR* outHitPoint
 ) {
+    // OBBローカル空間に変換
     const VECTOR localStart = VGet(
         Dot3(VSub(sphereStart, boxCenter), boxAxisX),
         Dot3(VSub(sphereStart, boxCenter), boxAxisY),
@@ -137,13 +156,15 @@ float PhysicsCcd::ComputeTOI_SphereBox(
     return tMin;
 }
 
-VECTOR PhysicsCcd::ClosestPointOnSegment(const VECTOR& p, const VECTOR& a, const VECTOR& b) {
+// 線分と点の最近接点
+VECTOR HavokStyleCCD::ClosestPointOnSegment(const VECTOR& p, const VECTOR& a, const VECTOR& b) {
     const VECTOR ab = VSub(b, a);
     const float t = Clamp(Dot3(VSub(p, a), ab) / (std::max)(LenSq(ab), 1e-8f), 0.0f, 1.0f);
     return VAdd(a, VScale(ab, t));
 }
 
-void PhysicsCcd::ClosestPointSegmentSegment(
+// 2つの移動線分の最近接点
+void HavokStyleCCD::ClosestPointSegmentSegment(
     const VECTOR& p1, const VECTOR& q1,
     const VECTOR& p2, const VECTOR& q2,
     float& s, float& t,
@@ -198,7 +219,8 @@ void PhysicsCcd::ClosestPointSegmentSegment(
     c2 = VAdd(p2, VScale(d2, t));
 }
 
-float PhysicsCcd::ComputeTOI_SphereCapsule(
+// Sphere vs Capsule TOI
+float HavokStyleCCD::ComputeTOI_SphereCapsule(
     const VECTOR& sphereStart, const VECTOR& sphereEnd, float sphereRadius,
     const VECTOR& capsuleP0, const VECTOR& capsuleP1, float capsuleRadius,
     VECTOR* outHitNormal,
@@ -229,7 +251,8 @@ float PhysicsCcd::ComputeTOI_SphereCapsule(
     return minTOI;
 }
 
-TOIResult PhysicsCcd::ComputeTOI_Sphere(
+// TOI計算: Sphere vs Static Geometry
+TOIResult HavokStyleCCD::ComputeTOI_Sphere(
     const VECTOR& startPos,
     const VECTOR& endPos,
     float radius,
@@ -285,7 +308,8 @@ TOIResult PhysicsCcd::ComputeTOI_Sphere(
     return result;
 }
 
-TOIResult PhysicsCcd::ComputeTOI_Box(
+// TOI計算: Box vs Static Geometry (簡易版)
+TOIResult HavokStyleCCD::ComputeTOI_Box(
     const VECTOR& startPos,
     const VECTOR& endPos,
     const VECTOR& halfExtents,
@@ -300,7 +324,8 @@ TOIResult PhysicsCcd::ComputeTOI_Box(
     return ComputeTOI_Sphere(startPos, endPos, boundingSphereRadius, movingCollider, staticColliders, allowedPenetration);
 }
 
-TOIResult PhysicsCcd::ComputeTOI_Capsule(
+// TOI計算: Capsule vs Static Geometry (簡易版)
+TOIResult HavokStyleCCD::ComputeTOI_Capsule(
     const VECTOR& startPos,
     const VECTOR& endPos,
     float radius,
@@ -314,7 +339,8 @@ TOIResult PhysicsCcd::ComputeTOI_Capsule(
     return ComputeTOI_Sphere(startPos, endPos, boundingSphereRadius, movingCollider, staticColliders, allowedPenetration);
 }
 
-void PhysicsCcd::ProcessCCD(
+// CcdQuality に応じた処理
+void HavokStyleCCD::ProcessCCD(
     PhysicsBody* body,
     Collider* collider,
     float stepDt,
@@ -346,13 +372,14 @@ void PhysicsCcd::ProcessCCD(
     const float threshold = (quality == CcdQuality::Debris) ? (minRadius * 2.0f) :
                             (quality == CcdQuality::Default) ? (minRadius * 1.0f) :
                             (quality == CcdQuality::Bullet) ? (minRadius * 0.5f) :
-                            (minRadius * 0.2f);
+                            (minRadius * 0.25f);
 
     if (displacement < threshold) {
         return;
     }
 
     TOIResult toiResult;
+
     if (collider->GetKind() == Collider::Kind::Sphere) {
         auto* sphere = static_cast<SphereCollider*>(collider);
         toiResult = ComputeTOI_Sphere(
@@ -409,21 +436,3 @@ void PhysicsCcd::ProcessCCD(
     }
 }
 
-void PhysicsManager::GenerateSpeculativeContacts(float stepDt) {
-    if (stepDt <= 1e-6f) return;
-    if (!_havokCcdEnabled) return;
-
-    const auto& allColliders = ColliderManager::Instance().GetColliders();
-
-    for (auto* body : _bodies) {
-        if (!body || !body->IsDynamic()) continue;
-        if (!body->_owner || !body->_owner->IsActive()) continue;
-
-        Collider* col = CachedFindCollider(body->_owner);
-        if (!col) continue;
-
-        if (body->_ccdQuality == CcdQuality::Discrete) continue;
-
-        PhysicsCcd::ProcessCCD(body, col, stepDt, allColliders);
-    }
-}

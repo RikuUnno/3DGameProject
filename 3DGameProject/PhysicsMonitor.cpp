@@ -41,6 +41,11 @@ void PhysicsMonitor::Update(float dt) {
 void PhysicsMonitor::UpdateStatistics() {
     _stats = Statistics{};
 
+    // PhysicsManagerのシャットダウンチェック
+    if (PhysicsManager::Instance().IsShuttingDown()) {
+        return;
+    }
+
     // PhysicsBody統計
     const auto& bodies = PhysicsManager::Instance().GetBodies();
     _stats.totalBodies = static_cast<int>(bodies.size());
@@ -132,6 +137,11 @@ void PhysicsMonitor::UpdateStatistics() {
 
 void PhysicsMonitor::UpdateObjectList() {
     _objects.clear();
+
+    // PhysicsManagerのシャットダウンチェック
+    if (PhysicsManager::Instance().IsShuttingDown()) {
+        return;
+    }
 
     const auto& colliders = ColliderManager::Instance().GetColliders();
     const auto& bodies = PhysicsManager::Instance().GetBodies();
@@ -279,6 +289,11 @@ void PhysicsMonitor::Draw(int x, int y) const {
 }
 
 void PhysicsMonitor::SaveDetailedLog(const char* filename) const {
+    // PhysicsManagerのシャットダウンチェック
+    if (PhysicsManager::Instance().IsShuttingDown()) {
+        return;
+    }
+
     std::string fname;
     if (filename) {
         fname = filename;

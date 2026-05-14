@@ -50,9 +50,9 @@ public:
     float _restitution = 0.0f;
     float _friction = 0.5f;
     float _gravityScale = 1.0f;
-    float _sleepLinearThreshold = 0.05f;
-    float _sleepAngularThreshold = 0.05f;
-    float _sleepTimeThreshold = 0.5f;
+    float _sleepLinearThreshold = 0.02f;
+    float _sleepAngularThreshold = 0.02f;
+    float _sleepTimeThreshold = 0.3f;
     float _maxLinearSpeed = 100.0f;
     float _maxAngularSpeed = 20.0f;
 

@@ -1,0 +1,99 @@
+
+========================================
+[DETAILED LOG] Frame: 28212
+========================================
+Timestamp: 2026/5/14 15:20:34
+
+--- Scene Information ---
+Current Scene: PhysicsScene
+
+--- Performance Summary ---
+FPS: 232.143
+Frame Time: 7.469 ms
+CPU Usage: 0 %
+GPU Usage: 0.522608 %
+
+--- Memory Usage ---
+Working Set: 176.957 MB
+Virtual Memory: 278.754 MB
+GPU Dedicated: 37.5703 MB
+GPU Shared: 38.6133 MB
+
+--- System Information ---
+Processor Count: 16
+Total Physical Memory: 16087.5 MB
+Available Physical Memory: 2264.44 MB
+Memory Load: 85 %
+
+--- ThreadPool Status ---
+Worker Count: 15
+Queue Size: 0
+
+--- Thread Details ---
+[Main] TID=21836 CPU=65.3287% Kernel=6625000us User=36265625us
+[Worker 0] TID=28776 CPU=3.11089% Kernel=640625us User=2328125us
+[Worker 1] TID=31560 CPU=6.22178% Kernel=531250us User=2500000us
+[Worker 2] TID=31128 CPU=9.33267% Kernel=437500us User=2218750us
+[Worker 3] TID=30800 CPU=6.22178% Kernel=640625us User=2390625us
+[Worker 4] TID=30900 CPU=3.11089% Kernel=781250us User=2640625us
+[Worker 5] TID=21380 CPU=6.22178% Kernel=593750us User=2406250us
+[Worker 6] TID=31292 CPU=3.11089% Kernel=750000us User=2671875us
+[Worker 7] TID=31620 CPU=0% Kernel=671875us User=2359375us
+[Worker 8] TID=29400 CPU=9.33267% Kernel=468750us User=2796875us
+[Worker 9] TID=30740 CPU=6.22178% Kernel=453125us User=2390625us
+[Worker 10] TID=29440 CPU=9.33267% Kernel=468750us User=2328125us
+[Worker 11] TID=22352 CPU=6.22178% Kernel=421875us User=2250000us
+[Worker 12] TID=31108 CPU=9.33267% Kernel=500000us User=2390625us
+[Worker 13] TID=29548 CPU=9.33267% Kernel=625000us User=2500000us
+[Worker 14] TID=31148 CPU=15.5545% Kernel=500000us User=2625000us
+
+--- Thread States ---
+TID=21836 State=[Idle] LastUpdate=7501336391us
+TID=30800 State=[ThreadPool.Worker.AtomicWait] LastUpdate=7501336388us
+TID=28776 State=[ThreadPool.Worker.AtomicWait] LastUpdate=7501336373us
+TID=31560 State=[ThreadPool.Worker.AtomicWait] LastUpdate=7501336396us
+TID=21380 State=[ThreadPool.Worker.AtomicWait] LastUpdate=7501336377us
+TID=29548 State=[ThreadPool.Worker.AtomicWait] LastUpdate=7501336434us
+TID=30900 State=[ThreadPool.Worker.AtomicWait] LastUpdate=7501336404us
+TID=31292 State=[ThreadPool.Worker.AtomicWait] LastUpdate=7501336466us
+TID=31620 State=[ThreadPool.Worker.AtomicWait] LastUpdate=7501336380us
+TID=29400 State=[ThreadPool.Worker.AtomicWait] LastUpdate=7501336399us
+TID=30740 State=[ThreadPool.Worker.AtomicWait] LastUpdate=7501336445us
+TID=29440 State=[ThreadPool.Worker.AtomicWait] LastUpdate=7501336414us
+TID=22352 State=[ThreadPool.Worker.AtomicWait] LastUpdate=7501336440us
+TID=31108 State=[ThreadPool.Worker.AtomicWait] LastUpdate=7501336421us
+TID=31148 State=[ThreadPool.Worker.AtomicWait] LastUpdate=7501336373us
+TID=31128 State=[ThreadPool.Worker.AtomicWait] LastUpdate=7501336438us
+
+--- Profiling Sections (All) ---
+Physics.Update: Time=106us Calls=1 Avg=106us
+Physics.ComputeInterpolation: Time=31us Calls=1 Avg=31us
+Physics.BuildLookupCaches: Time=0us Calls=0
+Physics.IntegrateBodies: Time=0us Calls=0
+Collider.UpdateAllShapes: Time=0us Calls=0
+Collider.ActiveCollect: Time=0us Calls=0
+Collider.SweptAABB: Time=0us Calls=0
+Collider.GridCellCompute: Time=0us Calls=0
+Collider.GridMerge: Time=0us Calls=0
+Collider.BroadPhase: Time=0us Calls=0
+Collider.NarrowPhase: Time=0us Calls=0
+Collider.SpatialPartitioning: Time=0us Calls=0
+Collider.BuildCurrentPairs: Time=0us Calls=0
+Collider.ProcessPairEvents: Time=0us Calls=0
+Collider.CheckDetailedCollisions: Time=0us Calls=0
+Collider.UpdateFrame: Time=0us Calls=0
+Collider.Update: Time=0us Calls=0
+Physics.BuildSolverContacts: Time=0us Calls=0
+Physics.GenerateSpeculativeContacts: Time=0us Calls=0
+Physics.BuildIslands: Time=0us Calls=0
+Physics.WarmStart: Time=0us Calls=0
+Physics.SolveAllIslands: Time=0us Calls=0
+Physics.SplitImpulseCorrection: Time=0us Calls=0
+Physics.PropagateIslandSleep: Time=0us Calls=0
+Physics.StepSimulation: Time=0us Calls=0
+Collider.ComputeAdaptiveCellSize: Time=0us Calls=0
+ThreadPool.Barrier.SpinWait: Time=0us Calls=0
+ThreadPool.Barrier.CvWait: Time=0us Calls=0
+
+========================================
+

@@ -58,7 +58,7 @@ int ObjectManager::CurrentSceneId() const {
 }
 
 // ---- Spawn ------------------------------------------------------------------
-// 1) プールがあれば Acquire → OnAcquire
+// 1) プール登録済みなら Acquire → OnAcquire
 // 2) なければ Factory::Create → OnAcquire
 // どちらも _objects / _idIndex に登録して raw ポインタを返す。
 
@@ -74,7 +74,7 @@ GameObject* ObjectManager::Spawn(const std::string& key, const VariantMap& param
     }
 
     if (!up) {
-        // プール未登録 or プール空かつ creator なし → Factory 直接生成
+        // プール未登録 or プールが空かつ creator なし → Factory から直接生成
         auto raw_up = ObjectFactory::Instance().Create(key, params);
         if (!raw_up) return nullptr;
         up = ObjectPool::UniquePtr(
@@ -182,22 +182,23 @@ bool ObjectManager::RemoveById(int id) {
 // ---- UpdateAll / DrawAll ----------------------------------------------------
 
 void ObjectManager::UpdateAll(float dtSec) {
-    // スナップショットをロック内で構築し、ロック外で並列 Update する。
-    // → Update 中に Spawn/Release が呼ばれてもデッドロックしない。
+    // ローカル変数としてスナップショットを作成（thisへの依存を排除）
+    std::vector<GameObject*> snapshot;
     {
         std::lock_guard lk(_mtx);
-        _snapshotBuf.clear();
+        snapshot.reserve(_objects.size());
         for (auto& [ptr, up] : _objects) {
             if (ptr && ptr->IsActive())
-                _snapshotBuf.push_back(ptr);
+                snapshot.push_back(ptr);
         }
     }
 
-    const size_t count = _snapshotBuf.size();
+    const size_t count = snapshot.size();
     if (count == 0) return;
 
-    ThreadPool::Instance().ParallelFor(0, count, [&](size_t i) {
-        _snapshotBuf[i]->Update(dtSec);
+    // ラムダでthisを参照せず、ローカル変数のみをキャプチャ
+    ThreadPool::Instance().ParallelFor(0, count, [&snapshot, dtSec](size_t i) {
+        snapshot[i]->Update(dtSec);
     }, 16);
 }
 
@@ -208,7 +209,7 @@ void ObjectManager::DrawAll() {
     }
 }
 
-// ---- プールメンテナンス -----------------------------------------------------
+// ---- プール管理・内容 -------------------------------------------------------
 
 bool ObjectManager::ClearPool(const std::string& key) {
     std::lock_guard lk(_mtx);
@@ -250,7 +251,7 @@ size_t ObjectManager::TrimAllPoolsUnused(double maxIdleSeconds) {
 
 bool ObjectManager::UnregisterPool(const std::string& key) {
     std::lock_guard lk(_mtx);
-    // 使用中オブジェクトが残っていれば登録解除しない
+    // 使用中オブジェクトが残っている場合は登録解除しない
     for (const auto& [ptr, up] : _objects) {
         if (up && up->_poolKey == key) return false;
     }

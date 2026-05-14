@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -150,6 +150,7 @@
     <ClCompile Include="ColliderManager.cpp" />
     <ClCompile Include="ColliderManagerThreadSafe.cpp" />
     <ClCompile Include="Debug Class.cpp" />
+    <ClCompile Include="DynamicAABBTree.cpp" />
     <ClCompile Include="HalfPlaneCollider.cpp" />
     <ClCompile Include="Math\Quaternion.cpp" />
     <ClCompile Include="ObjectController.cpp" />
@@ -161,13 +162,14 @@
     <ClCompile Include="ObjectPool.cpp" />
     <ClCompile Include="PerformanceMonitor.cpp" />
     <ClCompile Include="PhysicsBody.cpp" />
+    <ClCompile Include="PhysicsCcd.cpp" />
     <ClCompile Include="PhysicsDebugClass.cpp" />
     <ClCompile Include="PhysicsManager.cpp" />
     <ClCompile Include="PhysicsIntegration.cpp" />
     <ClCompile Include="PhysicsContacts.cpp" />
     <ClCompile Include="PhysicsIslands.cpp" />
+    <ClCompile Include="PhysicsMonitor.cpp" />
     <ClCompile Include="PhysicsSolver.cpp" />
-    <ClCompile Include="PhysicsCcd.cpp" />
     <ClCompile Include="PhysicsScene.cpp" />
     <ClCompile Include="Raycast.cpp" />
     <ClCompile Include="SceneManager.cpp" />
@@ -201,6 +203,7 @@
     <ClInclude Include="CollisionScene.h" />
     <ClInclude Include="CompoundCollider.h" />
     <ClInclude Include="Debug Class.h" />
+    <ClInclude Include="DynamicAABBTree.h" />
     <ClInclude Include="HalfPlaneCollider.h" />
     <ClInclude Include="LayerMask.h" />
     <ClInclude Include="Manager.h" />
@@ -217,10 +220,12 @@
     <ClInclude Include="ObjectPoolScene.h" />
     <ClInclude Include="PerformanceMonitor.h" />
     <ClInclude Include="PhysicsBody.h" />
+    <ClInclude Include="PhysicsCcd.h" />
     <ClInclude Include="PhysicsDebugClass.h" />
     <ClInclude Include="PhysicsManager.h" />
     <ClInclude Include="PhysicsManager_Internal.h" />
     <ClInclude Include="PhysicsMaterial.h" />
+    <ClInclude Include="PhysicsMonitor.h" />
     <ClInclude Include="PhysicsScene.h" />
     <ClInclude Include="Pool.h" />
     <ClInclude Include="Ray.h" />
@@ -242,13 +247,13 @@
   <ItemGroup>
     <Text Include="Camera_Manual_Reference.txt" />
     <Text Include="Object_Manual_Reference.txt" />
-    <Text Include="オブジェクト構造想定.txt" />
-    <Text Include="シーン遷移構造.txt" />
-    <Text Include="ファクトリーメソッド.txt" />
-    <Text Include="現在の実装内容.txt" />
-    <Text Include="現状追加一覧.txt" />
-    <Text Include="生成と再利用(オブジェクト).txt" />
-    <Text Include="生成アルゴリズム.txt" />
+    <Text Include="�I�u�W�F�N�g�\���z��.txt" />
+    <Text Include="�V�[���J�ڍ\��.txt" />
+    <Text Include="�t�@�N�g���[���\�b�h.txt" />
+    <Text Include="���݂̎�����e.txt" />
+    <Text Include="����ǉ��ꗗ.txt" />
+    <Text Include="�����ƍė��p(�I�u�W�F�N�g).txt" />
+    <Text Include="�����A���S���Y��.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

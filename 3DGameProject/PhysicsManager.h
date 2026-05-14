@@ -155,6 +155,10 @@ public:
 	void SetSpeculativeCcdEnabled(bool enabled) noexcept { _speculativeCcdEnabled = enabled; }
 	bool IsSpeculativeCcdEnabled() const noexcept { return _speculativeCcdEnabled; }
 
+	// Havok-style TOI-based CCD (Time of Impact with backstep)
+	void SetHavokCcdEnabled(bool enabled) noexcept { _havokCcdEnabled = enabled; }
+	bool IsHavokCcdEnabled() const noexcept { return _havokCcdEnabled; }
+
 	// Interpolation: call after Update() to compute interpolated transforms
 	// alpha = accumulator / fixedDeltaTime (fraction of pending sub-step)
 	void ComputeInterpolation() noexcept;
@@ -271,6 +275,7 @@ private:
 	float _groundPlaneD = 0.0f; // n . x = d
 	bool _splitImpulseEnabled = true;
 	bool _speculativeCcdEnabled = true;
+	bool _havokCcdEnabled = true;
 
 	float _fixedDeltaTime = 1.0f / 60.0f;
 	int _maxSubSteps = 4;

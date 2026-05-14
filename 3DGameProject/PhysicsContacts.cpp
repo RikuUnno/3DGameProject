@@ -38,6 +38,20 @@ void PhysicsManager::BuildSolverContacts(float stepDt) {
         const float invB = (bodyB && bodyB->IsDynamic() && ownerB && ownerB->IsActive()) ? bodyB->InverseMass() : 0.0f;
         if (invA + invB <= 1e-8f) return;
 
+        float clampedInvA = invA;
+        float clampedInvB = invB;
+        if (invA > 0.0f && invB > 0.0f) {
+            const float massRatio = (std::max)(invA / invB, invB / invA);
+            if (massRatio > kMaxMassRatio) {
+                const float scale = std::sqrt(kMaxMassRatio / massRatio);
+                if (invA > invB) {
+                    clampedInvA *= scale;
+                } else {
+                    clampedInvB *= scale;
+                }
+            }
+        }
+
         SolverContact sc{};
         sc.colA       = ct.a;
         sc.colB       = ct.b;
@@ -46,8 +60,8 @@ void PhysicsManager::BuildSolverContacts(float stepDt) {
         sc.penetration = (std::min)(ct.penetration, kMaxPen);
         sc.bodyA = bodyA;
         sc.bodyB = bodyB;
-        sc.invA  = invA;
-        sc.invB  = invB;
+        sc.invA  = clampedInvA;
+        sc.invB  = clampedInvB;
 
         const VECTOR centerA = ownerA ? ownerA->transform.WorldPosition() : VGet(0,0,0);
         const VECTOR centerB = ownerB ? ownerB->transform.WorldPosition() : VGet(0,0,0);
@@ -56,9 +70,9 @@ void PhysicsManager::BuildSolverContacts(float stepDt) {
 
         ComputeTangentBasis(sc.normal, sc.tangent1, sc.tangent2);
 
-        sc.effectiveInvMassN  = ComputeEffectiveInvMass(invA, invB, bodyA, bodyB, sc.rA, sc.rB, sc.normal);
-        sc.effectiveInvMassT1 = ComputeEffectiveInvMass(invA, invB, bodyA, bodyB, sc.rA, sc.rB, sc.tangent1);
-        sc.effectiveInvMassT2 = ComputeEffectiveInvMass(invA, invB, bodyA, bodyB, sc.rA, sc.rB, sc.tangent2);
+        sc.effectiveInvMassN  = ComputeEffectiveInvMass(clampedInvA, clampedInvB, bodyA, bodyB, sc.rA, sc.rB, sc.normal);
+        sc.effectiveInvMassT1 = ComputeEffectiveInvMass(clampedInvA, clampedInvB, bodyA, bodyB, sc.rA, sc.rB, sc.tangent1);
+        sc.effectiveInvMassT2 = ComputeEffectiveInvMass(clampedInvA, clampedInvB, bodyA, bodyB, sc.rA, sc.rB, sc.tangent2);
         if (sc.effectiveInvMassN <= 1e-8f) return;
         if (sc.effectiveInvMassT1 <= 1e-8f) sc.effectiveInvMassT1 = 1e-8f;
         if (sc.effectiveInvMassT2 <= 1e-8f) sc.effectiveInvMassT2 = 1e-8f;

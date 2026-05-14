@@ -38,7 +38,7 @@ void PhysicsManager::SolveIsland(const PhysicsIsland& island, float /*stepDt*/) 
             const float vt1 = RelDirVelocity(sc.bodyA, sc.bodyB, sc.rA, sc.rB, sc.tangent1);
             const float vt2 = RelDirVelocity(sc.bodyA, sc.bodyB, sc.rA, sc.rB, sc.tangent2);
             const float tSpd = std::sqrt(vt1*vt1 + vt2*vt2);
-            const float fri = (tSpd < 0.1f) ? sc.staticFriction : sc.friction;
+            const float fri = (tSpd < kFrictionStaticThreshold) ? sc.staticFriction : sc.friction;
             const float maxF = fri * sc.normalLambda;
             float d1 = -vt1 / sc.effectiveInvMassT1;
             float d2 = -vt2 / sc.effectiveInvMassT2;
@@ -57,9 +57,9 @@ void PhysicsManager::SolveIsland(const PhysicsIsland& island, float /*stepDt*/) 
 // ---- SolveAllIslands ------------------------------------------------
 
 void PhysicsManager::SolveAllIslands(float stepDt) {
+    if (IsShuttingDown()) return;
     if (_islands.empty()) return;
 
-    const int    iterations  = _solverIterations;
     const size_t islandCount = _islands.size();
 
     // 接触数降順でソート（重いアイランドを先に処理してテール待機を削減）
@@ -73,26 +73,41 @@ void PhysicsManager::SolveAllIslands(float stepDt) {
         islandOrder.resize(islandCount);
         for (size_t i = 0; i < islandCount; ++i) islandOrder[i] = i;
         std::sort(islandOrder.begin(), islandOrder.end(), [&](size_t a, size_t b) {
+            if (a >= _islands.size() || b >= _islands.size()) return false;
             return _islands[a].contactIndices.size() > _islands[b].contactIndices.size();
         });
     }
 
     // パス1: 小アイランド（constraintBatches なし）→ アイランド単位で並列
     ThreadPool::Instance().ParallelForBarrierHeavy(0, islandCount, [&](size_t orderIdx) {
+        if (IsShuttingDown()) return;
+        if (orderIdx >= islandOrder.size()) return;
         const size_t i = islandOrder[orderIdx];
         if (i >= _islands.size()) {
             ASSERT_MSG(false, "SolveAllIslands: index out of range. i=%zu size=%zu", i, _islands.size());
             return;
         }
-        if (_islands[i].allSleeping) return;
-        if (_islands[i].contactIndices.empty()) return;
-        if (!_islands[i].constraintBatches.empty()) return;
-        for (int iter = 0; iter < iterations; ++iter) SolveIsland(_islands[i], stepDt);
+        const auto& island = _islands[i];
+        if (island.allSleeping) return;
+        if (island.contactIndices.empty()) return;
+        if (!island.constraintBatches.empty()) return;
+
+        const size_t contactCount = island.contactIndices.size();
+        int iterations = _solverIterations;
+        if (contactCount >= 5) {
+            iterations = (std::min)(_solverIterations + static_cast<int>(contactCount / 5), 20);
+        }
+
+        for (int iter = 0; iter < iterations; ++iter) {
+            if (IsShuttingDown()) return;
+            SolveIsland(island, stepDt);
+        }
     }, 1);
 
     // パス2: 大アイランド（constraintBatches あり）→ バッチ単位で並列
     // kBatchParallelThreshold 未満の小バッチはシリアル実行してバリアオーバーヘッドを排除
     auto solveOneContact = [&](size_t batchIdx, const std::vector<int>& batchRef) {
+        if (IsShuttingDown()) return;
         const int ci = batchRef[batchIdx];
         if (ci < 0 || static_cast<size_t>(ci) >= _solverContacts.size()) return;
         SolverContact& sc = _solverContacts[ci];
@@ -115,7 +130,7 @@ void PhysicsManager::SolveAllIslands(float stepDt) {
             const float vt1 = RelDirVelocity(sc.bodyA, sc.bodyB, sc.rA, sc.rB, sc.tangent1);
             const float vt2 = RelDirVelocity(sc.bodyA, sc.bodyB, sc.rA, sc.rB, sc.tangent2);
             const float tSpd = std::sqrt(vt1*vt1 + vt2*vt2);
-            const float fri  = (tSpd < 0.1f) ? sc.staticFriction : sc.friction;
+            const float fri  = (tSpd < kFrictionStaticThreshold) ? sc.staticFriction : sc.friction;
             const float maxF = fri * sc.normalLambda;
             float d1 = -vt1 / sc.effectiveInvMassT1, d2 = -vt2 / sc.effectiveInvMassT2;
             float n1 = sc.frictionLambda1 + d1, n2 = sc.frictionLambda2 + d2;
@@ -129,14 +144,27 @@ void PhysicsManager::SolveAllIslands(float stepDt) {
     };
 
     for (size_t orderIdx = 0; orderIdx < islandCount; ++orderIdx) {
+        if (IsShuttingDown()) return;
+        if (orderIdx >= islandOrder.size()) continue;
         const size_t i = islandOrder[orderIdx];
-        if (i >= _islands.size() || _islands[i].allSleeping || _islands[i].constraintBatches.empty()) continue;
+        if (i >= _islands.size()) continue;
+        const auto& island = _islands[i];
+        if (island.allSleeping || island.constraintBatches.empty()) continue;
+
+        const size_t contactCount = island.contactIndices.size();
+        int iterations = _solverIterations;
+        if (contactCount >= 5) {
+            iterations = (std::min)(_solverIterations + static_cast<int>(contactCount / 5), 20);
+        }
+
         for (int iter = 0; iter < iterations; ++iter) {
-            for (const auto& batch : _islands[i].constraintBatches) {
+            if (IsShuttingDown()) return;
+            for (const auto& batch : island.constraintBatches) {
                 if (batch.size() < static_cast<size_t>(kBatchParallelThreshold)) {
                     for (size_t j = 0; j < batch.size(); ++j) solveOneContact(j, batch);
                 } else {
                     ThreadPool::Instance().ParallelForBarrierHeavy(0, batch.size(), [&](size_t bi) {
+                        if (IsShuttingDown()) return;
                         solveOneContact(bi, batch);
                     }, 1);
                 }
@@ -197,10 +225,7 @@ void PhysicsManager::UpdateSleepState(PhysicsBody* body, float stepDt) {
 
     const float lSq = body->_sleepLinearThreshold  * body->_sleepLinearThreshold;
     const float aSq = body->_sleepAngularThreshold * body->_sleepAngularThreshold;
-
-    // 速度判定: XZ平面の速度のみでチェック（Y軸の重力は無視）
-    const VECTOR velXZ = VGet(body->_velocity.x, 0, body->_velocity.z);
-    if (LenSq(velXZ) > lSq || LenSq(body->_angularVelocity) > aSq) { 
+    if (LenSq(body->_velocity) > lSq || LenSq(body->_angularVelocity) > aSq) { 
         body->_sleepTimer = 0.0f;
         return; 
     }

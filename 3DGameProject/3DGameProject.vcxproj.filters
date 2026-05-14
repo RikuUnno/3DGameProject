@@ -361,12 +361,6 @@
     <Filter Include="ソース ファイル\System\Collision\Manager\ThreadSafe">
       <UniqueIdentifier>{4602a4bb-f24e-4c59-8e92-32a9e370968b}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ソース ファイル\System\Collision\ContactManifold">
-      <UniqueIdentifier>{f2b2af8e-09d4-42a7-ab92-f2e0267a5e1b}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\System\Collision\ContactManifold">
-      <UniqueIdentifier>{e562289a-8c07-4770-b24f-a28018cce1db}</UniqueIdentifier>
-    </Filter>
     <Filter Include="ヘッダー ファイル\System\Physics\Manager\Internal">
       <UniqueIdentifier>{f081de8f-6dd2-4a65-9fa9-356f38110c82}</UniqueIdentifier>
     </Filter>
@@ -387,6 +381,18 @@
     </Filter>
     <Filter Include="ソース ファイル\System\Physics\Ccd">
       <UniqueIdentifier>{4f4431ce-ad93-4f37-86a6-1bdc56899565}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Monitor\Physice">
+      <UniqueIdentifier>{8788e1c0-d5aa-4161-a311-8c58f1999f8f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Monitor\Physice">
+      <UniqueIdentifier>{36a826d1-4ee5-47d0-af52-ad5be6b1b5d7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Collision\DynamicAABBTree">
+      <UniqueIdentifier>{6a892de5-d5c6-4bfa-ac10-93a03ab03752}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Collision\DynamicAABBTree">
+      <UniqueIdentifier>{8a5359ea-2427-4fa2-98f1-b38f0ed3c92b}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -492,23 +498,29 @@
     <ClCompile Include="ObjectPool.cpp">
       <Filter>ソース ファイル\System\Object\ObjectPool</Filter>
     </ClCompile>
-    <ClCompile Include="3DGameProject\PhysicsManager.cpp">
-      <Filter>ソース ファイル\System\Physics\Manager</Filter>
-    </ClCompile>
-    <ClCompile Include="3DGameProject\PhysicsContacts.cpp">
-      <Filter>ソース ファイル\System\Physics\Cntacts</Filter>
-    </ClCompile>
-    <ClCompile Include="3DGameProject\PhysicsIslands.cpp">
-      <Filter>ソース ファイル\System\Physics\Islands</Filter>
-    </ClCompile>
-    <ClCompile Include="3DGameProject\PhysicsIntegration.cpp">
-      <Filter>ソース ファイル\System\Physics\Integration</Filter>
-    </ClCompile>
-    <ClCompile Include="3DGameProject\PhysicsSolver.cpp">
+    <ClCompile Include="PhysicsSolver.cpp">
       <Filter>ソース ファイル\System\Physics\Solver</Filter>
     </ClCompile>
-    <ClCompile Include="3DGameProject\PhysicsCcd.cpp">
-      <Filter>ソース ファイル\System\Physics\Ccd</Filter>
+    <ClCompile Include="PhysicsIslands.cpp">
+      <Filter>ソース ファイル\System\Physics\Islands</Filter>
+    </ClCompile>
+    <ClCompile Include="PhysicsIntegration.cpp">
+      <Filter>ソース ファイル\System\Physics\Integration</Filter>
+    </ClCompile>
+    <ClCompile Include="PhysicsContacts.cpp">
+      <Filter>ソース ファイル\System\Physics\Cntacts</Filter>
+    </ClCompile>
+    <ClCompile Include="PhysicsMonitor.cpp">
+      <Filter>ソース ファイル\System\Monitor\Physice</Filter>
+    </ClCompile>
+    <ClCompile Include="DynamicAABBTree.cpp">
+      <Filter>ソース ファイル\System\Collision\DynamicAABBTree</Filter>
+    </ClCompile>
+    <ClCompile Include="HavokStyleCCD.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="PhysicsCcd_new.cpp">
+      <Filter>ソース ファイル</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -683,8 +695,17 @@
     <ClInclude Include="ObjectPool.h">
       <Filter>ヘッダー ファイル\System\Object\ObjectPool</Filter>
     </ClInclude>
-    <ClInclude Include="3DGameProject\PhysicsManager_Internal.h">
+    <ClInclude Include="PhysicsManager_Internal.h">
       <Filter>ヘッダー ファイル\System\Physics\Manager\Internal</Filter>
+    </ClInclude>
+    <ClInclude Include="PhysicsMonitor.h">
+      <Filter>ヘッダー ファイル\System\Monitor\Physice</Filter>
+    </ClInclude>
+    <ClInclude Include="DynamicAABBTree.h">
+      <Filter>ヘッダー ファイル\System\Collision\DynamicAABBTree</Filter>
+    </ClInclude>
+    <ClInclude Include="HavokStyleCCD.h">
+      <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

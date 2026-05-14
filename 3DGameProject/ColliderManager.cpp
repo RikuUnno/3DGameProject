@@ -1009,8 +1009,21 @@ void ColliderManager::PushOutSphereSphere(Collider* a, Collider* b) {
 	const float wSum = wA + wB;
 	if (wSum <= 0.0f) return;
 
-	const float moveA = (wA / wSum) * pen;
-	const float moveB = (wB / wSum) * pen;
+	float moveA = (wA / wSum) * pen * 1.05f;
+	float moveB = (wB / wSum) * pen * 1.05f;
+
+	auto* bodyA = oa ? oa->GetComponent<PhysicsBody>() : nullptr;
+	auto* bodyB = ob ? ob->GetComponent<PhysicsBody>() : nullptr;
+
+	if (bodyA && bodyB && bodyA->IsDynamic() && bodyB->IsDynamic()) {
+		const float invMassA = bodyA->InverseMass();
+		const float invMassB = bodyB->InverseMass();
+		const float invMassSum = invMassA + invMassB;
+		if (invMassSum > 1e-8f) {
+			moveA = (invMassA / invMassSum) * pen * 1.05f;
+			moveB = (invMassB / invMassSum) * pen * 1.05f;
+		}
+	}
 
 	if (oa && !oa->isStatic) {
 		VECTOR p = oa->transform.LocalPosition();
@@ -1621,8 +1634,21 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 	const float wSum = wA + wB;
 	if (wSum <=0.0f) return;
 
-	const float moveA = (wA / wSum) * pen;
-	const float moveB = (wB / wSum) * pen;
+	float moveA = (wA / wSum) * pen * 1.05f;
+	float moveB = (wB / wSum) * pen * 1.05f;
+
+	auto* bodyA = oa ? oa->GetComponent<PhysicsBody>() : nullptr;
+	auto* bodyB = ob ? ob->GetComponent<PhysicsBody>() : nullptr;
+
+	if (bodyA && bodyB && bodyA->IsDynamic() && bodyB->IsDynamic()) {
+		const float invMassA = bodyA->InverseMass();
+		const float invMassB = bodyB->InverseMass();
+		const float invMassSum = invMassA + invMassB;
+		if (invMassSum > 1e-8f) {
+			moveA = (invMassA / invMassSum) * pen * 1.05f;
+			moveB = (invMassB / invMassSum) * pen * 1.05f;
+		}
+	}
 
 	if (oa && !oa->isStatic) {
 		VECTOR p = oa->transform.LocalPosition();

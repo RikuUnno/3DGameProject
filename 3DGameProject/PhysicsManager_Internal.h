@@ -1,4 +1,5 @@
 #pragma once
+#pragma once
 // 全 PhysicsManager_*.cpp が共有する内部ヘルパー。
 // public API には含まれないため、PhysicsManager.h とは別ファイルにしている。
 
@@ -22,6 +23,7 @@
 #include "Transform.h"
 #include "ThreadPool.h"
 #include "PerformanceMonitor.h"
+#include "PhysicsCcd.h"
 
 #if defined(_MSC_VER)
 #include <intrin.h>
@@ -75,15 +77,17 @@ namespace {
 
     // ---- 物理定数 ----------------------------------------------------
 
-    constexpr float kBiasFactor          = 0.2f;
-    constexpr float kSlop                = 0.005f;
+    constexpr float kBiasFactor          = 0.15f;
+    constexpr float kSlop                = 0.01f;
     constexpr float kMaxPen              = 5.0f;
-    constexpr float kMaxCorrection       = 0.5f;
+    constexpr float kMaxCorrection       = 0.3f;
     constexpr float kRestitutionThreshold = 0.05f;
-    constexpr float kWarmStartFactor     = 0.8f;
-    constexpr float kContactMatchDistSq  = 0.04f;
-    constexpr float kSplitBiasFactor     = 0.1f;
+    constexpr float kWarmStartFactor     = 1.0f;
+    constexpr float kContactMatchDistSq  = 0.01f;
+    constexpr float kSplitBiasFactor     = 0.3f;
     constexpr float kSpeculativeMargin   = 0.02f;
+    constexpr float kFrictionStaticThreshold = 0.1f;
+    constexpr float kMaxMassRatio        = 100.0f;
 
     // ---- コライダーの最小半径（CCD トンネリング判定用）--------------
 

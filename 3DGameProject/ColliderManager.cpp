@@ -6,6 +6,7 @@
 #include "CapsuleCollider.h"
 #include "HalfPlaneCollider.h"
 #include "CompoundCollider.h"
+#include "PhysicsDebugClass.h"
 #include "Assert.h"
 #include "ThreadPool.h"
 #include "PerformanceMonitor.h"
@@ -1012,12 +1013,12 @@ void ColliderManager::PushOutSphereSphere(Collider* a, Collider* b) {
 	float moveA = (wA / wSum) * pen * 1.05f;
 	float moveB = (wB / wSum) * pen * 1.05f;
 
-	auto* bodyA = oa ? oa->GetComponent<PhysicsBody>() : nullptr;
-	auto* bodyB = ob ? ob->GetComponent<PhysicsBody>() : nullptr;
+	auto* bodyA = dynamic_cast<PhysicsDebugClass*>(oa);
+	auto* bodyB = dynamic_cast<PhysicsDebugClass*>(ob);
 
-	if (bodyA && bodyB && bodyA->IsDynamic() && bodyB->IsDynamic()) {
-		const float invMassA = bodyA->InverseMass();
-		const float invMassB = bodyB->InverseMass();
+	if (bodyA && bodyB && bodyA->GetPhysicsBody()->IsDynamic() && bodyB->GetPhysicsBody()->IsDynamic()) {
+		const float invMassA = bodyA->GetPhysicsBody()->InverseMass();
+		const float invMassB = bodyB->GetPhysicsBody()->InverseMass();
 		const float invMassSum = invMassA + invMassB;
 		if (invMassSum > 1e-8f) {
 			moveA = (invMassA / invMassSum) * pen * 1.05f;
@@ -1175,7 +1176,31 @@ void ColliderManager::PushOutSphereBox(Collider* a, Collider* b) {
 		return;
 	}
 
-	// ‘o•ûŒü‚Ì‰Ÿ‚µ–ß‚µ
+	if (!sFixed && !boxFixed) {
+		auto* pbS = dynamic_cast<PhysicsDebugClass*>(os);
+		auto* pbBox = dynamic_cast<PhysicsDebugClass*>(obox);
+		if (pbS && pbBox) {
+			const float invM1 = pbS->GetPhysicsBody()->InverseMass();
+			const float invM2 = pbBox->GetPhysicsBody()->InverseMass();
+			const float sumInv = invM1 + invM2;
+			if (sumInv > 1e-8f) {
+				const float overshoot = 1.05f;
+				const float sepDist = pen * overshoot;
+				const float s1 = invM1 / sumInv;
+				const float s2 = invM2 / sumInv;
+				VECTOR p1 = os->transform.LocalPosition();
+				p1 = VAdd(p1, VScale(n, s1 * sepDist));
+				os->transform.SetLocalPosition(p1);
+				VECTOR p2 = obox->transform.LocalPosition();
+				p2 = VSub(p2, VScale(n, s2 * sepDist));
+				obox->transform.SetLocalPosition(p2);
+				s->UpdateShape();
+				box->UpdateShape();
+				return;
+			}
+		}
+	}
+
 	const float wS = (!sFixed) ? 1.0f : 0.0f;
 	const float wBox = (!boxFixed) ? 1.0f : 0.0f;
 	const float wSum = wS + wBox;
@@ -1637,12 +1662,12 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 	float moveA = (wA / wSum) * pen * 1.05f;
 	float moveB = (wB / wSum) * pen * 1.05f;
 
-	auto* bodyA = oa ? oa->GetComponent<PhysicsBody>() : nullptr;
-	auto* bodyB = ob ? ob->GetComponent<PhysicsBody>() : nullptr;
+	auto* bodyA = dynamic_cast<PhysicsDebugClass*>(oa);
+	auto* bodyB = dynamic_cast<PhysicsDebugClass*>(ob);
 
-	if (bodyA && bodyB && bodyA->IsDynamic() && bodyB->IsDynamic()) {
-		const float invMassA = bodyA->InverseMass();
-		const float invMassB = bodyB->InverseMass();
+	if (bodyA && bodyB && bodyA->GetPhysicsBody()->IsDynamic() && bodyB->GetPhysicsBody()->IsDynamic()) {
+		const float invMassA = bodyA->GetPhysicsBody()->InverseMass();
+		const float invMassB = bodyB->GetPhysicsBody()->InverseMass();
 		const float invMassSum = invMassA + invMassB;
 		if (invMassSum > 1e-8f) {
 			moveA = (invMassA / invMassSum) * pen * 1.05f;
@@ -1802,6 +1827,35 @@ void ColliderManager::PushOutCapsuleCapsule(Collider* a, Collider* b) {
 	ct.point = contactPoint;
 	ct.penetration = pen;
 	EmitContact(ct);
+
+	const bool aFixed = !oa || oa->isStatic;
+	const bool bFixed = !ob || ob->isStatic;
+	if (aFixed && bFixed) return;
+
+	if (!aFixed && !bFixed) {
+		auto* pbA = dynamic_cast<PhysicsDebugClass*>(oa);
+		auto* pbB = dynamic_cast<PhysicsDebugClass*>(ob);
+		if (pbA && pbB) {
+			const float invMA = pbA->GetPhysicsBody()->InverseMass();
+			const float invMB = pbB->GetPhysicsBody()->InverseMass();
+			const float sumInv = invMA + invMB;
+			if (sumInv > 1e-8f) {
+				const float overshoot = 1.05f;
+				const float sepDist = pen * overshoot;
+				const float sA = invMA / sumInv;
+				const float sB = invMB / sumInv;
+				VECTOR pA = oa->transform.LocalPosition();
+				pA = VAdd(pA, VScale(n, sA * sepDist));
+				oa->transform.SetLocalPosition(pA);
+				VECTOR pB = ob->transform.LocalPosition();
+				pB = VSub(pB, VScale(n, sB * sepDist));
+				ob->transform.SetLocalPosition(pB);
+				ca->UpdateShape();
+				cb->UpdateShape();
+				return;
+			}
+		}
+	}
 
 	const float wA = (oa && !oa->isStatic) ? 1.0f : 0.0f;
 	const float wB = (ob && !ob->isStatic) ? 1.0f : 0.0f;

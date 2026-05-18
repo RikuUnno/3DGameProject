@@ -12,6 +12,18 @@ namespace {
     inline float Clamp(float value, float minVal, float maxVal) noexcept {
         return (std::max)(minVal, (std::min)(value, maxVal));
     }
+
+    inline PhysicsBody* FindDynamicBodyByOwner(GameObject* owner) noexcept {
+        if (!owner) return nullptr;
+        const auto& bodies = PhysicsManager::Instance().GetBodies();
+        for (auto* b : bodies) {
+            if (!b) continue;
+            if (b->_owner != owner) continue;
+            if (!b->IsDynamic()) continue;
+            return b;
+        }
+        return nullptr;
+    }
 }
 
 float PhysicsCcd::ComputeTOI_SphereSphere(
@@ -394,23 +406,44 @@ void PhysicsCcd::ProcessCCD(
     }
 
     if (quality == CcdQuality::Bullet || quality == CcdQuality::Critical) {
-        const float safeTOI = (std::max)(toiResult.toi - 0.01f, 0.0f);
-        const VECTOR safePos = VAdd(currentPos, VScale(VSub(predictedPos, currentPos), safeTOI));
-        body->_owner->transform.SetLocalPosition(safePos);
-
         const bool hitStatic = !toiResult.hitCollider || !toiResult.hitCollider->owner || toiResult.hitCollider->owner->isStatic;
+
         if (hitStatic) {
+            const float safeTOI = (std::max)(toiResult.toi - 0.01f, 0.0f);
+            const VECTOR safePos = VAdd(currentPos, VScale(VSub(predictedPos, currentPos), safeTOI));
+            body->_owner->transform.SetLocalPosition(safePos);
+
             // Against static geometry, remove inward normal speed and keep tangential component.
-            // Add material-based bounce so CCD backstep does not kill rebound completely.
+            // Add restitution-based bounce so CCD backstep does not kill rebound.
             const float vn = Dot3(body->_velocity, toiResult.hitNormal);
             if (vn < 0.0f) {
                 const VECTOR vt = VSub(body->_velocity, VScale(toiResult.hitNormal, vn));
                 const float e = std::clamp(body->_restitution, 0.0f, 1.0f);
                 body->_velocity = VAdd(vt, VScale(toiResult.hitNormal, -vn * e));
             }
+        } else {
+            // Dynamic-vs-dynamic: transfer momentum immediately so first-hit reaction is visible
+            // even when narrow-phase contact is not produced in the same frame.
+            PhysicsBody* other = FindDynamicBodyByOwner(toiResult.hitCollider ? toiResult.hitCollider->owner : nullptr);
+            if (other && other != body) {
+                const VECTOR n = SafeNormalize(toiResult.hitNormal, VGet(0, 1, 0));
+                const float relVn = Dot3(VSub(body->_velocity, other->_velocity), n);
+                if (relVn < -1e-4f) {
+                    const float invA = body->InverseMass();
+                    const float invB = other->InverseMass();
+                    const float invSum = invA + invB;
+                    if (invSum > 1e-8f) {
+                        const float e = std::clamp((std::max)(body->_restitution, other->_restitution), 0.0f, 1.0f);
+                        const float j = (-(1.0f + e) * relVn) / invSum;
+                        const VECTOR imp = VScale(n, j);
+                        body->_velocity = VAdd(body->_velocity, VScale(imp, invA));
+                        other->_velocity = VSub(other->_velocity, VScale(imp, invB));
+                        body->WakeUp();
+                        other->WakeUp();
+                    }
+                }
+            }
         }
-        // Against dynamic objects, keep pre-impact velocity and let solver resolve
-        // impulse exchange so both bodies react on first contact.
 
         if (quality == CcdQuality::Critical) {
             body->_velocity = VScale(body->_velocity, 0.8f);

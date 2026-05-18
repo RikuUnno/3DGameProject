@@ -247,13 +247,6 @@
   <ItemGroup>
     <Text Include="Camera_Manual_Reference.txt" />
     <Text Include="Object_Manual_Reference.txt" />
-    <Text Include="�I�u�W�F�N�g�\���z��.txt" />
-    <Text Include="�V�[���J�ڍ\��.txt" />
-    <Text Include="�t�@�N�g���[���\�b�h.txt" />
-    <Text Include="���݂̎�����e.txt" />
-    <Text Include="����ǉ��ꗗ.txt" />
-    <Text Include="�����ƍė��p(�I�u�W�F�N�g).txt" />
-    <Text Include="�����A���S���Y��.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

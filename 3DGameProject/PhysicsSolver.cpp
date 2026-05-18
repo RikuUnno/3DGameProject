@@ -24,7 +24,12 @@ void PhysicsManager::SolveIsland(const PhysicsIsland& island, float /*stepDt*/) 
                 bias = sc.restitution * (-vn);
             }
             if (sc.speculative) {
-                bias = (std::min)(sc.normalBias, (std::max)(-vn, 0.0f));
+                const float speculativeBias = (std::min)(sc.normalBias, (std::max)(-vn, 0.0f));
+                if (vn < -kRestitutionThreshold) {
+                    bias = (std::max)(speculativeBias, sc.restitution * (-vn));
+                } else {
+                    bias = speculativeBias;
+                }
             }
             float dl = (-vn + bias) / sc.effectiveInvMassN;
             const float oldL = sc.normalLambda;
@@ -119,7 +124,11 @@ void PhysicsManager::SolveAllIslands(float stepDt) {
             float bias = 0.0f;
             if (!_splitImpulseEnabled) bias = sc.normalBias;
             else if (vn < -kRestitutionThreshold) bias = sc.restitution * (-vn);
-            if (sc.speculative) bias = (std::min)(sc.normalBias, (std::max)(-vn, 0.0f));
+            if (sc.speculative) {
+                const float speculativeBias = (std::min)(sc.normalBias, (std::max)(-vn, 0.0f));
+                if (vn < -kRestitutionThreshold) bias = (std::max)(speculativeBias, sc.restitution * (-vn));
+                else bias = speculativeBias;
+            }
             float dl = (-vn + bias) / sc.effectiveInvMassN;
             const float old = sc.normalLambda;
             sc.normalLambda = (std::max)(old + dl, 0.0f);

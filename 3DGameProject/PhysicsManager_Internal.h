@@ -87,7 +87,7 @@ namespace {
     constexpr float kSplitBiasFactor     = 0.3f;
     constexpr float kSpeculativeMargin   = 0.02f;
     constexpr float kFrictionStaticThreshold = 0.1f;
-    constexpr float kMaxMassRatio        = 100.0f;
+    constexpr float kMaxMassRatio        = 10000.0f;
 
     // ---- コライダーの最小半径（CCD トンネリング判定用）--------------
 
@@ -144,17 +144,22 @@ namespace {
         const VECTOR& rA, const VECTOR& rB,
         const VECTOR& impulse) noexcept
     {
+        const float impSq = Dot3(impulse, impulse);
+        const bool hasImpulse = impSq > 1e-12f;
+
         if (bodyA && invA > 0.0f) {
             bodyA->_velocity = VSub(bodyA->_velocity, VScale(impulse, invA));
             if (!bodyA->_freezeRotation)
                 bodyA->_angularVelocity = VSub(bodyA->_angularVelocity,
                     bodyA->ApplyInverseInertia(VCross(rA, impulse)));
+            if (hasImpulse) bodyA->WakeUp();
         }
         if (bodyB && invB > 0.0f) {
             bodyB->_velocity = VAdd(bodyB->_velocity, VScale(impulse, invB));
             if (!bodyB->_freezeRotation)
                 bodyB->_angularVelocity = VAdd(bodyB->_angularVelocity,
                     bodyB->ApplyInverseInertia(VCross(rB, impulse)));
+            if (hasImpulse) bodyB->WakeUp();
         }
     }
 

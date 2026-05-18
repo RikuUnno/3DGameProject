@@ -398,10 +398,19 @@ void PhysicsCcd::ProcessCCD(
         const VECTOR safePos = VAdd(currentPos, VScale(VSub(predictedPos, currentPos), safeTOI));
         body->_owner->transform.SetLocalPosition(safePos);
 
-        const VECTOR relVel = Dot3(body->_velocity, toiResult.hitNormal) < 0.0f
-            ? VSub(body->_velocity, VScale(toiResult.hitNormal, Dot3(body->_velocity, toiResult.hitNormal)))
-            : body->_velocity;
-        body->_velocity = relVel;
+        const bool hitStatic = !toiResult.hitCollider || !toiResult.hitCollider->owner || toiResult.hitCollider->owner->isStatic;
+        if (hitStatic) {
+            // Against static geometry, remove inward normal speed and keep tangential component.
+            // Add material-based bounce so CCD backstep does not kill rebound completely.
+            const float vn = Dot3(body->_velocity, toiResult.hitNormal);
+            if (vn < 0.0f) {
+                const VECTOR vt = VSub(body->_velocity, VScale(toiResult.hitNormal, vn));
+                const float e = std::clamp(body->_restitution, 0.0f, 1.0f);
+                body->_velocity = VAdd(vt, VScale(toiResult.hitNormal, -vn * e));
+            }
+        }
+        // Against dynamic objects, keep pre-impact velocity and let solver resolve
+        // impulse exchange so both bodies react on first contact.
 
         if (quality == CcdQuality::Critical) {
             body->_velocity = VScale(body->_velocity, 0.8f);

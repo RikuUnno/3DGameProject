@@ -1816,7 +1816,7 @@ void ColliderManager::PushOutCapsuleCapsule(Collider* a, Collider* b) {
 		return;
 	}
 
-	const VECTOR n = VScale(diff, 1.0f / dist);
+	const VECTOR n = VScale(VSub(c2, c1), 1.0f / dist);
 	// ÚG“_‚Í2ü•ªÅ‹ß“_‚Ì’†“_
 	const VECTOR contactPoint = VScale(VAdd(c1, c2), 0.5f);
 
@@ -1845,10 +1845,10 @@ void ColliderManager::PushOutCapsuleCapsule(Collider* a, Collider* b) {
 				const float sA = invMA / sumInv;
 				const float sB = invMB / sumInv;
 				VECTOR pA = oa->transform.LocalPosition();
-				pA = VAdd(pA, VScale(n, sA * sepDist));
+				pA = VSub(pA, VScale(n, sA * sepDist));
 				oa->transform.SetLocalPosition(pA);
 				VECTOR pB = ob->transform.LocalPosition();
-				pB = VSub(pB, VScale(n, sB * sepDist));
+				pB = VAdd(pB, VScale(n, sB * sepDist));
 				ob->transform.SetLocalPosition(pB);
 				ca->UpdateShape();
 				cb->UpdateShape();
@@ -1867,12 +1867,12 @@ void ColliderManager::PushOutCapsuleCapsule(Collider* a, Collider* b) {
 
 	if (oa && !oa->isStatic) {
 		VECTOR p = oa->transform.LocalPosition();
-		p = VAdd(p, VScale(n, moveA));
+		p = VSub(p, VScale(n, moveA));
 		oa->transform.SetLocalPosition(p);
 	}
 	if (ob && !ob->isStatic) {
 		VECTOR p = ob->transform.LocalPosition();
-		p = VSub(p, VScale(n, moveB));
+		p = VAdd(p, VScale(n, moveB));
 		ob->transform.SetLocalPosition(p);
 	}
 
@@ -2220,8 +2220,8 @@ void ColliderManager::CheckSphereHalfPlane(Collider* sphere, Collider* plane) {
 	_tlNarrowHit = true;
 	const VECTOR contactPoint = VSub(s->GetCenter(), VScale(pl.normal, dist));
 	Contact ct;
-	ct.a = sphere;
-	ct.b = plane;
+	ct.a = plane;
+	ct.b = sphere;
 	ct.normal = pl.normal;
 	ct.point = contactPoint;
 	ct.penetration = pen;
@@ -2268,8 +2268,8 @@ void ColliderManager::PushOutSphereHalfPlane(Collider* sphere, Collider* plane) 
 						// Emit contact at TOI
 						const VECTOR contactPoint = VSub(hitPos, VScale(pl.normal, s->GetRadius()));
 						Contact ct;
-						ct.a = sphere;
-						ct.b = plane;
+						ct.a = plane;
+						ct.b = sphere;
 						ct.normal = pl.normal;
 						ct.point = contactPoint;
 						ct.penetration = 1e-4f;
@@ -2324,8 +2324,8 @@ void ColliderManager::CheckBoxHalfPlane(Collider* box, Collider* plane) {
 		const float cornerDist = Dot3(corner, pl.normal) - pl.d;
 		if (cornerDist < 0.0f) {
 			Contact ct;
-			ct.a = box;
-			ct.b = plane;
+			ct.a = plane;
+			ct.b = box;
 			ct.normal = pl.normal;
 			ct.point = VSub(corner, VScale(pl.normal, cornerDist));
 			ct.penetration = -cornerDist;
@@ -2337,8 +2337,8 @@ void ColliderManager::CheckBoxHalfPlane(Collider* box, Collider* plane) {
 	// Fallback: if no corners penetrated, use center projection (single point)
 	if (contactCount == 0) {
 		Contact ct;
-		ct.a = box;
-		ct.b = plane;
+		ct.a = plane;
+		ct.b = box;
 		ct.normal = pl.normal;
 		ct.point = VSub(b->GetCenter(), VScale(pl.normal, dist));
 		ct.penetration = pen;
@@ -2388,8 +2388,8 @@ void ColliderManager::PushOutBoxHalfPlane(Collider* box, Collider* plane) {
 							}
 							const VECTOR contactPt = VSub(hitPos, VScale(pl.normal, proj));
 							Contact ct;
-							ct.a = box;
-							ct.b = plane;
+							ct.a = plane;
+							ct.b = box;
 							ct.normal = pl.normal;
 							ct.point = contactPt;
 							ct.penetration = 1e-4f;
@@ -2426,8 +2426,8 @@ void ColliderManager::CheckCapsuleHalfPlane(Collider* capsule, Collider* plane) 
 	const VECTOR closestEnd = (distBot < distTop) ? c->GetBottom() : c->GetTop();
 	const VECTOR contactPoint = VSub(closestEnd, VScale(pl.normal, minDist));
 	Contact ct;
-	ct.a = capsule;
-	ct.b = plane;
+	ct.a = plane;
+	ct.b = capsule;
 	ct.normal = pl.normal;
 	ct.point = contactPoint;
 	ct.penetration = pen;
@@ -2474,8 +2474,8 @@ void ColliderManager::PushOutCapsuleHalfPlane(Collider* capsule, Collider* plane
 							const VECTOR closestEnd = (distBot < distTop) ? c->GetBottom() : c->GetTop();
 							const VECTOR contactPt = VSub(closestEnd, VScale(pl.normal, minDist));
 							Contact ct;
-							ct.a = capsule;
-							ct.b = plane;
+							ct.a = plane;
+							ct.b = capsule;
 							ct.normal = pl.normal;
 							ct.point = contactPt;
 							ct.penetration = 1e-4f;
@@ -3065,6 +3065,9 @@ Collider* ColliderManager::FindColliderByOwner(GameObject* owner) const noexcept
 	}
 	return nullptr;
 }
+
+
+
 
 
 

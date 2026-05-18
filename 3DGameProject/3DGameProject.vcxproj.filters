@@ -516,11 +516,8 @@
     <ClCompile Include="DynamicAABBTree.cpp">
       <Filter>ソース ファイル\System\Collision\DynamicAABBTree</Filter>
     </ClCompile>
-    <ClCompile Include="HavokStyleCCD.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="PhysicsCcd_new.cpp">
-      <Filter>ソース ファイル</Filter>
+    <ClCompile Include="PhysicsCcd.cpp">
+      <Filter>ソース ファイル\System\Physics\Ccd</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -704,32 +701,11 @@
     <ClInclude Include="DynamicAABBTree.h">
       <Filter>ヘッダー ファイル\System\Collision\DynamicAABBTree</Filter>
     </ClInclude>
-    <ClInclude Include="HavokStyleCCD.h">
+    <ClInclude Include="PhysicsCcd.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="オブジェクト構造想定.txt">
-      <Filter>メモ</Filter>
-    </Text>
-    <Text Include="シーン遷移構造.txt">
-      <Filter>メモ</Filter>
-    </Text>
-    <Text Include="ファクトリーメソッド.txt">
-      <Filter>メモ</Filter>
-    </Text>
-    <Text Include="現状追加一覧.txt">
-      <Filter>メモ</Filter>
-    </Text>
-    <Text Include="生成アルゴリズム.txt">
-      <Filter>メモ</Filter>
-    </Text>
-    <Text Include="生成と再利用(オブジェクト).txt">
-      <Filter>メモ</Filter>
-    </Text>
-    <Text Include="現在の実装内容.txt">
-      <Filter>メモ</Filter>
-    </Text>
     <Text Include="Camera_Manual_Reference.txt">
       <Filter>メモ\リファレンス・マニュアル\Camera</Filter>
     </Text>

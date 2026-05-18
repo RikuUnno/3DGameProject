@@ -130,7 +130,16 @@ void PhysicsManager::IntegrateBodies(float stepDt) {
             return;
         }
 
-        if (body->_isSleeping && LenSq(body->_force) <= 1e-8f && LenSq(body->_torque) <= 1e-8f) return;
+        if (body->_isSleeping) {
+            const float lSq = body->_sleepLinearThreshold * body->_sleepLinearThreshold;
+            const float aSq = body->_sleepAngularThreshold * body->_sleepAngularThreshold;
+            const bool moving = LenSq(body->_velocity) > lSq || LenSq(body->_angularVelocity) > aSq;
+            if (moving) {
+                body->WakeUp();
+            } else if (LenSq(body->_force) <= 1e-8f && LenSq(body->_torque) <= 1e-8f) {
+                return;
+            }
+        }
         if (LenSq(body->_force) > 1e-8f || LenSq(body->_torque) > 1e-8f) body->WakeUp();
 
         const float inverseMass = body->InverseMass();

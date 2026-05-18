@@ -128,14 +128,15 @@ void PhysicsManager::WarmStart() {
     for (auto& sc : _solverContacts) {
         if (sc.effectiveInvMassN <= 1e-8f) continue;
 
+        const bool aSleeping = !sc.bodyA || sc.bodyA->_isSleeping;
+        const bool bSleeping = !sc.bodyB || sc.bodyB->_isSleeping;
+        if (aSleeping && bSleeping) continue;
+
         const VECTOR warmN  = VScale(sc.normal,   sc.normalLambda    * kWarmStartFactor);
         const VECTOR warmT1 = VScale(sc.tangent1, sc.frictionLambda1 * kWarmStartFactor);
         const VECTOR warmT2 = VScale(sc.tangent2, sc.frictionLambda2 * kWarmStartFactor);
 
         ApplyImpulse(sc.bodyA, sc.bodyB, sc.invA, sc.invB, sc.rA, sc.rB,
             VAdd(VAdd(warmN, warmT1), warmT2));
-
-        if (sc.bodyA) sc.bodyA->WakeUp();
-        if (sc.bodyB) sc.bodyB->WakeUp();
     }
 }

@@ -1,99 +1,99 @@
 
 ========================================
-[DETAILED LOG] Frame: 18645
+[DETAILED LOG] Frame: 32586
 ========================================
-Timestamp: 2026/5/18 19:9:36
+Timestamp: 2026/5/19 1:57:46
 
 --- Scene Information ---
 Current Scene: PhysicsScene
 
 --- Performance Summary ---
-FPS: 11.8509
-Frame Time: 1.804 ms
-CPU Usage: 48.8452 %
+FPS: 32.9149
+Frame Time: 24.763 ms
+CPU Usage: 7.92156 %
 GPU Usage: 0.575423 %
 
 --- Memory Usage ---
-Working Set: 145.34 MB
-Virtual Memory: 241.844 MB
+Working Set: 148.117 MB
+Virtual Memory: 241.551 MB
 GPU Dedicated: 41.3672 MB
-GPU Shared: 36.3516 MB
+GPU Shared: 34.5625 MB
 
 --- System Information ---
 Processor Count: 16
 Total Physical Memory: 16087.5 MB
-Available Physical Memory: 2003.51 MB
-Memory Load: 87 %
+Available Physical Memory: 1792.11 MB
+Memory Load: 88 %
 
 --- ThreadPool Status ---
 Worker Count: 15
 Queue Size: 0
 
 --- Thread Details ---
-[Main] TID=9588 CPU=90.1672% Kernel=4718750us User=35781250us
-[Worker 0] TID=14864 CPU=8.45317% Kernel=906250us User=4843750us
-[Worker 1] TID=17572 CPU=8.45317% Kernel=1015625us User=4093750us
-[Worker 2] TID=31904 CPU=11.2709% Kernel=875000us User=4765625us
-[Worker 3] TID=27124 CPU=8.45317% Kernel=828125us User=4234375us
-[Worker 4] TID=26708 CPU=14.0886% Kernel=812500us User=4140625us
-[Worker 5] TID=16476 CPU=16.9063% Kernel=750000us User=3984375us
-[Worker 6] TID=16060 CPU=11.2709% Kernel=812500us User=4781250us
-[Worker 7] TID=32216 CPU=11.2709% Kernel=781250us User=4718750us
-[Worker 8] TID=24508 CPU=8.45317% Kernel=734375us User=4671875us
-[Worker 9] TID=30088 CPU=8.45317% Kernel=843750us User=4687500us
-[Worker 10] TID=23920 CPU=16.9063% Kernel=859375us User=5140625us
-[Worker 11] TID=32728 CPU=2.81772% Kernel=796875us User=4234375us
-[Worker 12] TID=29960 CPU=11.2709% Kernel=750000us User=4171875us
-[Worker 13] TID=16784 CPU=8.45317% Kernel=906250us User=4468750us
-[Worker 14] TID=11588 CPU=11.2709% Kernel=734375us User=4781250us
+[Main] TID=31220 CPU=75.0899% Kernel=5312500us User=89781250us
+[Worker 0] TID=19044 CPU=12.0144% Kernel=2093750us User=10187500us
+[Worker 1] TID=31284 CPU=15.018% Kernel=2218750us User=10687500us
+[Worker 2] TID=3256 CPU=15.018% Kernel=1781250us User=10593750us
+[Worker 3] TID=34244 CPU=6.00719% Kernel=2265625us User=9578125us
+[Worker 4] TID=8144 CPU=18.0216% Kernel=2078125us User=10390625us
+[Worker 5] TID=31848 CPU=6.00719% Kernel=2250000us User=10500000us
+[Worker 6] TID=3000 CPU=6.00719% Kernel=1890625us User=10187500us
+[Worker 7] TID=21524 CPU=12.0144% Kernel=2046875us User=10734375us
+[Worker 8] TID=36580 CPU=9.01079% Kernel=2359375us User=11031250us
+[Worker 9] TID=28508 CPU=3.0036% Kernel=2140625us User=10578125us
+[Worker 10] TID=28912 CPU=9.01079% Kernel=2078125us User=11125000us
+[Worker 11] TID=11536 CPU=9.01079% Kernel=2171875us User=11109375us
+[Worker 12] TID=35532 CPU=12.0144% Kernel=2312500us User=10140625us
+[Worker 13] TID=35104 CPU=9.01079% Kernel=2031250us User=10484375us
+[Worker 14] TID=31824 CPU=12.0144% Kernel=2078125us User=10203125us
 
 --- Thread States ---
-TID=9588 State=[Idle] LastUpdate=42356829171us
-TID=16060 State=[ThreadPool.Worker.AtomicWait] LastUpdate=42356829097us
-TID=14864 State=[ThreadPool.Worker.AtomicWait] LastUpdate=42356829086us
-TID=17572 State=[ThreadPool.Worker.AtomicWait] LastUpdate=42356828961us
-TID=16476 State=[ThreadPool.Worker.AtomicWait] LastUpdate=42356829100us
-TID=26708 State=[ThreadPool.Worker.AtomicWait] LastUpdate=42356828971us
-TID=31904 State=[ThreadPool.Worker.AtomicWait] LastUpdate=42356829070us
-TID=27124 State=[ThreadPool.Worker.AtomicWait] LastUpdate=42356829022us
-TID=32216 State=[ThreadPool.Worker.AtomicWait] LastUpdate=42356829052us
-TID=24508 State=[ThreadPool.Worker.AtomicWait] LastUpdate=42356829043us
-TID=29960 State=[ThreadPool.Worker.AtomicWait] LastUpdate=42356829166us
-TID=30088 State=[ThreadPool.Worker.AtomicWait] LastUpdate=42356829061us
-TID=23920 State=[ThreadPool.Worker.AtomicWait] LastUpdate=42356829117us
-TID=32728 State=[ThreadPool.Worker.AtomicWait] LastUpdate=42356829087us
-TID=16784 State=[ThreadPool.Worker.AtomicWait] LastUpdate=42356829014us
-TID=11588 State=[ThreadPool.Worker.AtomicWait] LastUpdate=42356829094us
+TID=31220 State=[Idle] LastUpdate=66846659405us
+TID=19044 State=[ThreadPool.Worker.AtomicWait] LastUpdate=66846659467us
+TID=31848 State=[ThreadPool.Worker.AtomicWait] LastUpdate=66846659492us
+TID=3256 State=[ThreadPool.Worker.AtomicWait] LastUpdate=66846659426us
+TID=31824 State=[ThreadPool.Worker.AtomicWait] LastUpdate=66846659447us
+TID=34244 State=[ThreadPool.Worker.AtomicWait] LastUpdate=66846659517us
+TID=8144 State=[ThreadPool.Worker.AtomicWait] LastUpdate=66846659492us
+TID=3000 State=[ThreadPool.Worker.AtomicWait] LastUpdate=66846659484us
+TID=21524 State=[ThreadPool.Worker.AtomicWait] LastUpdate=66846659458us
+TID=36580 State=[ThreadPool.Worker.AtomicWait] LastUpdate=66846659418us
+TID=28508 State=[ThreadPool.Worker.AtomicWait] LastUpdate=66846659453us
+TID=28912 State=[ThreadPool.Worker.AtomicWait] LastUpdate=66846659477us
+TID=11536 State=[ThreadPool.Worker.AtomicWait] LastUpdate=66846659434us
+TID=35532 State=[ThreadPool.Worker.AtomicWait] LastUpdate=66846659432us
+TID=35104 State=[ThreadPool.Worker.AtomicWait] LastUpdate=66846659460us
+TID=31284 State=[ThreadPool.Worker.AtomicWait] LastUpdate=66846659548us
 
 --- Profiling Sections (All) ---
-Physics.Update: Time=203us Calls=1 Avg=203us
-Physics.ComputeInterpolation: Time=56us Calls=1 Avg=56us
-Physics.BuildLookupCaches: Time=0us Calls=0
-Physics.IntegrateBodies: Time=0us Calls=0
-Collider.UpdateAllShapes: Time=0us Calls=0
-Collider.ActiveCollect: Time=0us Calls=0
-Collider.SweptAABB: Time=0us Calls=0
-Collider.GridCellCompute: Time=0us Calls=0
-Collider.GridMerge: Time=0us Calls=0
-Collider.BroadPhase: Time=0us Calls=0
-Collider.NarrowPhase: Time=0us Calls=0
-Collider.SpatialPartitioning: Time=0us Calls=0
-Collider.BuildCurrentPairs: Time=0us Calls=0
-Collider.ProcessPairEvents: Time=0us Calls=0
-Collider.CheckDetailedCollisions: Time=0us Calls=0
-Collider.UpdateFrame: Time=0us Calls=0
-Collider.Update: Time=0us Calls=0
-Physics.BuildSolverContacts: Time=0us Calls=0
-Physics.GenerateSpeculativeContacts: Time=0us Calls=0
-Physics.BuildIslands: Time=0us Calls=0
-Physics.WarmStart: Time=0us Calls=0
-Physics.SolveAllIslands: Time=0us Calls=0
-Physics.SplitImpulseCorrection: Time=0us Calls=0
-Physics.PropagateIslandSleep: Time=0us Calls=0
-Physics.StepSimulation: Time=0us Calls=0
+Physics.Update: Time=21857us Calls=1 Avg=21857us
+Physics.StepSimulation: Time=21642us Calls=3 Avg=7214us
+Physics.SolveAllIslands: Time=6976us Calls=3 Avg=2325us
+Collider.Update: Time=6846us Calls=3 Avg=2282us
+Collider.UpdateFrame: Time=6733us Calls=3 Avg=2244us
+Collider.CheckDetailedCollisions: Time=6092us Calls=3 Avg=2030us
+Collider.BuildCurrentPairs: Time=5801us Calls=3 Avg=1933us
+Collider.SpatialPartitioning: Time=5681us Calls=3 Avg=1893us
+Physics.BuildSolverContacts: Time=2286us Calls=3 Avg=762us
+Collider.NarrowPhase: Time=2119us Calls=3 Avg=706us
+ThreadPool.Barrier.CvWait: Time=2008us Calls=5 Avg=401us
+Physics.BuildIslands: Time=1958us Calls=3 Avg=652us
+Physics.SplitImpulseCorrection: Time=1438us Calls=3 Avg=479us
+Collider.BroadPhase: Time=1191us Calls=3 Avg=397us
+Collider.GridMerge: Time=1047us Calls=3 Avg=349us
+ThreadPool.Barrier.SpinWait: Time=863us Calls=24 Avg=35us
+Collider.GridCellCompute: Time=492us Calls=3 Avg=164us
+Physics.IntegrateBodies: Time=485us Calls=3 Avg=161us
+Physics.BuildLookupCaches: Time=430us Calls=3 Avg=143us
+Collider.UpdateAllShapes: Time=412us Calls=3 Avg=137us
+Collider.SweptAABB: Time=348us Calls=3 Avg=116us
+Physics.WarmStart: Time=329us Calls=3 Avg=109us
+Physics.GenerateSpeculativeContacts: Time=165us Calls=3 Avg=55us
+Collider.ProcessPairEvents: Time=140us Calls=3 Avg=46us
+Physics.PropagateIslandSleep: Time=126us Calls=3 Avg=42us
+Physics.ComputeInterpolation: Time=47us Calls=1 Avg=47us
+Collider.ActiveCollect: Time=34us Calls=3 Avg=11us
 Collider.ComputeAdaptiveCellSize: Time=0us Calls=0
-ThreadPool.Barrier.SpinWait: Time=0us Calls=0
-ThreadPool.Barrier.CvWait: Time=0us Calls=0
 
 ========================================
 

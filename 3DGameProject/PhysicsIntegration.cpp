@@ -166,6 +166,13 @@ void PhysicsManager::IntegrateBodies(float stepDt) {
                         1.0f / (1.0f + body->_friction * 0.5f * stepDt));
             }
         }
+
+        if (pos.y < -200.0f) {
+            pos.y = groundEnabled ? (groundD + 0.5f) : 0.5f;
+            body->_velocity = VGet(0, 0, 0);
+            body->_angularVelocity = VGet(0, 0, 0);
+            body->Sleep();
+        }
         body->_owner->transform.SetLocalPosition(pos);
 
         if (!body->_freezeRotation) {

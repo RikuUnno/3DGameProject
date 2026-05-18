@@ -2,10 +2,12 @@
 
 #include <memory>
 #include <string>
+#include <cstdlib>
+#include <array>
 
 #include "SceneTpl.h"
+#include "GameObject.h"
 #include "CameraController.h"
-#include "CameraDebugClass.h"
 #include "CameraManager.h"
 #include "CameraTags.h"
 #include "DxLib.h"
@@ -15,6 +17,103 @@
 #include "SceneManager.h"
 #include "SceneTransition.h"
 #include "TitleScene.h"
+
+// CameraModelObject - モデル表示用のシンプルな GameObject
+class CameraModelObject : public GameObject {
+public:
+	static std::string StaticPoolKey() { return "CameraModelObject"; }
+
+	bool IsModelLoaded() const noexcept { return _modelHandle >= 0; }
+	const std::string& LastTriedPath() const noexcept { return _lastTriedPath; }
+
+	// モデルの読み込みと描画のみを行うシンプルなオブジェクト
+	~CameraModelObject() override {
+		if (_modelHandle >= 0) {
+			MV1DeleteModel(_modelHandle);
+			_modelHandle = -1;
+		}
+	}
+
+	// 再利用時の初期化
+	void OnAcquire(const VariantMap& params) override {
+		_ownerSceneId = SceneManager::Instance().CurrentSceneId();
+		SetActive(true);
+		isStatic = true;
+		transform.SetParent(nullptr);
+		ConfigureFromParams_(params);
+		LoadModelIfNeeded_();
+	}
+
+	// 解放時のクリーンアップ
+	void OnRelease() override {
+		transform.SetParent(nullptr);
+		SetActive(false);
+	}
+
+	// ?フレームの描画
+	void Draw() override {
+		if (_modelHandle < 0) return;
+		MV1SetPosition(_modelHandle, transform.WorldPosition());		// ワールド座標で配置
+		MV1SetRotationXYZ(_modelHandle, transform.LocalEulerRad());		// ローカル回転をそのまま適用（親がいない前提）
+		MV1SetScale(_modelHandle, transform.LocalScale());				// ローカルスケールをそのまま適用（親がいない前提）
+		MV1DrawModel(_modelHandle);										// 描画
+	}
+
+private:
+	// パラメータから状態を設定するヘルパー
+	void ConfigureFromParams_(const VariantMap& params) {
+		auto f = [&](const char* key, float def) {
+			auto it = params.find(key);
+			return (it == params.end()) ? def : static_cast<float>(std::atof(it->second.c_str()));
+		};
+		auto s = [&](const char* key, const char* def) {
+			auto it = params.find(key);
+			return (it == params.end()) ? std::string(def) : it->second;
+		};
+
+		_modelPath = s("modelPath", "");
+		transform.SetLocalPosition(VGet(f("px", 0.0f), f("py", 0.0f), f("pz", 0.0f)));
+		transform.SetLocalEulerRad(VGet(f("pitch", 0.0f), f("yaw", 0.0f), f("roll", 0.0f)));
+		const float sc = f("scale", 1.0f);
+		transform.SetLocalScale(VGet(f("sx", sc), f("sy", sc), f("sz", sc)));
+	}
+
+	// モデルの読み込み（必要な場合のみ）
+	void LoadModelIfNeeded_() {
+		if (_modelPath.empty()) return;
+		if (_loadedPath == _modelPath && _modelHandle >= 0) return;
+		if (_modelHandle >= 0) {
+			MV1DeleteModel(_modelHandle);
+			_modelHandle = -1;
+		}
+
+		// 実行フォルダ差異に強くするため、候補パスを順に試す。
+		const std::array<std::string, 7> candidates = {
+			_modelPath,
+			std::string("./") + _modelPath,
+			std::string("../") + _modelPath,
+			std::string("3DGameProject/") + _modelPath,
+			std::string("../3DGameProject/") + _modelPath,
+			std::string("../../3DGameProject/") + _modelPath,
+			std::string("C:/Users/rinsa/source/repos/3DGameProject/3DGameProject/") + _modelPath,
+		};
+
+		for (const auto& p : candidates) {
+			_lastTriedPath = p;
+			_modelHandle = MV1LoadModel(p.c_str());
+			if (_modelHandle >= 0) {
+				_loadedPath = _modelPath;
+				return;
+			}
+		}
+	}
+
+private:
+	int _modelHandle = -1;		// モデルハンドル（-1は未ロード）
+	std::string _modelPath;		// ロードするモデルのパス
+	std::string _loadedPath;	// 現在ロードされているモデルのパス（同じなら再ロードしないためのキャッシュ）
+	std::string _lastTriedPath;
+};
 
 // CameraScene
 // - カメラ挙動の確認用シーン
@@ -29,53 +128,48 @@ public:
 
 		static bool s_registered = false;
 		if (!s_registered) {
-			ObjectFactory::Instance().RegisterCreator(CameraDebugClass::StaticPoolKey(), [](const VariantMap&) { return std::make_unique<CameraDebugClass>(); });
-			ObjectManager::Instance().RegisterPool(CameraDebugClass::StaticPoolKey(), 16);
+			ObjectFactory::Instance().RegisterCreator(CameraModelObject::StaticPoolKey(), [](const VariantMap&) { return std::make_unique<CameraModelObject>(); });
+			ObjectManager::Instance().RegisterPool(CameraModelObject::StaticPoolKey(), 4);
 			s_registered = true;
 		}
 
-		_focusTarget = SpawnDemo_({
-			{"motion", "circle"},
-			{"px", "0.0"}, {"py", "1.5"}, {"pz", "0.0"},
-			{"motionRadius", "3.0"}, {"speed", "0.9"},
-			{"drawRadius", "0.75"},
-			{"color", std::to_string(GetColor(255, 220, 120))}
-		});
-		_pathMarker = SpawnDemo_({
-			{"motion", "bob"},
-			{"px", "-6.0"}, {"py", "2.0"}, {"pz", "6.0"},
-			{"motionRadius", "1.2"}, {"speed", "1.6"},
-			{"drawRadius", "0.28"},
-			{"color", std::to_string(GetColor(120, 220, 255))}
-		});
-		_staticMarker = SpawnDemo_({
-			{"motion", "static"},
-			{"px", "6.0"}, {"py", "1.5"}, {"pz", "-4.0"},
-			{"drawRadius", "0.3"},
-			{"color", std::to_string(GetColor(180, 255, 180))}
-		});
+		// 旧デモ用のマーカーオブジェクトは生成しない
 
+		// CameraModelObject はシーン所有にして、
+		// シーン遷移直後のプール再利用タイミングの影響を受けないようにする。
+		_ownedCircusModel = std::make_unique<CameraModelObject>();
+		VariantMap circusParams{
+			{"modelPath", "models/chicken-gun-fruzer-circus/source/circus.mv1"},	// モデルパス
+			{"px", "13.5"}, {"py", "10.0"}, {"pz", "5.0"},							// 位置
+			{"scale", "0.003"}														// スケール（モデルが大きいので小さめに）
+		};
+		_ownedCircusModel->OnAcquire(circusParams);
+		_circusModel = _ownedCircusModel.get();
+
+		// カメラ生成（既に生成されている場合は再利用）
 		if (_freeCamId == 0 || cameraManager.Get(_freeCamId) == nullptr) {
-			_freeCamId = _freeCamCtrl.SpawnAuto(sceneId, CameraTag::Debug, VGet(0.0f, 4.5f, -14.0f), VGet(0.12f, 0.0f, 0.0f));
+			_freeCamId = _freeCamCtrl.SpawnAuto(sceneId, CameraTag::Debug, VGet(0.0f, 5.0f, -10.0f), VGet(0.0f, 0.0f, 0.0f));
 		}
 		if (_followCamId == 0 || cameraManager.Get(_followCamId) == nullptr) {
-			_followCamId = _followCamCtrl.SpawnAuto(sceneId, CameraTag::Game, VGet(-6.0f, 3.0f, -8.0f), VGet(0.0f, 0.0f, 0.0f));
+			_followCamId = _followCamCtrl.SpawnAuto(sceneId, CameraTag::Game, VGet(0.0f, 0.0f, 0.0f), VGet(0.0f, 0.0f, 0.0f));
 		}
 		if (_orbitCamId == 0 || cameraManager.Get(_orbitCamId) == nullptr) {
-			_orbitCamId = _orbitCamCtrl.SpawnAuto(sceneId, CameraTag::Game, VGet(8.0f, 4.0f, 0.0f), VGet(0.0f, 0.0f, 0.0f));
+			_orbitCamId = _orbitCamCtrl.SpawnAuto(sceneId, CameraTag::Game, VGet(0.0f, 3.0f, -10.0f), VGet(0.0f, 0.0f, 0.0f));
 		}
 		if (_topCamId == 0 || cameraManager.Get(_topCamId) == nullptr) {
-			_topCamId = _topCamCtrl.SpawnAuto(sceneId, CameraTag::Game, VGet(0.0f, 14.0f, 0.0f), VGet(DX_PI_F * 0.5f, 0.0f, 0.0f));
+			_topCamId = _topCamCtrl.SpawnAuto(sceneId, CameraTag::Game, VGet(0.0f, 7.0f, -14.0f), VGet(0.0f, 0.0f, 0.0f));
 		}
 
+		_cameraTime = 0.0f;
 		_currentCamId = _freeCamId;
 		cameraManager.SetRender(_currentCamId);
 	}
 
 	void Update(float dtSec) override {
-		ObjectManager::Instance().UpdateAll(dtSec);
 		UpdateDemoCameras_(dtSec);
+		UpdateCircusModelInput_(dtSec);
 
+		// カメラ1はフリーカメラ
 		_freeCamCtrl.SetCamera(_freeCamId);
 		_freeCamCtrl.UpdateFreeMoveMouse(10.0f, 0.45f, 8.0f, dtSec);
 
@@ -107,65 +201,79 @@ public:
 		}
 	}
 
+	// 描画
 	void Draw() override {
-		DrawGridFloor_(0.0f, 12, 1.0f);
-		ObjectManager::Instance().DrawAll();
+		if (_ownedCircusModel && _ownedCircusModel->IsActive()) {
+			_ownedCircusModel->Draw();
+		}
 
 		DrawString(10, 10, "CameraScene - T:タイトル R:リセット", GetColor(255, 255, 255));
-		DrawString(10, 30, "右クリック+WASDQE : フリーカメラ操作", GetColor(200, 220, 255));
-		DrawString(10, 50, "1:フリー  説明: 自由移動して全体を確認", GetColor(255, 220, 140));
-		DrawString(10, 70, "2:追従    説明: メイン対象を後方から追う", GetColor(255, 220, 140));
-		DrawString(10, 90, "3:周回    説明: メイン対象の周囲を回る", GetColor(255, 220, 140));
-		DrawString(10, 110, "4:俯瞰    説明: 上空から全体配置を見る", GetColor(255, 220, 140));
-		DrawString(10, 130, "B : ブレンド ON/OFF", GetColor(180, 255, 180));
-		DrawString(10, 150, "中央付近を動く球体がメインのカメラ対象", GetColor(255, 220, 120));
+		DrawString(10, 30, "1:フリーカメラ", GetColor(255, 220, 140));
+		DrawString(10, 50, "2:位置(0,0,0)で視線回転(5秒/1周)", GetColor(255, 220, 140));
+		DrawString(10, 70, "3:Offset10で原点を見る外周カメラ", GetColor(255, 220, 140));
+		DrawString(10, 90, "4:俯瞰で原点周回しカメラ3を見る", GetColor(255, 220, 140));
+		DrawString(10, 110, "B : ブレンド ON/OFF", GetColor(180, 255, 180));
+		DrawString(10, 130, "CircusModel Move: Arrow(XZ) / PgUp PgDn(Y)", GetColor(180, 255, 180));
+		if (_circusModel && !_circusModel->IsModelLoaded()) {
+			DrawString(10, 150, "Circus model load failed. Check path: models/circus.mv1", GetColor(255, 120, 120));
+		}
 	}
 
 private:
-	static void DrawGridFloor_(float y, int halfCells, float step) {
-		const unsigned int colGrid = GetColor(60, 60, 60);
-		for (int i = -halfCells; i <= halfCells; ++i) {
-			const float x = i * step;
-			DrawLine3D(VGet(x, y, -halfCells * step), VGet(x, y, halfCells * step), colGrid);
-			const float z = i * step;
-			DrawLine3D(VGet(-halfCells * step, y, z), VGet(halfCells * step, y, z), colGrid);
-		}
-		DrawLine3D(VGet(0, y, 0), VGet(2, y, 0), GetColor(255, 80, 80));
-		DrawLine3D(VGet(0, y, 0), VGet(0, y + 2, 0), GetColor(80, 255, 80));
-		DrawLine3D(VGet(0, y, 0), VGet(0, y, 2), GetColor(80, 80, 255));
+	// カメラモデルオブジェクトの位置をキーボード入力で動かす（デモ用）
+	void UpdateCircusModelInput_(float dtSec) {
+		if (!_circusModel) return;
+		VECTOR p = _circusModel->transform.LocalPosition();
+		const float spd = 4.0f;
+		if (KeyInput::Instance().IsKeyInputHeld(KEY_INPUT_LEFT))  p.x -= spd * dtSec;
+		if (KeyInput::Instance().IsKeyInputHeld(KEY_INPUT_RIGHT)) p.x += spd * dtSec;
+		if (KeyInput::Instance().IsKeyInputHeld(KEY_INPUT_UP))    p.z += spd * dtSec;
+		if (KeyInput::Instance().IsKeyInputHeld(KEY_INPUT_DOWN))  p.z -= spd * dtSec;
+		if (KeyInput::Instance().IsKeyInputHeld(KEY_INPUT_PGUP))  p.y += spd * dtSec;
+		if (KeyInput::Instance().IsKeyInputHeld(KEY_INPUT_PGDN))  p.y -= spd * dtSec;
+		_circusModel->transform.SetLocalPosition(p);
 	}
 
-	CameraDebugClass* SpawnDemo_(const VariantMap& params) {
-		return dynamic_cast<CameraDebugClass*>(ObjectManager::Instance().Spawn(CameraDebugClass::StaticPoolKey(), params));
-	}
-
+	// 描画カメラの切替（ブレンドあり/なし）
 	void SwitchRenderCamera_(CameraController::CameraId targetId) {
 		_currentCamId = targetId;
 		if (_useBlend) CameraManager::Instance().BlendRenderTo(_currentCamId, _blendSec);
 		else CameraManager::Instance().SetRender(_currentCamId);
 	}
 
+	// デモ用カメラの更新
 	void UpdateDemoCameras_(float dtSec) {
 		auto& cameraManager = CameraManager::Instance();
-		const VECTOR target = _focusTarget ? _focusTarget->transform.LocalPosition() : VGet(0.0f, 1.5f, 0.0f);
-		const VECTOR staticRef = _staticMarker ? _staticMarker->transform.LocalPosition() : VGet(6.0f, 1.5f, -4.0f);
+		const VECTOR origin = VGet(0.0f, 0.0f, 0.0f);
 
+		const float period = 5.0f;
+		const float omega = (2.0f * DX_PI_F) / period;
+		_cameraTime += dtSec;
+
+		// カメラ2: カメラ位置を原点(0,0,0)に固定し、視線を5秒で1周回転
 		if (Camera* cam = cameraManager.Get(_followCamId)) {
-			const VECTOR eye = VAdd(target, VGet(-6.0f, 2.8f, -6.0f));
-			cam->LookAt(eye, target, VGet(0, 1, 0));
+			const float a = omega * _cameraTime;
+			const VECTOR eye = origin;
+			const VECTOR at = VGet(std::cos(a), 0.0f, std::sin(a));
+			cam->LookAt(eye, at, VGet(0, 1, 0));
 		}
+
+		// カメラ3: Offset=10で原点を見る外周回転
+		VECTOR cam3Eye = VGet(0.0f, 3.0f, -10.0f);
 		if (Camera* cam = cameraManager.Get(_orbitCamId)) {
-			_orbitAngle += dtSec * 0.8f;
-			const VECTOR eye = VAdd(target, VGet(std::cos(_orbitAngle) * 8.0f, 3.8f, std::sin(_orbitAngle) * 8.0f));
-			cam->LookAt(eye, target, VGet(0, 1, 0));
+			const float a = omega * _cameraTime + DX_PI_F * 0.5f;
+			cam3Eye = VGet(std::cos(a) * 10.0f, 3.0f, std::sin(a) * 10.0f);
+			cam->LookAt(cam3Eye, origin, VGet(0, 1, 0));
 		}
+
+		// カメラ4: 俯瞰で原点を軸に周回し、カメラ3を見る
 		if (Camera* cam = cameraManager.Get(_topCamId)) {
-			const VECTOR eye = VAdd(target, VGet(0.0f, 14.0f, 0.0f));
-			cam->LookAt(eye, VScale(VAdd(target, staticRef), 0.5f), VGet(0, 0, 1));
+			const float a = omega * _cameraTime + DX_PI_F;
+			const VECTOR eye = VGet(std::cos(a) * 16.0f, 18.0f, std::sin(a) * 16.0f);
+			cam->LookAt(eye, cam3Eye, VGet(0, 1, 0));
 		}
-		if (Camera* cam = cameraManager.Get(_freeCamId)) {
-			cam->MarkDirty();
-		}
+
+		// カメラ1（フリー）はコントローラ更新に任せる
 	}
 
 private:
@@ -178,10 +286,9 @@ private:
 	CameraController::CameraId _orbitCamId = 0;
 	CameraController::CameraId _topCamId = 0;
 	CameraController::CameraId _currentCamId = 0;
-	CameraDebugClass* _focusTarget = nullptr;
-	CameraDebugClass* _pathMarker = nullptr;
-	CameraDebugClass* _staticMarker = nullptr;
+	std::unique_ptr<CameraModelObject> _ownedCircusModel;
+	CameraModelObject* _circusModel = nullptr;
 	bool _useBlend = true;
 	float _blendSec = 0.5f;
-	float _orbitAngle = 0.0f;
+	float _cameraTime = 0.0f;
 };

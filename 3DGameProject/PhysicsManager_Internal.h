@@ -86,7 +86,7 @@ namespace {
     constexpr float kContactMatchDistSq  = 0.01f;
     constexpr float kSplitBiasFactor     = 0.3f;
     constexpr float kSpeculativeMargin   = 0.02f;
-    constexpr float kFrictionStaticThreshold = 0.1f;
+    constexpr float kFrictionStaticThreshold = 0.05f;
     constexpr float kMaxMassRatio        = 10000.0f;
 
     // ---- コライダーの最小半径（CCD トンネリング判定用）--------------

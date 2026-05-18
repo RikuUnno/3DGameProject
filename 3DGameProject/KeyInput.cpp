@@ -72,10 +72,6 @@ bool KeyInput::IsKeyInputTrigger(int keyCode) const
 
 	const bool flag = (_currentKey[keyCode] !=0) && (_previousKey[keyCode] ==0);
 
-#ifdef _DEBUG
-	DrawFormatString(0,90, GetColor(255,255,255), "TriggerFlag[%d]: %d", keyCode, flag);
-#endif
-
 	return flag;
 }
 
@@ -93,10 +89,6 @@ bool KeyInput::IsKeyInputReleased(int keyCode) const
 
 	const bool flag = (_previousKey[keyCode] !=0) && (_currentKey[keyCode] ==0);
 
-#ifdef _DEBUG
-	DrawFormatString(0,75, GetColor(255,255,255), "ReleasedFlag[%d]: %d", keyCode, flag);
-#endif
-
 	return flag;
 }
 
@@ -106,11 +98,6 @@ bool KeyInput::IsKeyInputRepeated(int keyCode) const
 	if (keyCode <0 || keyCode >= KEY_COUNT) return false;
 
 	const bool flag = _repeatedFlag[keyCode];
-
-#ifdef _DEBUG
-	DrawFormatString(0,90, GetColor(255,255,255), "RepeatedTimer[%d]: %.4f", keyCode, _repeatedTimer[keyCode]);
-	DrawFormatString(0,105, GetColor(255,255,255), "RepeatedFlag[%d]: %d", keyCode, flag);
-#endif
 
 	return flag;
 }

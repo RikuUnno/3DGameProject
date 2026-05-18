@@ -244,7 +244,7 @@ private:
 	static constexpr int kBatchingThreshold = 32;
 	// 小バッチのシリアル実行閾値: これ未満のバッチは ParallelForBarrier を使わずシリアル解
 	// バリアのセットアップコスト（notify_all + spin）が並列効果を上回る下限
-	static constexpr int kBatchParallelThreshold = 16;
+	static constexpr int kBatchParallelThreshold = 48;
 
 private:
 	std::atomic_bool _shuttingDown{ false };
@@ -297,7 +297,7 @@ public:
 private:
 	bool _asyncEnabled = false;
 	std::future<void> _asyncFuture{};
-	void RunAsyncStep(float dt);
+	void RunAsyncStep(float dt, int maxSubSteps);
 
 	// ============================================================
 	//  永続バッファ（毎フレームの heap 確保を抑制）
@@ -350,4 +350,7 @@ private:
 	std::unordered_map<PhysicsBody*, std::vector<int>> _batchBodyToContactsBuf;
 	std::vector<int>                                   _batchContactColorBuf;
 	std::vector<int>                                   _batchUsedColorEpochBuf;
+
+	// Island sorting cache (to avoid re-sorting when island count hasn't changed)
+	size_t _prevIslandCount = 0;
 };

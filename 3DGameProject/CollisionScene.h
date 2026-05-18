@@ -159,6 +159,10 @@ private:
 
 		if (_player) {
 			_player->transform.SetLocalPosition(VGet(0.0f, 1.0f, 0.0f));
+			if (PhysicsBody* body = _player->GetPhysicsBody()) {
+				body->_enabled = false;
+				body->_velocity = VGet(0.0f, 0.0f, 0.0f);
+			}
 		}
 		if (_enemy) {
 			_enemy->transform.SetLocalPosition(VGet(3.5f, 1.0f, -1.5f));
@@ -190,8 +194,6 @@ private:
 
 	void UpdateControlledPlayer_(float dtSec) {
 		if (!_player) return;
-		PhysicsBody* body = _player->GetPhysicsBody();
-		if (!body) return;
 
 		const float moveSpeed = 4.8f;
 		const float verticalSpeed = 4.0f;
@@ -206,21 +208,19 @@ private:
 		const VECTOR horizontalInput = VGet(input.x, 0.0f, input.z);
 		const float horizontalLenSq = horizontalInput.x * horizontalInput.x + horizontalInput.z * horizontalInput.z;
 
-		VECTOR newVelocity = body->_velocity;
-		newVelocity.x = 0.0f;
-		newVelocity.z = 0.0f;
+		VECTOR newPosition = _player->transform.LocalPosition();
 		if (horizontalLenSq > 1e-6f) {
 			const float invLen = 1.0f / std::sqrt(horizontalLenSq);
-			newVelocity.x = horizontalInput.x * invLen * moveSpeed;
-			newVelocity.z = horizontalInput.z * invLen * moveSpeed;
+			newPosition.x += horizontalInput.x * invLen * moveSpeed * dtSec;
+			newPosition.z += horizontalInput.z * invLen * moveSpeed * dtSec;
 
 			const float yaw = std::atan2(horizontalInput.x, horizontalInput.z);
 			_player->transform.SetLocalEulerRad(VGet(0.0f, yaw, 0.0f));
 		}
 		if (input.y != 0.0f) {
-			newVelocity.y = input.y * verticalSpeed;
+			newPosition.y += input.y * verticalSpeed * dtSec;
 		}
-		body->_velocity = newVelocity;
+		_player->transform.SetLocalPosition(newPosition);
 	}
 
 	void UpdateGameCamera_() {

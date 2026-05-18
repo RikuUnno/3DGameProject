@@ -70,9 +70,8 @@ void PhysicsManager::SolveAllIslands(float stepDt) {
     // 接触数降順でソート（重いアイランドを先に処理してテール待機を削減）
     // キャッシュ: 前回と同じサイズなら再ソートスキップ
     auto& islandOrder = _islandOrderBuf;
-    static size_t prevIslandCount = 0;
-    const bool needsSort = (islandCount != prevIslandCount);
-    prevIslandCount = islandCount;
+    const bool needsSort = (islandCount != _prevIslandCount);
+    _prevIslandCount = islandCount;
 
     if (needsSort || islandOrder.size() != islandCount) {
         islandOrder.resize(islandCount);
@@ -84,9 +83,11 @@ void PhysicsManager::SolveAllIslands(float stepDt) {
     }
 
     // パス1: 小アイランド（constraintBatches なし）→ アイランド単位で並列
-    ThreadPool::Instance().ParallelForBarrierHeavy(0, islandCount, [&](size_t orderIdx) {
+    // 修正: 値キャプチャを使用し、スタック変数への参照を避ける
+    ThreadPool::Instance().ParallelForBarrierHeavy(0, islandCount, [this, &islandOrder, islandCount, stepDt](size_t orderIdx) {
         if (IsShuttingDown()) return;
-        if (orderIdx >= islandOrder.size()) return;
+        if (orderIdx >= islandCount) return;  // cachedOrderSize の代わりに islandCount を使用
+        if (orderIdx >= islandOrder.size()) return;  // 追加の安全チェック
         const size_t i = islandOrder[orderIdx];
         if (i >= _islands.size()) {
             ASSERT_MSG(false, "SolveAllIslands: index out of range. i=%zu size=%zu", i, _islands.size());
@@ -99,8 +100,8 @@ void PhysicsManager::SolveAllIslands(float stepDt) {
 
         const size_t contactCount = island.contactIndices.size();
         int iterations = _solverIterations;
-        if (contactCount >= 5) {
-            iterations = (std::min)(_solverIterations + static_cast<int>(contactCount / 5), 20);
+        if (contactCount >= 64) {
+            iterations = (std::min)(_solverIterations + static_cast<int>(contactCount / 64), _solverIterations + 2);
         }
 
         for (int iter = 0; iter < iterations; ++iter) {
@@ -110,7 +111,6 @@ void PhysicsManager::SolveAllIslands(float stepDt) {
     }, 1);
 
     // パス2: 大アイランド（constraintBatches あり）→ バッチ単位で並列
-    // kBatchParallelThreshold 未満の小バッチはシリアル実行してバリアオーバーヘッドを排除
     auto solveOneContact = [&](size_t batchIdx, const std::vector<int>& batchRef) {
         if (IsShuttingDown()) return;
         const int ci = batchRef[batchIdx];
@@ -154,7 +154,7 @@ void PhysicsManager::SolveAllIslands(float stepDt) {
 
     for (size_t orderIdx = 0; orderIdx < islandCount; ++orderIdx) {
         if (IsShuttingDown()) return;
-        if (orderIdx >= islandOrder.size()) continue;
+        if (orderIdx >= islandOrder.size()) continue;  // cachedOrderSize の代わりに直接チェック
         const size_t i = islandOrder[orderIdx];
         if (i >= _islands.size()) continue;
         const auto& island = _islands[i];
@@ -162,8 +162,8 @@ void PhysicsManager::SolveAllIslands(float stepDt) {
 
         const size_t contactCount = island.contactIndices.size();
         int iterations = _solverIterations;
-        if (contactCount >= 5) {
-            iterations = (std::min)(_solverIterations + static_cast<int>(contactCount / 5), 20);
+        if (contactCount >= 64) {
+            iterations = (std::min)(_solverIterations + static_cast<int>(contactCount / 64), _solverIterations + 2);
         }
 
         for (int iter = 0; iter < iterations; ++iter) {

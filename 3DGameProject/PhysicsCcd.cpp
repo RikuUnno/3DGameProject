@@ -419,14 +419,17 @@ void PhysicsCcd::ProcessCCD(
             if (vn < 0.0f) {
                 const VECTOR vt = VSub(body->_velocity, VScale(toiResult.hitNormal, vn));
                 const float e = std::clamp(body->_restitution, 0.0f, 1.0f);
-                body->_velocity = VAdd(vt, VScale(toiResult.hitNormal, -vn * e));
+                const float friction = std::clamp(body->_friction, 0.0f, 1.0f);
+                const float tangentialScale = 1.0f / (1.0f + friction);
+                const VECTOR vtDamped = VScale(vt, tangentialScale);
+                body->_velocity = VAdd(vtDamped, VScale(toiResult.hitNormal, -vn * e));
 
                 // Glancing static hit: convert a part of tangential motion into spin
                 // so objects do not only slide along the surface.
-                const float vtSq = Dot3(vt, vt);
+                const float vtSq = Dot3(vtDamped, vtDamped);
                 if (vtSq > 1e-6f) {
                     const float radius = (std::max)(minRadius, 1e-3f);
-                    const VECTOR spinAxis = VCross(toiResult.hitNormal, vt);
+                    const VECTOR spinAxis = VCross(toiResult.hitNormal, vtDamped);
                     body->_angularVelocity = VAdd(body->_angularVelocity, VScale(spinAxis, 0.2f / radius));
                 }
             }

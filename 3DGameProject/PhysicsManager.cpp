@@ -30,10 +30,12 @@ void PhysicsManager::SetSolverIterations(int solverIterations) noexcept {
 
 int PhysicsManager::ComputeAdaptiveIterations() const noexcept {
     const int contactCount = static_cast<int>(_solverContacts.size());
-    int adaptive = _minSolverIterations + contactCount / 8;
+    int adaptive = _minSolverIterations + contactCount / 24;
     adaptive = (std::max)(adaptive, _minSolverIterations);
     adaptive = (std::min)(adaptive, _maxSolverIterations);
-    return (std::max)(adaptive, (std::min)(_solverIterations, _maxSolverIterations));
+
+    const int base = (std::min)(_solverIterations, _maxSolverIterations);
+    return (std::max)(adaptive, base);
 }
 
 // ---- Update / ”ñ“¯Šú ------------------------------------------------
@@ -55,22 +57,26 @@ void PhysicsManager::Update(float dt) {
         c->Update(dt);
     }
 
+    const int dynamicMaxSubSteps = (dt > _fixedDeltaTime * 4.0f)
+        ? (std::min)(_maxSubSteps, 4)
+        : _maxSubSteps;
+
     if (_asyncEnabled) {
 #ifdef _DEBUG
         { auto _s = PerformanceMonitor::Instance().Scope("Physics.WaitForPhysics");       WaitForPhysics(); }
         { auto _s = PerformanceMonitor::Instance().Scope("Physics.ComputeInterpolation"); ComputeInterpolation(); }
         { auto _s = PerformanceMonitor::Instance().Scope("Physics.AsyncEnqueue");
-          _asyncFuture = ThreadPool::Instance().Enqueue([this, dt]() { RunAsyncStep(dt); }); }
+          _asyncFuture = ThreadPool::Instance().Enqueue([this, dt, dynamicMaxSubSteps]() { RunAsyncStep(dt, dynamicMaxSubSteps); }); }
 #else
         WaitForPhysics();
         ComputeInterpolation();
-        _asyncFuture = ThreadPool::Instance().Enqueue([this, dt]() { RunAsyncStep(dt); });
+        _asyncFuture = ThreadPool::Instance().Enqueue([this, dt, dynamicMaxSubSteps]() { RunAsyncStep(dt, dynamicMaxSubSteps); });
 #endif
     } else {
-        const float maxDt = _fixedDeltaTime * static_cast<float>(_maxSubSteps);
+        const float maxDt = _fixedDeltaTime * static_cast<float>(dynamicMaxSubSteps);
         _accumulator += (std::min)(dt, maxDt);
         int sub = 0;
-        while (_accumulator + 1e-6f >= _fixedDeltaTime && sub < _maxSubSteps) {
+        while (_accumulator + 1e-6f >= _fixedDeltaTime && sub < dynamicMaxSubSteps) {
 #ifdef _DEBUG
             { auto _s = PerformanceMonitor::Instance().Scope("Physics.StepSimulation"); StepSimulation(_fixedDeltaTime); }
 #else
@@ -92,11 +98,11 @@ void PhysicsManager::WaitForPhysics() {
     if (_asyncFuture.valid()) _asyncFuture.get();
 }
 
-void PhysicsManager::RunAsyncStep(float dt) {
-    const float maxDt = _fixedDeltaTime * static_cast<float>(_maxSubSteps);
+void PhysicsManager::RunAsyncStep(float dt, int maxSubSteps) {
+    const float maxDt = _fixedDeltaTime * static_cast<float>((std::max)(1, maxSubSteps));
     _accumulator += (std::min)(dt, maxDt);
     int sub = 0;
-    while (_accumulator + 1e-6f >= _fixedDeltaTime && sub < _maxSubSteps) {
+    while (_accumulator + 1e-6f >= _fixedDeltaTime && sub < (std::max)(1, maxSubSteps)) {
         StepSimulation(_fixedDeltaTime);
         _accumulator -= _fixedDeltaTime;
         ++sub;

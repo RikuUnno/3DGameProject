@@ -277,9 +277,9 @@ private:
 	bool _speculativeCcdEnabled = true;
 	bool _havokCcdEnabled = true;
 
-	float _fixedDeltaTime = 1.0f / 60.0f;
-	int _maxSubSteps = 4;
-	int _solverIterations = 6;
+	float _fixedDeltaTime = 1.0f / 120.0f;
+	int _maxSubSteps = 8;
+	int _solverIterations = 10;
 	float _accumulator = 0.0f;
 
 public:

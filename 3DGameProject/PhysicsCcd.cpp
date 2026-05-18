@@ -420,6 +420,15 @@ void PhysicsCcd::ProcessCCD(
                 const VECTOR vt = VSub(body->_velocity, VScale(toiResult.hitNormal, vn));
                 const float e = std::clamp(body->_restitution, 0.0f, 1.0f);
                 body->_velocity = VAdd(vt, VScale(toiResult.hitNormal, -vn * e));
+
+                // Glancing static hit: convert a part of tangential motion into spin
+                // so objects do not only slide along the surface.
+                const float vtSq = Dot3(vt, vt);
+                if (vtSq > 1e-6f) {
+                    const float radius = (std::max)(minRadius, 1e-3f);
+                    const VECTOR spinAxis = VCross(toiResult.hitNormal, vt);
+                    body->_angularVelocity = VAdd(body->_angularVelocity, VScale(spinAxis, 0.2f / radius));
+                }
             }
         } else {
             // Dynamic-vs-dynamic: transfer momentum immediately so first-hit reaction is visible
@@ -436,8 +445,18 @@ void PhysicsCcd::ProcessCCD(
                         const float e = std::clamp((std::max)(body->_restitution, other->_restitution), 0.0f, 1.0f);
                         const float j = (-(1.0f + e) * relVn) / invSum;
                         const VECTOR imp = VScale(n, j);
-                        body->_velocity = VAdd(body->_velocity, VScale(imp, invA));
-                        other->_velocity = VSub(other->_velocity, VScale(imp, invB));
+
+                        // Apply linear + angular impulse at TOI contact point.
+                        body->AddImpulse(imp);
+                        other->AddImpulse(VScale(imp, -1.0f));
+                        if (body->_owner) {
+                            const VECTOR rA = VSub(toiResult.hitPoint, body->_owner->transform.WorldPosition());
+                            body->AddAngularImpulse(VCross(rA, imp));
+                        }
+                        if (other->_owner) {
+                            const VECTOR rB = VSub(toiResult.hitPoint, other->_owner->transform.WorldPosition());
+                            other->AddAngularImpulse(VCross(rB, VScale(imp, -1.0f)));
+                        }
                         body->WakeUp();
                         other->WakeUp();
                     }
@@ -453,7 +472,7 @@ void PhysicsCcd::ProcessCCD(
 
 void PhysicsManager::GenerateSpeculativeContacts(float stepDt) {
     if (stepDt <= 1e-6f) return;
-    if (!_havokCcdEnabled) return;
+    if (!_havokCcdEnabled && !_speculativeCcdEnabled) return;
 
     const auto& allColliders = ColliderManager::Instance().GetColliders();
 

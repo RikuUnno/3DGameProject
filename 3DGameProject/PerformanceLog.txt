@@ -1,73 +1,73 @@
 
 ========================================
-[DETAILED LOG] Frame: 26530
+[DETAILED LOG] Frame: 18645
 ========================================
-Timestamp: 2026/5/18 12:9:18
+Timestamp: 2026/5/18 19:9:36
 
 --- Scene Information ---
 Current Scene: PhysicsScene
 
 --- Performance Summary ---
-FPS: 303.906
-Frame Time: 2.592 ms
-CPU Usage: 32.4612 %
+FPS: 11.8509
+Frame Time: 1.804 ms
+CPU Usage: 48.8452 %
 GPU Usage: 0.575423 %
 
 --- Memory Usage ---
-Working Set: 137.293 MB
-Virtual Memory: 226.281 MB
+Working Set: 145.34 MB
+Virtual Memory: 241.844 MB
 GPU Dedicated: 41.3672 MB
-GPU Shared: 26.1719 MB
+GPU Shared: 36.3516 MB
 
 --- System Information ---
 Processor Count: 16
 Total Physical Memory: 16087.5 MB
-Available Physical Memory: 2116.98 MB
-Memory Load: 86 %
+Available Physical Memory: 2003.51 MB
+Memory Load: 87 %
 
 --- ThreadPool Status ---
 Worker Count: 15
 Queue Size: 0
 
 --- Thread Details ---
-[Main] TID=30732 CPU=90.5401% Kernel=4281250us User=30656250us
-[Worker 0] TID=18208 CPU=6.24415% Kernel=468750us User=1546875us
-[Worker 1] TID=4140 CPU=0% Kernel=625000us User=1718750us
-[Worker 2] TID=1496 CPU=6.24415% Kernel=718750us User=1625000us
-[Worker 3] TID=11312 CPU=0% Kernel=500000us User=1671875us
-[Worker 4] TID=24928 CPU=3.12207% Kernel=671875us User=1484375us
-[Worker 5] TID=16152 CPU=3.12207% Kernel=453125us User=1718750us
-[Worker 6] TID=30268 CPU=0% Kernel=828125us User=1562500us
-[Worker 7] TID=25128 CPU=3.12207% Kernel=500000us User=1750000us
-[Worker 8] TID=8412 CPU=3.12207% Kernel=906250us User=1796875us
-[Worker 9] TID=10104 CPU=6.24415% Kernel=718750us User=1468750us
-[Worker 10] TID=30972 CPU=6.24415% Kernel=718750us User=1453125us
-[Worker 11] TID=4720 CPU=0% Kernel=453125us User=1796875us
-[Worker 12] TID=26708 CPU=3.12207% Kernel=531250us User=1625000us
-[Worker 13] TID=31572 CPU=0% Kernel=687500us User=1828125us
-[Worker 14] TID=30892 CPU=12.4883% Kernel=593750us User=1609375us
+[Main] TID=9588 CPU=90.1672% Kernel=4718750us User=35781250us
+[Worker 0] TID=14864 CPU=8.45317% Kernel=906250us User=4843750us
+[Worker 1] TID=17572 CPU=8.45317% Kernel=1015625us User=4093750us
+[Worker 2] TID=31904 CPU=11.2709% Kernel=875000us User=4765625us
+[Worker 3] TID=27124 CPU=8.45317% Kernel=828125us User=4234375us
+[Worker 4] TID=26708 CPU=14.0886% Kernel=812500us User=4140625us
+[Worker 5] TID=16476 CPU=16.9063% Kernel=750000us User=3984375us
+[Worker 6] TID=16060 CPU=11.2709% Kernel=812500us User=4781250us
+[Worker 7] TID=32216 CPU=11.2709% Kernel=781250us User=4718750us
+[Worker 8] TID=24508 CPU=8.45317% Kernel=734375us User=4671875us
+[Worker 9] TID=30088 CPU=8.45317% Kernel=843750us User=4687500us
+[Worker 10] TID=23920 CPU=16.9063% Kernel=859375us User=5140625us
+[Worker 11] TID=32728 CPU=2.81772% Kernel=796875us User=4234375us
+[Worker 12] TID=29960 CPU=11.2709% Kernel=750000us User=4171875us
+[Worker 13] TID=16784 CPU=8.45317% Kernel=906250us User=4468750us
+[Worker 14] TID=11588 CPU=11.2709% Kernel=734375us User=4781250us
 
 --- Thread States ---
-TID=30972 State=[ThreadPool.Worker.AtomicWait] LastUpdate=17135704736us
-TID=11312 State=[ThreadPool.Worker.AtomicWait] LastUpdate=17135704769us
-TID=4140 State=[ThreadPool.Worker.AtomicWait] LastUpdate=17135704663us
-TID=30732 State=[Idle] LastUpdate=17135704718us
-TID=1496 State=[ThreadPool.Worker.AtomicWait] LastUpdate=17135704794us
-TID=16152 State=[ThreadPool.Worker.AtomicWait] LastUpdate=17135704703us
-TID=31572 State=[ThreadPool.Worker.AtomicWait] LastUpdate=17135704668us
-TID=18208 State=[ThreadPool.Worker.AtomicWait] LastUpdate=17135704773us
-TID=24928 State=[ThreadPool.Worker.AtomicWait] LastUpdate=17135704744us
-TID=30268 State=[ThreadPool.Worker.AtomicWait] LastUpdate=17135704859us
-TID=25128 State=[ThreadPool.Worker.AtomicWait] LastUpdate=17135704803us
-TID=8412 State=[ThreadPool.Worker.AtomicWait] LastUpdate=17135704710us
-TID=10104 State=[ThreadPool.Worker.AtomicWait] LastUpdate=17135704661us
-TID=4720 State=[ThreadPool.Worker.AtomicWait] LastUpdate=17135704780us
-TID=26708 State=[ThreadPool.Worker.AtomicWait] LastUpdate=17135704763us
-TID=30892 State=[ThreadPool.Worker.AtomicWait] LastUpdate=17135704777us
+TID=9588 State=[Idle] LastUpdate=42356829171us
+TID=16060 State=[ThreadPool.Worker.AtomicWait] LastUpdate=42356829097us
+TID=14864 State=[ThreadPool.Worker.AtomicWait] LastUpdate=42356829086us
+TID=17572 State=[ThreadPool.Worker.AtomicWait] LastUpdate=42356828961us
+TID=16476 State=[ThreadPool.Worker.AtomicWait] LastUpdate=42356829100us
+TID=26708 State=[ThreadPool.Worker.AtomicWait] LastUpdate=42356828971us
+TID=31904 State=[ThreadPool.Worker.AtomicWait] LastUpdate=42356829070us
+TID=27124 State=[ThreadPool.Worker.AtomicWait] LastUpdate=42356829022us
+TID=32216 State=[ThreadPool.Worker.AtomicWait] LastUpdate=42356829052us
+TID=24508 State=[ThreadPool.Worker.AtomicWait] LastUpdate=42356829043us
+TID=29960 State=[ThreadPool.Worker.AtomicWait] LastUpdate=42356829166us
+TID=30088 State=[ThreadPool.Worker.AtomicWait] LastUpdate=42356829061us
+TID=23920 State=[ThreadPool.Worker.AtomicWait] LastUpdate=42356829117us
+TID=32728 State=[ThreadPool.Worker.AtomicWait] LastUpdate=42356829087us
+TID=16784 State=[ThreadPool.Worker.AtomicWait] LastUpdate=42356829014us
+TID=11588 State=[ThreadPool.Worker.AtomicWait] LastUpdate=42356829094us
 
 --- Profiling Sections (All) ---
-Physics.Update: Time=286us Calls=1 Avg=286us
-Physics.ComputeInterpolation: Time=18us Calls=1 Avg=18us
+Physics.Update: Time=203us Calls=1 Avg=203us
+Physics.ComputeInterpolation: Time=56us Calls=1 Avg=56us
 Physics.BuildLookupCaches: Time=0us Calls=0
 Physics.IntegrateBodies: Time=0us Calls=0
 Collider.UpdateAllShapes: Time=0us Calls=0

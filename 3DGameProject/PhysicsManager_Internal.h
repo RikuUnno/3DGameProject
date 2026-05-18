@@ -77,10 +77,10 @@ namespace {
 
     // ---- ï®óùíËêî ----------------------------------------------------
 
-    constexpr float kBiasFactor          = 0.15f;
-    constexpr float kSlop                = 0.01f;
+    constexpr float kBiasFactor          = 0.2f;
+    constexpr float kSlop                = 0.005f;
     constexpr float kMaxPen              = 5.0f;
-    constexpr float kMaxCorrection       = 0.3f;
+    constexpr float kMaxCorrection       = 0.4f;
     constexpr float kRestitutionThreshold = 0.05f;
     constexpr float kWarmStartFactor     = 1.0f;
     constexpr float kContactMatchDistSq  = 0.01f;

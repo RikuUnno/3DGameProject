@@ -107,7 +107,7 @@ namespace {
     //  - Floor: Stone材質（36x36m）
     //  - Walls: Wood材質（4面）
     //  - Ramp: Metal材質（傾斜）
-    //  - Stacked Boxes: Wood材質（3列x4段、スタッキングテスト）
+    //  - Stacked Boxes: Wood材質（3列x4段、スタッキングテスト用）
     //  - Pyramid: Wood材質（崩壊テスト）
     //  - Metal Spheres: スロープ転がりテスト
     //  - Bouncy Balls: 高反発テスト
@@ -360,9 +360,10 @@ void PhysicsScene::Start() {	// シーン開始時の初期化処理
 	ClearDynamicTracking_();                                        // 動的オブジェクトの追跡をクリア（リセット時などに古いオブジェクトの追跡をリセット）
 
 	auto& physics = PhysicsManager::Instance();
-	physics.SetSolverIterations(8);
-	physics.SetAdaptiveIterationRange(6, 20);
-	physics.SetFixedDeltaTime(1.0f / 60.0f);
+	physics.SetSolverIterations(12);
+	physics.SetAdaptiveIterationRange(8, 28);
+	physics.SetFixedDeltaTime(1.0f / 120.0f);
+	physics.SetMaxSubSteps(8);
 	physics.SetSplitImpulseEnabled(true);
 
 	// カメラ生成（既に生成されている場合は再利用）

@@ -94,8 +94,8 @@ struct PhysicsMaterial {
     // ã‡ëÆ: í·Ç¢ñÄéCÅAí·Ç¢îΩî≠ÅAçÇñßìx
     static PhysicsMaterial Metal() noexcept {
         PhysicsMaterial m;
-        m.friction = 0.3f;
-        m.staticFriction = 0.4f;
+        m.friction = 0.45f;
+        m.staticFriction = 0.6f;
         m.restitution = 0.15f;
         m.density = 7800.0f;
         m.linearDamping = 0.0f;

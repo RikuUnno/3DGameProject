@@ -182,7 +182,7 @@
     <ClCompile Include="Transform.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Assert.h" />
+    <ClInclude Include="3DGameProject\Assert.h" />
     <ClInclude Include="Bgm.h" />
     <ClInclude Include="BgmManager.h" />
     <ClInclude Include="BgmPool.h" />

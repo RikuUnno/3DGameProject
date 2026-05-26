@@ -1,7 +1,6 @@
 #include "PhysicsManager_Internal.h"
 
-// ---- SolveIsland ----------------------------------------------------
-
+// SolveIsland - アイランド内の接触制約を解く
 void PhysicsManager::SolveIsland(const PhysicsIsland& island, float /*stepDt*/) {
     for (int ci : island.contactIndices) {
         if (ci < 0 || static_cast<size_t>(ci) >= _solverContacts.size()) {
@@ -14,7 +13,7 @@ void PhysicsManager::SolveIsland(const PhysicsIsland& island, float /*stepDt*/) 
         const bool bStill = !sc.bodyB || sc.bodyB->_isSleeping;
         if (aStill && bStill) continue;
 
-        // 法線拘束（累積クランプ付き）
+        // 法線方向の拘束解法（インパルス累積クランプ付き）
         {
             const float vn = RelNormalVelocity(sc.bodyA, sc.bodyB, sc.rA, sc.rB, sc.normal);
             float bias = 0.0f;
@@ -38,7 +37,7 @@ void PhysicsManager::SolveIsland(const PhysicsIsland& island, float /*stepDt*/) 
             ApplyImpulse(sc.bodyA, sc.bodyB, sc.invA, sc.invB, sc.rA, sc.rB, VScale(sc.normal, dl));
         }
 
-        // 摩擦（円形クーロンコーン）
+        // 摩擦力の拘束解法（円形クーロンコーン摩擦モデル）
         {
             const float vt1 = RelDirVelocity(sc.bodyA, sc.bodyB, sc.rA, sc.rB, sc.tangent1);
             const float vt2 = RelDirVelocity(sc.bodyA, sc.bodyB, sc.rA, sc.rB, sc.tangent2);
@@ -59,16 +58,15 @@ void PhysicsManager::SolveIsland(const PhysicsIsland& island, float /*stepDt*/) 
     }
 }
 
-// ---- SolveAllIslands ------------------------------------------------
-
+// SolveAllIslands - すべてのアイランドの制約を反復的に解く
 void PhysicsManager::SolveAllIslands(float stepDt) {
     if (IsShuttingDown()) return;
     if (_islands.empty()) return;
 
     const size_t islandCount = _islands.size();
 
-    // 接触数降順でソート（重いアイランドを先に処理してテール待機を削減）
-    // キャッシュ: 前回と同じサイズなら再ソートスキップ
+    // アイランドを接触数の多い順にソート
+    // 重いアイランドから処理することでスレッドの負荷分散を改善
     auto& islandOrder = _islandOrderBuf;
     const bool needsSort = (islandCount != _prevIslandCount);
     _prevIslandCount = islandCount;
@@ -82,12 +80,11 @@ void PhysicsManager::SolveAllIslands(float stepDt) {
         });
     }
 
-    // パス1: 小アイランド（constraintBatches なし）→ アイランド単位で並列
-    // 修正: 値キャプチャを使用し、スタック変数への参照を避ける
+    // パス1: 制約バッチなし (小規模) アイランド → アイランド単位で並列実行
     ThreadPool::Instance().ParallelForBarrierHeavy(0, islandCount, [this, &islandOrder, islandCount, stepDt](size_t orderIdx) {
         if (IsShuttingDown()) return;
-        if (orderIdx >= islandCount) return;  // cachedOrderSize の代わりに islandCount を使用
-        if (orderIdx >= islandOrder.size()) return;  // 追加の安全チェック
+        if (orderIdx >= islandCount) return;
+        if (orderIdx >= islandOrder.size()) return;
         const size_t i = islandOrder[orderIdx];
         if (i >= _islands.size()) {
             ASSERT_MSG(false, "SolveAllIslands: index out of range. i=%zu size=%zu", i, _islands.size());
@@ -110,7 +107,7 @@ void PhysicsManager::SolveAllIslands(float stepDt) {
         }
     }, 1);
 
-    // パス2: 大アイランド（constraintBatches あり）→ バッチ単位で並列
+    // パス2: 制約バッチあり (大規模) アイランド → バッチ単位で並列実行
     auto solveOneContact = [&](size_t batchIdx, const std::vector<int>& batchRef) {
         if (IsShuttingDown()) return;
         const int ci = batchRef[batchIdx];
@@ -154,7 +151,7 @@ void PhysicsManager::SolveAllIslands(float stepDt) {
 
     for (size_t orderIdx = 0; orderIdx < islandCount; ++orderIdx) {
         if (IsShuttingDown()) return;
-        if (orderIdx >= islandOrder.size()) continue;  // cachedOrderSize の代わりに直接チェック
+        if (orderIdx >= islandOrder.size()) continue;
         const size_t i = islandOrder[orderIdx];
         if (i >= _islands.size()) continue;
         const auto& island = _islands[i];
@@ -181,6 +178,7 @@ void PhysicsManager::SolveAllIslands(float stepDt) {
         }
     }
 
+    // 数値の正規化 (NaN/Inf の除去)
     const size_t bodyCount = _bodies.size();
     ThreadPool::Instance().ParallelForBarrier(0, bodyCount, [&](size_t idx) {
         PhysicsBody* body = _bodies[idx];
@@ -190,8 +188,7 @@ void PhysicsManager::SolveAllIslands(float stepDt) {
     }, 64);
 }
 
-// ---- PositionalCorrection -------------------------------------------
-
+// PositionalCorrection - ペネトレーション修正による位置補正
 void PhysicsManager::PositionalCorrection(float /*stepDt*/) {
     for (const auto& sc : _solverContacts) {
         if (sc.penetration <= kSlop) continue;
@@ -225,8 +222,7 @@ void PhysicsManager::PositionalCorrection(float /*stepDt*/) {
     }
 }
 
-// ---- UpdateSleepState -----------------------------------------------
-
+// UpdateSleepState - 剛体のスリープ状態を更新
 void PhysicsManager::UpdateSleepState(PhysicsBody* body, float stepDt) {
     if (!body || !body->IsDynamic()) return;
     if (body->_hasMovePositionTarget || body->_hasMoveRotationTarget) { body->WakeUp(); return; }
@@ -243,8 +239,7 @@ void PhysicsManager::UpdateSleepState(PhysicsBody* body, float stepDt) {
     if (body->_sleepTimer >= body->_sleepTimeThreshold) body->Sleep();
 }
 
-// ---- SplitImpulseCorrection -----------------------------------------
-
+// SplitImpulseCorrection - Split Impulse 手法による位置的修正
 void PhysicsManager::SplitImpulseCorrection(float /*stepDt*/) {
     const size_t bodyCount = _bodies.size();
 
@@ -261,8 +256,9 @@ void PhysicsManager::SplitImpulseCorrection(float /*stepDt*/) {
     const int    posIter    = (std::max)(_solverIterations / 2, 2);
     const size_t islandCount = _islands.size();
     for (int iter = 0; iter < posIter; ++iter) {
-        ThreadPool::Instance().ParallelForBarrierHeavy(0, islandCount, [&](size_t islandIdx) {
-            if (_islands[islandIdx].allSleeping) return;
+        // pseudoVel はボディインデックスで共有するため、アイランド間の並列書き込みを避けてシリアルに実行する
+        for (size_t islandIdx = 0; islandIdx < islandCount; ++islandIdx) {
+            if (_islands[islandIdx].allSleeping) continue;
             for (int ci : _islands[islandIdx].contactIndices) {
                 auto& sc = _solverContacts[ci];
                 if (sc.penetration <= kSlop || sc.effectiveInvMassN <= 1e-8f) continue;
@@ -277,7 +273,7 @@ void PhysicsManager::SplitImpulseCorrection(float /*stepDt*/) {
                 const float oldL = sc.splitNormalLambda;
                 sc.splitNormalLambda = (std::max)(oldL + dl, 0.0f);
                 dl = sc.splitNormalLambda - oldL;
-                if (std::fabs(dl) < 1e-8f) return;
+                if (std::fabs(dl) < 1e-8f) continue;
 
                 const VECTOR impulse = VScale(sc.normal, dl);
                 if (idxA < bodyCount && sc.invA > 0.0f)
@@ -285,9 +281,10 @@ void PhysicsManager::SplitImpulseCorrection(float /*stepDt*/) {
                 if (idxB < bodyCount && sc.invB > 0.0f)
                     pseudoVel[idxB] = VAdd(pseudoVel[idxB], VScale(impulse, sc.invB));
             }
-        }, 1);
+        }
     }
 
+    // 疑似速度ベクトルから位置を更新
     ThreadPool::Instance().ParallelForBarrier(0, bodyCount, [&](size_t idx) {
         if (LenSq(pseudoVel[idx]) < 1e-10f) return;
         PhysicsBody* body = _bodies[idx];
@@ -304,12 +301,12 @@ void PhysicsManager::SplitImpulseCorrection(float /*stepDt*/) {
     }, 64);
 }
 
-// ---- PropagateIslandSleep -------------------------------------------
+// PropagateIslandSleep - アイランド内のスリープ状態を伝播
 
 void PhysicsManager::PropagateIslandSleep() {
     const size_t islandCount = _islands.size();
     if (islandCount > 0) {
-        auto& islands = _islands;  // ローカル参照を作成
+        auto& islands = _islands;
         ThreadPool::Instance().ParallelForBarrierHeavy(0, islandCount, [&islands](size_t i) {
             auto& island = islands[i];
             bool anyAwake = false;
@@ -327,7 +324,7 @@ void PhysicsManager::PropagateIslandSleep() {
     const size_t bodyCount = _bodies.size();
     if (bodyCount > 0) {
         const float stepDt = _fixedDeltaTime;
-        auto& bodies = _bodies;  // ローカル参照を作成
+        auto& bodies = _bodies;
         ThreadPool::Instance().ParallelForBarrier(0, bodyCount, [this, &bodies, stepDt](size_t idx) {
             PhysicsBody* body = bodies[idx];
             if (!body) return;
@@ -341,13 +338,13 @@ void PhysicsManager::PropagateIslandSleep() {
     }
 }
 
-// ---- 補間 -----------------------------------------------------------
-
+// 補間 - 前フレームから現フレームへの線形補間
 float PhysicsManager::InterpolationAlpha() const noexcept {
     if (_fixedDeltaTime <= 1e-6f) return 1.0f;
     return (std::min)(_accumulator / _fixedDeltaTime, 1.0f);
 }
 
+// ComputeInterpolation - 各剛体の補間位置と回転を計算
 void PhysicsManager::ComputeInterpolation() noexcept {
     const float  alpha     = InterpolationAlpha();
     const size_t bodyCount = _bodies.size();
@@ -372,6 +369,7 @@ void PhysicsManager::ComputeInterpolation() noexcept {
     }, 64);
 }
 
+// ApplyBodyConstraints - 剛体の拘束条件を適用 (例: 回転の固定、スリープ状態の速度ゼロ化)
 void PhysicsManager::ApplyBodyConstraints(PhysicsBody* body) const {
     if (!body) return;
     if (body->_freezeRotation) body->_angularVelocity = VGet(0,0,0);

@@ -15,9 +15,10 @@
 #include "PerformanceMonitor.h"
 #include "PhysicsMonitor.h"
 
+// ライティングの初期化
 void LightingInit() {
-	SetUseZBuffer3D(TRUE);
-	SetWriteZBuffer3D(TRUE);
+	SetUseZBuffer3D(TRUE);		// Zバッファを使用する
+	SetWriteZBuffer3D(TRUE);	// Zバッファに書き込む
 }
 
 // プログラムは WinMainから始まります
@@ -61,9 +62,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	// モニター自動保存設定
 	PerformanceMonitor::Instance().EnableDetailedLogging(true);
-	PerformanceMonitor::Instance().SetAutoSaveInterval(5.0f); // 5秒ごと
+	PerformanceMonitor::Instance().SetAutoSaveInterval(5.0f);	// 5秒ごと
 	PhysicsMonitor::Instance().EnableAutoSave(true);
-	PhysicsMonitor::Instance().SetAutoSaveInterval(5.0f); // 5秒ごと
+	PhysicsMonitor::Instance().SetAutoSaveInterval(5.0f);		// 5秒ごと
 
 	constexpr double kPoolTrimIntervalSec =1.0; // プールトリム間隔（秒）
 	constexpr double kPoolMaxIdleSec =10.0;     // プール最大アイドル時間（秒）	
@@ -117,6 +118,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 		ClearDrawScreen();
 
+		// 描画カメラの適用（SceneTransition中は SceneTransition::Draw() 内で適用する）
 		{
 			int width =0, height =0;
 			GetDrawScreenSize(&width, &height);
@@ -124,6 +126,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		}
 
 		SceneTransition::Instance().Draw();
+
 
 #ifdef _DEBUG
 		{

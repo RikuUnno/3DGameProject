@@ -712,7 +712,7 @@ void ColliderManager::SpatialPartitioning() {
 					}
 
 	// --- Step 2: ナロウフェーズ判定 (Week 1-2: 並列化) ---
-	// ================================================================
+
 	//  並列化戦略:
 	//    Phase A (Parallel): 各ペアの当たり判定のみ実行。
 	//                        結果を perPairContacts[ci] / perPairHit[ci] に格納。
@@ -720,7 +720,7 @@ void ColliderManager::SpatialPartitioning() {
 	//                        を使うため共有状態への書き込みなし。
 	//    Phase B (Serial):   ヒットしたペアを _currPairs に登録し Contact をマージ。
 	//                        ResolvePushOut は Transform を書き換えるのでシリアル実行。
-	// ================================================================
+
 	{
 		const size_t numCandidates = candidates.size();
 #ifdef _DEBUG
@@ -1281,11 +1281,14 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 		}
 		// 候補が面軸で、現在のベストがエッジ軸なら、面軸を優先する。ただし、エッジ軸の方が十分に優れている場合は、エッジ軸を選ぶ。
 		if (isFaceAxis && !bestAxisIsFace) {
-			bestPen = sep;
-			bestAxisW = axisW;
-			bestAxisIsFace = true;
-			bestFaceOwner = faceOwner;
-			bestFaceIndex = faceIdx;
+			// 面軸は優先されるが、エッジ軸が面軸より大幅に小さい場合（貫通が明確に少ない）はエッジ軸を維持する
+			if (sep < bestPen * 1.1f + 0.005f) {
+				bestPen = sep;
+				bestAxisW = axisW;
+				bestAxisIsFace = true;
+				bestFaceOwner = faceOwner;
+				bestFaceIndex = faceIdx;
+			}
 			return;
 		}
 		if (sep < bestPen) {

@@ -283,9 +283,10 @@ private:
 	float _accumulator = 0.0f;
 
 public:
-	// ================================================================
+
+
 	//  Async physics mode (double-buffered)
-	// ================================================================
+
 	//  When enabled, StepSimulation runs on a background thread.
 	//  Main thread uses the previous frame's interpolated transforms
 	//  while the physics thread computes the current frame.

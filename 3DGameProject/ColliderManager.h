@@ -10,35 +10,36 @@
 #include <mutex>
 
 class ColliderManager {
-private: // ペア状態管理（※unordered_set のメンバより先に定義が必要）
-	// PairKey と PairHash の定義
+private:
+	// ペア状態管理用の構造体定義
 	struct PairKey {
 		Collider* a{};
 		Collider* b{};
 		bool operator==(const PairKey& o) const noexcept { return a == o.a && b == o.b; }
 	};
-	// ハッシュ関数
+
+	// ペアキーのハッシュ関数
 	struct PairHash {
 		std::size_t operator()(const PairKey& k) const noexcept {
 			return (reinterpret_cast<std::uintptr_t>(k.a) >>4) ^ (reinterpret_cast<std::uintptr_t>(k.b) <<1);
 		}
 	};
 
-	// ペアキー作成
+	// 衝突ペア管理: (a, b) と (b, a) を同一ペアとして扱う
 	PairKey MakeKey(Collider* a, Collider* b) const noexcept {
 		return (a < b) ? PairKey{ a,b } : PairKey{ b,a };
 	}
 
-	// イベントディスパッチ
+	// イベントディスパッチ: Enter/Stay/Exit コールバックの実行
 	void DispatchEnter(Collider* a, Collider* b);
 	void DispatchStay(Collider* a, Collider* b);
 	void DispatchExit(Collider* a, Collider* b);
 
-	// ペア管理
-	std::unordered_set<PairKey, PairHash> _prevPairs{}; // 前フレームのペア
-	std::unordered_set<PairKey, PairHash> _currPairs{}; // 今フレームのペア
+	// フレーム毎の衝突ペア追跡
+	std::unordered_set<PairKey, PairHash> _prevPairs{}; // 前フレームの衝突ペア
+	std::unordered_set<PairKey, PairHash> _currPairs{}; // 現フレームの衝突ペア
 
-	// 終了処理ガード：終了中は Update/Register/Unregister を no-op にする
+	// 終了処理ガード: true の場合 Update/Register/Unregister は no-op になる
 	std::atomic_bool _shuttingDown{ false };
 
 private:
@@ -51,117 +52,123 @@ public:
 		return instance;
 	}
 
-	// 明示的終了（main/WinMainから呼び、静的デストラクタより前に安全化する）
-	void Shutdown() noexcept; // 終了処理(Mainの最後で呼ぶ)
+	// 明示的終了処理 (Main 終了時に呼び出し、静的デストラクタより前に実行)
+	void Shutdown() noexcept;
 	bool IsShuttingDown() const noexcept { return _shuttingDown.load(std::memory_order_relaxed); }
 
 public:
-	// 更新
+	// フレーム毎の更新処理
 	void Update(float dtSec);
 
 public:
-	// デバッグ描画
-	void DrawDebugAll();
-	void DrawDebugAABBAll();
+	// デバッグ描画機能
+	void DrawDebugAll();		// コライダーの形状描画
+	void DrawDebugAABBAll();	// AABB の描画
 
 public:
-	// Colliderの登録/解除	
+	// コライダーの登録/解除
 	void RegisterCollider(Collider* collider);
 	void UnregisterCollider(Collider* collider);
 
 public:
-	// Broad Phase（現状は BuildCurrentPairs 内で使用）
+	// Broad Phase: 空間分割による粗い衝突判定
 	void SpatialPartitioning();
-	bool CheckLayerMaskCollisions(Collider* a, Collider* b);
-	bool CheckAABBCollisions(Collider* a, Collider* b);
-	bool CheckAABBCollisionsSwept(Collider* a, Collider* b);
+	bool CheckLayerMaskCollisions(Collider* a, Collider* b);	// レイヤーマスク衝突判定
+	bool CheckAABBCollisions(Collider* a, Collider* b);		// AABB 衝突判定
+	bool CheckAABBCollisionsSwept(Collider* a, Collider* b);	// Swept AABB 衝突判定 (CCD)
 
-	void CheckDetailedCollisions(); // 詳細判定
-
-private:
-	// 判定ヘルパー
-	void UpdateAllShapes();					//形状更新
-	void BuildCurrentPairs();				// ペア構築
-	void ProcessPairEvents();				// イベント処理
-	void ResolvePushOut(Collider* a, Collider* b);	// 押し戻し
-	AABB GetSweptAABB(Collider* collider) const;
+	// Narrow Phase: 詳細な衝突判定
+	void CheckDetailedCollisions();
 
 private:
-	// 各種詳細判定
-	void CheckSphereSphere(Collider* a, Collider* b);	// Sphere-Sphere 当たり判定
-	void CheckSphereBox(Collider* a, Collider* b);		// Sphere-Box(OBB) 当たり判定
-	void CheckBoxBox(Collider* a, Collider* b);			// Box-Box(OBB) 当たり判定
-	void CheckCapsuleCapsule(Collider* a, Collider* b);	// Capsule-Capsule 当たり判定
-	void CheckSphereCapsule(Collider* a, Collider* b);	// Sphere-Capsule 当たり判定
-	void CheckBoxCapsule(Collider* a, Collider* b);		// Box(OBB)-Capsule 当たり判定
+	// ブロードフェーズヘルパー関数
+	void UpdateAllShapes();		// 全コライダーの形状を更新
+	void BuildCurrentPairs();	// 現フレームの衝突ペアを構築
+	void ProcessPairEvents();	// 衝突イベント (Enter/Stay/Exit) を処理
+	void ResolvePushOut(Collider* a, Collider* b);	// 接触による押し出し処理
+	AABB GetSweptAABB(Collider* collider) const;	// スウェプト AABB を計算
 
-	// HalfPlane narrow-phase
+private:
+	// Narrow Phase: 各種詳細衝突判定
+	void CheckSphereSphere(Collider* a, Collider* b);
+	void CheckSphereBox(Collider* a, Collider* b);
+	void CheckBoxBox(Collider* a, Collider* b);
+	void CheckCapsuleCapsule(Collider* a, Collider* b);
+	void CheckSphereCapsule(Collider* a, Collider* b);
+	void CheckBoxCapsule(Collider* a, Collider* b);
+
+	// HalfPlane との衝突判定
 	void CheckSphereHalfPlane(Collider* sphere, Collider* plane);
 	void CheckBoxHalfPlane(Collider* box, Collider* plane);
 	void CheckCapsuleHalfPlane(Collider* capsule, Collider* plane);
 
-	// Compound dispatch
+	// 複合コライダー (Compound) の処理
 	void CheckCompoundVsAny(Collider* compound, Collider* other);
 
-	// 各種押し戻し処理
-	void PushOutSphereSphere(Collider* a, Collider* b);		// Sphere-Sphere 押し戻し
-	void PushOutSphereBox(Collider* a, Collider* b);		// Sphere-Box 押し戻し
-	void PushOutBoxBox(Collider* a, Collider* b); 			// Box-Box 押し戻し
-	void PushOutCapsuleCapsule(Collider* a, Collider* b); 	// Capsule-Capsule 押し戻し
-	void PushOutSphereCapsule(Collider* a, Collider* b); 	// Sphere-Capsule 押し戻し
-	void PushOutBoxCapsule(Collider* a, Collider* b); 	// Box-Capsule 押し戻し
+	// 各種押し出し処理
+	void PushOutSphereSphere(Collider* a, Collider* b);
+	void PushOutSphereBox(Collider* a, Collider* b);
+	void PushOutBoxBox(Collider* a, Collider* b);
+	void PushOutCapsuleCapsule(Collider* a, Collider* b);
+	void PushOutSphereCapsule(Collider* a, Collider* b);
+	void PushOutBoxCapsule(Collider* a, Collider* b);
 	void PushOutSphereHalfPlane(Collider* sphere, Collider* plane);
 	void PushOutBoxHalfPlane(Collider* box, Collider* plane);
 	void PushOutCapsuleHalfPlane(Collider* capsule, Collider* plane);
 
 public:
-	// 空間分割セルサイズ（ワールド単位）。デフォルト:4
+	// 空間分割セルサイズ設定 (ワールド単位、デフォルト: 4)
 	float GetCellSize() const noexcept { return _cellSize; }
-	void SetCellSize(float cellSize) noexcept { _cellSize = (cellSize >0.01f) ? cellSize :0.01f; }
+	void SetCellSize(float cellSize) noexcept { _cellSize = (cellSize > 0.01f) ? cellSize : 0.01f; }
 
-	// Adaptive cell size: auto-compute based on average collider extent
+	// 適応的セルサイズ: コライダーの平均サイズから自動計算
 	void SetAdaptiveCellSize(bool enabled) noexcept { _adaptiveCellSize = enabled; }
 	bool IsAdaptiveCellSize() const noexcept { return _adaptiveCellSize; }
 
-	// Contact情報（Physics 用）
+	// Contact 情報 (Physics エンジン用)
 	struct Contact {
-		Collider* a = nullptr; // contact normal は a -> b
-		Collider* b = nullptr;
-		VECTOR normal = VGet(0,0,0);
-		VECTOR point  = VGet(0,0,0); // ワールド空間の接触点
-		float penetration = 0.0f;
+		Collider* a = nullptr;			// 接触相手 a (法線方向: a → b)
+		Collider* b = nullptr;			// 接触相手 b
+		VECTOR normal = VGet(0,0,0);	// 接触法線ベクトル
+		VECTOR point  = VGet(0,0,0);	// ワールド座標系での接触点
+		float penetration = 0.0f;		// ペネトレーション深度
 	};
 
 	const std::vector<Contact>& GetContacts() const noexcept { return _contacts; }
 
-	// 登録コライダー一覧の取得（Raycast 等で使用）
+	// 登録済みコライダー一覧 (Raycast 等で使用)
 	const std::vector<Collider*>& GetColliders() const noexcept { return _colliders; }
 
-	// Find first collider owned by the given GameObject (for inertia computation etc.)
+	// 指定した GameObject が所有するコライダーを検索
 	Collider* FindColliderByOwner(GameObject* owner) const noexcept;
 
 private:
-	// 空間分割（Spatial Hash）セルサイズ
-	float _cellSize = 4.0f;
-	bool _adaptiveCellSize = true;
-	float _deltaTimeSec = 1.0f / 60.0f;
+	// 空間分割 (Spatial Hash) 設定
+	float _cellSize = 4.0f;				// セルサイズ (ワールド座標)
+	bool _adaptiveCellSize = true;		// 適応的なセルサイズ調整の有効化
+	float _deltaTimeSec = 1.0f / 60.0f;	// デルタタイム
 
+	// 登録されているコライダーの平均サイズから適応的なセルサイズを計算
 	void ComputeAdaptiveCellSize();
 
-	mutable std::mutex _mtx;							// スレッド安全用ミューテックス
-	std::vector<Collider*> _colliders{}; 	// 登録コライダー群
-	bool _narrowHit = false; 			// 詳細判定結果 (serial fallback)
-	std::vector<Contact> _contacts; // 今フレームの接触情報
-	std::unordered_map<Collider*, AABB> _prevAABBs; // 前フレームのAABB（CCD用）
+	mutable std::mutex _mtx;	// スレッド安全用ミューテックス
 
-	// ================================================================
-	//  SpatialPartitioning 永続バッファ（毎フレームの heap 確保を抑制）
-	//  毎フレーム clear()/resize() のみ行い、capacity は保持する。
-	// ================================================================
+	// コライダー管理
+	std::vector<Collider*> _colliders{};			// 登録されているコライダー
+	bool _narrowHit = false;						// 詳細判定結果フラグ (シリアルフォールバック用)
+	std::vector<Contact> _contacts;					// 現フレームの接触情報
+	std::unordered_map<Collider*, AABB> _prevAABBs; // 前フレームの AABB (CCD 用)
+
+	// SpatialPartitioning 用バッファ
+	// 毎フレームの動的メモリ確保を回避するための永続バッファ群
+	// 各フレーム clear() または resize() で再利用
+	// 空間分割セルのキー (整数座標)
 	struct CellKey {
 		int x{}, y{}, z{};
 		bool operator==(const CellKey& o) const noexcept { return x == o.x && y == o.y && z == o.z; }
 	};
+
+	// CellKey のハッシュ関数
 	struct CellHash {
 		size_t operator()(const CellKey& k) const noexcept {
 			size_t h = 1469598103934665603ull;
@@ -171,29 +178,29 @@ private:
 			return h;
 		}
 	};
-	struct CellEntry { CellKey key; int colliderIdx; };
-	struct CandidatePair { int a; int b; };
 
-	std::vector<Collider*>                               _snapshotBuf;       // UpdateAllShapes 用
-	std::vector<Collider*>                               _activeBuf;         // フィルタ済みコライダ
-	std::vector<AABB>                                    _sweptAABBsBuf;     // swept AABB
-	std::vector<std::vector<CellEntry>>                  _perColliderCellsBuf; // セル分解結果
-	std::unordered_map<CellKey, std::vector<int>, CellHash> _gridBuf;        // 空間グリッド
-	std::vector<CandidatePair>                           _candidatesBuf;     // broad-phase 候補ペア
-	std::vector<uint64_t>                                _seenPairsBuf;      // 重複除去用
-	std::vector<uint8_t>                                 _perPairHitBuf;     // narrow-phase ヒット結果（uint8_t: vector<bool>の並列書き込み競合を回避）
-	std::vector<std::vector<Contact>>                    _perPairContactsBuf; // narrow-phase 接触点
+	struct CellEntry { CellKey key; int colliderIdx; };	// セル分解結果エントリ (セルキー + コライダーインデックス)
+	struct CandidatePair { int a; int b; };				// 候補ペア (コライダーインデックス a, b)
 
-	// ================================================================
-	//  Week 1-2: Narrow Phase Parallelization
-	// ================================================================
-	// During parallel narrow phase each CheckXxx writes to _tlNarrowHit/_tlContactOut.
-	// Serial mode: _tlContactOut == nullptr -> EmitContact falls back to _contacts.
-	static thread_local bool                  _tlNarrowHit;
-	static thread_local std::vector<Contact>* _tlContactOut; // nullptr = serial mode
+	// 空間分割用バッファ群
+	std::vector<Collider*>                               _snapshotBuf;			// 形状更新用
+	std::vector<Collider*>                               _activeBuf;			// フィルタリング済みコライダー
+	std::vector<AABB>                                    _sweptAABBsBuf;		// スウェプト AABB
+	std::vector<std::vector<CellEntry>>                  _perColliderCellsBuf;	// セル分解結果
+	std::unordered_map<CellKey, std::vector<int>, CellHash> _gridBuf;			// 空間グリッド
+	std::vector<CandidatePair>                           _candidatesBuf;		// 候補ペア
+	std::vector<uint64_t>                                _seenPairsBuf;			// 重複排除用
+	std::vector<uint8_t>                                 _perPairHitBuf;		// ナロープレイズ判定結果 (vector<bool> の並列競合回避)
+	std::vector<std::vector<Contact>>                    _perPairContactsBuf;	// ナロープレイズ接触点群
 
-	// Output helper used by ALL CheckXxx functions.
-	// Replaces direct _contacts.push_back() calls to support both serial and parallel modes.
+
+	// Narrow Phase 並列化用スレッドローカル変数
+
+	// 並列処理中の各スレッドが独立した判定結果を出力
+	static thread_local bool                  _tlNarrowHit;			// 判定フラグ
+	static thread_local std::vector<Contact>* _tlContactOut;			// 接触点出力バッファ (nullptr = シリアルモード)
+
+	// 接触情報を出力 (シリアル/並列両対応)
 	inline void EmitContact(const Contact& ct) {
 		if (_tlContactOut) _tlContactOut->push_back(ct);
 		else               _contacts.push_back(ct);

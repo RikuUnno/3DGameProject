@@ -90,6 +90,7 @@ void MenuScene::Start() {
 	g_debugHat = dynamic_cast<DebugHat*>(ObjectManager::Instance().Spawn("DebugHat"));
 	g_debugGround = dynamic_cast<DebugGround*>(ObjectManager::Instance().Spawn("DebugGround"));
 
+	// グリッド(0)の前方に Player と Enemy を置く
 	if (g_debugPlayer) g_debugPlayer->transform.SetLocalPosition(VGet(-1.5f,1.0f,2.0f));
 	if (g_debugEnemy) g_debugEnemy->transform.SetLocalPosition(VGet(1.5f,1.0f,2.0f));
 

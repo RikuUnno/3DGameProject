@@ -521,9 +521,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Assert.h">
-      <Filter>ヘッダー ファイル\System\Assert</Filter>
-    </ClInclude>
     <ClInclude Include="Info.h">
       <Filter>ヘッダー ファイル\Info</Filter>
     </ClInclude>
@@ -702,6 +699,9 @@
       <Filter>ヘッダー ファイル\System\Collision\DynamicAABBTree</Filter>
     </ClInclude>
     <ClInclude Include="PhysicsCcd.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="3DGameProject\Assert.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
   </ItemGroup>

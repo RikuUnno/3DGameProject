@@ -345,6 +345,11 @@
     </Filter>
     <Filter Include="ソース ファイル\System\Collision\Primitive\HalfPlane">
       <UniqueIdentifier>{19a16c6b-03f6-4fb9-88df-91b425564725}</UniqueIdentifier>
+    </Filter>    <Filter Include="ヘッダー ファイル\System\Collision\Primitive\Mesh">
+      <UniqueIdentifier>{8a2b1c4d-1111-4aaa-9bbb-111122223333}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Collision\Primitive\Mesh">
+      <UniqueIdentifier>{8a2b1c4d-2222-4aaa-9bbb-444455556666}</UniqueIdentifier>
     </Filter>
     <Filter Include="ヘッダー ファイル\System\Monitor">
       <UniqueIdentifier>{4dfb5f6f-de3b-47c1-bec8-a76560933f19}</UniqueIdentifier>
@@ -482,6 +487,9 @@
     </ClCompile>
     <ClCompile Include="HalfPlaneCollider.cpp">
       <Filter>ソース ファイル\System\Collision\Primitive\HalfPlane</Filter>
+    </ClCompile>
+    <ClCompile Include="MeshCollider.cpp">
+      <Filter>ソース ファイル\System\Collision\Primitive\Mesh</Filter>
     </ClCompile>
     <ClCompile Include="PhysicsScene.cpp">
       <Filter>ソース ファイル\Scene\Scenes\Debug\Physics</Filter>
@@ -673,6 +681,9 @@
     </ClInclude>
     <ClInclude Include="HalfPlaneCollider.h">
       <Filter>ヘッダー ファイル\System\Collision\Primitive\HalfPlane</Filter>
+    </ClInclude>
+    <ClInclude Include="MeshCollider.h">
+      <Filter>ヘッダー ファイル\System\Collision\Primitive\Mesh</Filter>
     </ClInclude>
     <ClInclude Include="CompoundCollider.h">
       <Filter>ヘッダー ファイル\System\Collision\Primitive\Compound</Filter>

@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 
 #include <cstddef>
 #include <future>
@@ -17,17 +17,17 @@
 #include <intrin.h>
 #endif
 
-// •¨—‰‰ZEÕ“Ë”»’è‚È‚Ç‚Ì‚•p“x‚È•À—ñ for ƒ‹[ƒv‚ÉÅ“K‰»‚³‚ê‚½ƒXƒŒƒbƒhƒv[ƒ‹B
+// ç‰©ç†æ¼”ç®—ãƒ»è¡çªåˆ¤å®šãªã©ã®é«˜é »åº¦ãªä¸¦åˆ— for ãƒ«ãƒ¼ãƒ—ã«æœ€é©åŒ–ã•ã‚ŒãŸã‚¹ãƒ¬ãƒƒãƒ‰ãƒ—ãƒ¼ãƒ«ã€‚
 //
-// İŒv•ûj:
-//   - Lock-free ‚ÈƒWƒ‡ƒuŒöŠJ (_jobGen ‚Ì release/acquire “¯Šú)
-//   - ƒ[ƒJ[‚Í’ZŠúƒXƒsƒ“Œã‚É atomic wait ‚ÖˆÚsi˜A‘±ƒoƒŠƒAŒÄ‚Ño‚µ‚Å’á’x‰„j
-//   - False Sharing ‰ñ”ğ: •p”É‚ÉXV‚·‚é atomic •Ï”‚ğ 64B ‹«ŠE‚É”z’u
-//   - ƒoƒŠƒAƒpƒX‚Åƒq[ƒvŠ„‚è“–‚Äƒ[ƒ
+// è¨­è¨ˆæ–¹é‡:
+//   - Lock-free ãªã‚¸ãƒ§ãƒ–å…¬é–‹ (_jobGen ã® release/acquire åŒæœŸ)
+//   - ãƒ¯ãƒ¼ã‚«ãƒ¼ã¯çŸ­æœŸã‚¹ãƒ”ãƒ³å¾Œã« atomic wait ã¸ç§»è¡Œï¼ˆé€£ç¶šãƒãƒªã‚¢å‘¼ã³å‡ºã—ã§ä½é…å»¶ï¼‰
+//   - False Sharing å›é¿: é »ç¹ã«æ›´æ–°ã™ã‚‹ atomic å¤‰æ•°ã‚’ 64B å¢ƒç•Œã«é…ç½®
+//   - ãƒãƒªã‚¢ãƒ‘ã‚¹ã§ãƒ’ãƒ¼ãƒ—å‰²ã‚Šå½“ã¦ã‚¼ãƒ­
 //
 class ThreadPool {
 public:
-    // ƒVƒ“ƒOƒ‹ƒgƒ“
+    // ã‚·ãƒ³ã‚°ãƒ«ãƒˆãƒ³
     static ThreadPool& Instance() noexcept {
         static ThreadPool inst;
         return inst;
@@ -57,8 +57,8 @@ public:
     }
 
     // ---- Enqueue -------------------------------------------------------
-    // std::function ‚Í CopyConstructible ‚ğ—v‹‚·‚é‚½‚ß packaged_task ‚ğ’¼ÚŠi”[‚Å‚«‚È‚¢B
-    // unique_ptr ƒx[ƒX‚ÌŒ^Á‹ (MoveOnlyTask) ‚Å move-only ‚Èƒ^ƒXƒN‚ğƒLƒ…[‚ÉŠi”[‚·‚éB
+    // std::function ã¯ CopyConstructible ã‚’è¦æ±‚ã™ã‚‹ãŸã‚ packaged_task ã‚’ç›´æ¥æ ¼ç´ã§ããªã„ã€‚
+    // unique_ptr ãƒ™ãƒ¼ã‚¹ã®å‹æ¶ˆå» (MoveOnlyTask) ã§ move-only ãªã‚¿ã‚¹ã‚¯ã‚’ã‚­ãƒ¥ãƒ¼ã«æ ¼ç´ã™ã‚‹ã€‚
 
     struct ITask { virtual void invoke() = 0; virtual ~ITask() = default; };
 
@@ -74,8 +74,8 @@ public:
         void operator()() { ptr->invoke(); }
     };
 
-    // ƒ^ƒXƒN‚ğƒLƒ…[‚É“Š“ü‚µAƒ[ƒJ[ƒXƒŒƒbƒh‚Å”ñ“¯ŠúÀs‚·‚éB
-    // –ß‚è’l‚Ì std::future ‚ÅŒ‹‰Ê‚ğó‚¯æ‚ê‚éB
+    // ã‚¿ã‚¹ã‚¯ã‚’ã‚­ãƒ¥ãƒ¼ã«æŠ•å…¥ã—ã€ãƒ¯ãƒ¼ã‚«ãƒ¼ã‚¹ãƒ¬ãƒƒãƒ‰ã§éåŒæœŸå®Ÿè¡Œã™ã‚‹ã€‚
+    // æˆ»ã‚Šå€¤ã® std::future ã§çµæœã‚’å—ã‘å–ã‚Œã‚‹ã€‚
     template<typename F>
     auto Enqueue(F&& f) -> std::future<std::invoke_result_t<F>> {
         using R  = std::invoke_result_t<F>;
@@ -92,7 +92,7 @@ public:
         return result;
     }
 
-    // ---- ParallelFor (ParallelForBarrier ‚Ö‚ÌƒGƒCƒŠƒAƒX) ----------------
+    // ---- ParallelFor (ParallelForBarrier ã¸ã®ã‚¨ã‚¤ãƒªã‚¢ã‚¹) ----------------
 
     template<typename Func>
     void ParallelFor(size_t begin, size_t end, Func&& func, size_t grainSize = 1) {
@@ -105,9 +105,9 @@ public:
     }
 
     // ---- ParallelForBarrier --------------------------------------------
-    // [begin, end) ‚ğ•À—ñÀs‚µA‘Sƒ[ƒJ[Š®—¹‚Ü‚ÅŒÄ‚Ño‚µŒ³‚ğƒuƒƒbƒN‚·‚éB
-    // ƒoƒŠƒAÀs’†‚ÉÄ“ü‚µ‚½ê‡‚ÍƒVƒŠƒAƒ‹Às‚ÉƒtƒH[ƒ‹ƒoƒbƒN‚·‚éB
-    // count < 32 ‚Ìê‡‚àƒVƒŠƒAƒ‹ÀsB
+    // [begin, end) ã‚’ä¸¦åˆ—å®Ÿè¡Œã—ã€å…¨ãƒ¯ãƒ¼ã‚«ãƒ¼å®Œäº†ã¾ã§å‘¼ã³å‡ºã—å…ƒã‚’ãƒ–ãƒ­ãƒƒã‚¯ã™ã‚‹ã€‚
+    // ãƒãƒªã‚¢å®Ÿè¡Œä¸­ã«å†å…¥ã—ãŸå ´åˆã¯ã‚·ãƒªã‚¢ãƒ«å®Ÿè¡Œã«ãƒ•ã‚©ãƒ¼ãƒ«ãƒãƒƒã‚¯ã™ã‚‹ã€‚
+    // count < 32 ã®å ´åˆã‚‚ã‚·ãƒªã‚¢ãƒ«å®Ÿè¡Œã€‚
 
     template<typename Func>
     void ParallelForBarrier(size_t begin, size_t end, Func&& func, size_t grainSize = 1) {
@@ -125,7 +125,7 @@ public:
         DispatchParallel_(begin, end, std::forward<Func>(func), grainSize, _workers.size(), kDefaultMinParallel);
     }
 
-    // maxWorkers: g—p‚·‚éƒ[ƒJ[”‚ÌãŒÀ (0 = §ŒÀ‚È‚µ)
+    // maxWorkers: ä½¿ç”¨ã™ã‚‹ãƒ¯ãƒ¼ã‚«ãƒ¼æ•°ã®ä¸Šé™ (0 = åˆ¶é™ãªã—)
     template<typename Func>
     void ParallelForBarrier(size_t begin, size_t end, Func&& func, size_t grainSize, size_t maxWorkers) {
         if (_barrierActive.test_and_set(std::memory_order_acquire)) {
@@ -145,8 +145,8 @@ public:
     }
 
     // ---- ParallelForBarrierHeavy ---------------------------------------
-    // 1ƒAƒCƒeƒ€‚ÌƒRƒXƒg‚ª‘å‚«‚¢ê‡ê—pBkDefaultMinParallel(32) ‚ğ–³‹‚µ
-    // ƒAƒCƒeƒ€” >= 2 ‚Å•À—ñ‰»‚·‚éiƒAƒCƒ‰ƒ“ƒhƒ\ƒ‹ƒo[“™jB
+    // 1ã‚¢ã‚¤ãƒ†ãƒ ã®ã‚³ã‚¹ãƒˆãŒå¤§ãã„å ´åˆå°‚ç”¨ã€‚kDefaultMinParallel(32) ã‚’ç„¡è¦–ã—
+    // ã‚¢ã‚¤ãƒ†ãƒ æ•° >= 2 ã§ä¸¦åˆ—åŒ–ã™ã‚‹ï¼ˆã‚¢ã‚¤ãƒ©ãƒ³ãƒ‰ã‚½ãƒ«ãƒãƒ¼ç­‰ï¼‰ã€‚
 
     template<typename Func>
     void ParallelForBarrierHeavy(size_t begin, size_t end, Func&& func, size_t grainSize = 1) {
@@ -178,15 +178,37 @@ public:
     ThreadPool& operator=(const ThreadPool&) = delete;
 
 private:
-    // Œy—Êˆ—‚ÅƒI[ƒo[ƒwƒbƒh > Œø‰Ê‚É‚È‚é•À—ñ‰»‚ÌÅ¬ƒAƒCƒeƒ€”
-    static constexpr size_t kDefaultMinParallel  = 32;
-    // ƒ[ƒJ[‚Ì’ZŠúƒXƒsƒ“‰ñ”iƒtƒŒ[ƒ€“à˜A‘±ƒoƒŠƒA‚É‘¦‰‚·‚é‚½‚ßj
-    static constexpr int    kWorkerSpinLimit     = 256;
-    // Š®—¹‘Ò‹@ƒXƒsƒ“‰ñ”iatomic wait ˆÚs‘Oj
-    static constexpr int    kCompletionSpinLimit = 128;
+    // è»½é‡å‡¦ç†ã§ã‚ªãƒ¼ãƒãƒ¼ãƒ˜ãƒƒãƒ‰ > åŠ¹æœã«ãªã‚‹ä¸¦åˆ—åŒ–ã®æœ€å°ã‚¢ã‚¤ãƒ†ãƒ æ•°
+    // 32 ä»¥ä¸Šã ã¨å‹•çš„ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆæ•°ãŒ ~30ã€œ90 ã®é€šå¸¸ã‚±ãƒ¼ã‚¹ã§ Collider ç³»ã®
+    // ParallelFor ãŒå…¨ã¦ãƒ¡ã‚¤ãƒ³ã‚¹ãƒ¬ãƒƒãƒ‰ã§ç›´åˆ—å®Ÿè¡Œã•ã‚Œã¦ã—ã¾ã„ã€Worker ãŒ
+    // AtomicWait ã®ã¾ã¾éŠã‚“ã§ã—ã¾ã†ãŸã‚ 8 ã¾ã§ä¸‹ã’ã‚‹ã€‚
+    static constexpr size_t kDefaultMinParallel  = 8;
+    // ãƒ¯ãƒ¼ã‚«ãƒ¼ã®çŸ­æœŸã‚¹ãƒ”ãƒ³å›æ•°ï¼ˆãƒ•ãƒ¬ãƒ¼ãƒ å†…é€£ç¶šãƒãƒªã‚¢ã«å³å¿œã™ã‚‹ãŸã‚ï¼‰
+    static constexpr int    kWorkerSpinLimit     = 1024;
+    // å®Œäº†å¾…æ©Ÿã‚¹ãƒ”ãƒ³å›æ•°ï¼ˆatomic wait ç§»è¡Œå‰ï¼‰
+    // CvWait ã«è½ã¡ã‚‹ã¨ OS futex ã®èµ·åºŠã‚³ã‚¹ãƒˆãŒ ~100us å˜ä½ã§ä¹—ã‚‹ãŸã‚ã€
+    // ç´°ã‹ã„ãƒãƒªã‚¢ãŒé€£ç¶šã™ã‚‹ãƒ•ãƒ¬ãƒ¼ãƒ ã§ã¯ååˆ†é•·ãã‚¹ãƒ”ãƒ³ã—ãŸã»ã†ãŒå®‰ã„ã€‚
+    static constexpr int    kCompletionSpinLimit = 2048;
+
+    // ---- DrainActiveWorkers_ -------------------------------------------
+    // ç›´å‰ã‚¸ãƒ§ãƒ–ã§ ProcessChunks_ ã«å…¥ã£ãŸã¾ã¾æ®‹ã£ã¦ã„ã‚‹ãƒ¯ãƒ¼ã‚«ãƒ¼ãŒå…¨å“¡é€€å‡ºã™ã‚‹ã¾ã§å¾…ã¤ã€‚
+    // _job ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ï¼ˆnextChunk / invoker / ctx ç­‰ï¼‰ã‚’æ–°ã‚¸ãƒ§ãƒ–å‘ã‘ã«æ›¸ãæ›ãˆã‚‹å‰ã«
+    // å¿…ãšå‘¼ã¶ã“ã¨ã€‚ã“ã‚Œã«ã‚ˆã‚Š
+    //   (a) ãƒ¯ãƒ¼ã‚«ãƒ¼ãŒã€Œgen ãƒã‚§ãƒƒã‚¯åˆæ ¼ â†’ fetch_add nextChunkã€ã®é–“ã« preempt ã•ã‚Œã€
+    //       æ–°ã‚¸ãƒ§ãƒ–ãŒ nextChunk=0 ã«æ›¸ãæ›ãˆã¦ã—ã¾ã„ã€ãƒ¯ãƒ¼ã‚«ãƒ¼ãŒå¤ã„ invoker/ctx ã§
+    //       æ–°ã‚¸ãƒ§ãƒ–ã® chunk 0 ã‚’å®Ÿè¡Œã—ã¦ã—ã¾ã† Use-After-Free ã‚’é˜²ãã€‚
+    //   (b) å¤ã„ã‚¸ãƒ§ãƒ–å´ _job.chunksCompleted ã¸ã®é…å»¶æ›¸ãè¾¼ã¿ã§æ–°ã‚¸ãƒ§ãƒ–ã®ã‚«ã‚¦ãƒ³ã‚¿ãŒ
+    //       æ±šæŸ“ã•ã‚Œã‚‹ã®ã‚‚é˜²ãã€‚
+    void DrainActiveWorkers_() noexcept {
+        while (_activeWorkers.load(std::memory_order_acquire) != 0) {
+#if defined(_MSC_VER)
+            _mm_pause();
+#endif
+        }
+    }
 
     // ---- DispatchParallel_ ---------------------------------------------
-    // ParallelForBarrier* ‚Ì‹¤’ÊÀ‘•Bwc = g—pƒ[ƒJ[”AminCount = •À—ñ‰»Å¬”B
+    // ParallelForBarrier* ã®å…±é€šå®Ÿè£…ã€‚wc = ä½¿ç”¨ãƒ¯ãƒ¼ã‚«ãƒ¼æ•°ã€minCount = ä¸¦åˆ—åŒ–æœ€å°æ•°ã€‚
 
     template<typename Func>
     void DispatchParallel_(size_t begin, size_t end, Func&& func,
@@ -206,6 +228,12 @@ private:
         using Invoker = void(*)(size_t, void*);
         Invoker invoker = [](size_t i, void* ctx) { (*static_cast<FuncT*>(ctx))(i); };
 
+        // é‡è¦: å‰ã‚¸ãƒ§ãƒ–ã§ ProcessChunks_ ã«ã¾ã å±…ã‚‹ãƒ¯ãƒ¼ã‚«ãƒ¼ãŒã„ã‚‹å ´åˆã€
+        // ã“ã“ã§ _job ã‚’æ›¸ãæ›ãˆã‚‹ã¨å¤ã„ snapshot ã®ãƒ¯ãƒ¼ã‚«ãƒ¼ãŒ
+        // æ–°ã‚¸ãƒ§ãƒ–ã® nextChunk ã‚’ fetch_add ã—ã¦å¤ã„ invoker/ctx ã§å®Ÿè¡Œã—ã¦ã—ã¾ã†ã€‚
+        // å¿…ãšãƒ‰ãƒ¬ã‚¤ãƒ³ã—ã¦ã‹ã‚‰ _job ã‚’æ§‹ç¯‰ã™ã‚‹ã€‚
+        DrainActiveWorkers_();
+
         _job.begin     = begin;
         _job.end       = end;
         _job.chunkSize = cs;
@@ -223,12 +251,12 @@ private:
 
         const int target = static_cast<int>(nc);
 
-        // Å‘¬ƒpƒX: ProcessChunks_ ‚ÅƒƒCƒ“‚ª‘Sƒ`ƒƒƒ“ƒN‚ğˆ—Ï‚İ‚È‚ç‘¦ƒŠƒ^[ƒ“
+        // æœ€é€Ÿãƒ‘ã‚¹: ProcessChunks_ ã§ãƒ¡ã‚¤ãƒ³ãŒå…¨ãƒãƒ£ãƒ³ã‚¯ã‚’å‡¦ç†æ¸ˆã¿ãªã‚‰å³ãƒªã‚¿ãƒ¼ãƒ³
         if (_job.chunksCompleted.load(std::memory_order_acquire) >= target) {
             _jobGen.fetch_add(1, std::memory_order_release); return;
         }
 
-        // ƒXƒsƒ“‘Ò‹@
+        // ã‚¹ãƒ”ãƒ³å¾…æ©Ÿ
 #ifdef _DEBUG
         {
             auto _s = PerformanceMonitor::Instance().Scope("ThreadPool.Barrier.SpinWait");
@@ -270,8 +298,8 @@ private:
     }
 
     // ---- JobDesc -------------------------------------------------------
-    // ƒoƒŠƒAƒWƒ‡ƒu‚Ì‹LqqBnextChunk ‚Æ chunksCompleted ‚Í•ÊƒLƒƒƒbƒVƒ…ƒ‰ƒCƒ“‚É”z’u‚µ‚Ä
-    // •¡”ƒXƒŒƒbƒh‚©‚ç‚Ì‘‚«‚İ‚É‚æ‚é False Sharing ‚ğ–h‚®B
+    // ãƒãƒªã‚¢ã‚¸ãƒ§ãƒ–ã®è¨˜è¿°å­ã€‚nextChunk ã¨ chunksCompleted ã¯åˆ¥ã‚­ãƒ£ãƒƒã‚·ãƒ¥ãƒ©ã‚¤ãƒ³ã«é…ç½®ã—ã¦
+    // è¤‡æ•°ã‚¹ãƒ¬ãƒƒãƒ‰ã‹ã‚‰ã®æ›¸ãè¾¼ã¿ã«ã‚ˆã‚‹ False Sharing ã‚’é˜²ãã€‚
 
     struct JobDesc {
         size_t begin   = 0;
@@ -281,24 +309,36 @@ private:
         void (*invoker)(size_t, void*) = nullptr;
         void*  ctx = nullptr;
 
-        alignas(64) std::atomic<int> nextChunk{ 0 };      // ƒ[ƒJ[‚ª fetch_add ‚Åæ“¾
-        alignas(64) std::atomic<int> chunksCompleted{ 0 }; // Š®—¹‘Ò‹@‚Ég—p
+        alignas(64) std::atomic<int> nextChunk{ 0 };      // ãƒ¯ãƒ¼ã‚«ãƒ¼ãŒ fetch_add ã§å–å¾—
+        alignas(64) std::atomic<int> chunksCompleted{ 0 }; // å®Œäº†å¾…æ©Ÿã«ä½¿ç”¨
     };
 
-    // ---- “à•”ó‘Ôi64B ‹«ŠEƒAƒ‰ƒCƒ“AFalse Sharing ‰ñ”ğj---------------
+    // ---- å†…éƒ¨çŠ¶æ…‹ï¼ˆ64B å¢ƒç•Œã‚¢ãƒ©ã‚¤ãƒ³ã€False Sharing å›é¿ï¼‰---------------
 
     alignas(64) JobDesc                  _job;
-    alignas(64) std::atomic<uint64_t>    _jobGen{ 0 };    // ƒWƒ‡ƒu¢‘ãiŠï”=Às’†j
-    alignas(64) std::atomic<uint64_t>    _wakeGen{ 0 };   // ƒ[ƒJ[‹N°ƒJƒEƒ“ƒ^
+    alignas(64) std::atomic<uint64_t>    _jobGen{ 0 };    // ã‚¸ãƒ§ãƒ–ä¸–ä»£ï¼ˆå¥‡æ•°=å®Ÿè¡Œä¸­ï¼‰
+    alignas(64) std::atomic<uint64_t>    _wakeGen{ 0 };   // ãƒ¯ãƒ¼ã‚«ãƒ¼èµ·åºŠã‚«ã‚¦ãƒ³ã‚¿
     alignas(64) std::atomic<bool>        _stop{ false };
+    // ProcessChunks_ ã«ç¾åœ¨å…¥ã£ã¦ã„ã‚‹ã‚¹ãƒ¬ãƒƒãƒ‰æ•°ã€‚
+    // æ¬¡ã‚¸ãƒ§ãƒ–ã® _job æ›¸ãæ›ãˆå‰ã«ã“ã‚ŒãŒ 0 ã«ãªã‚‹ã®ã‚’å¾…ã¤ã“ã¨ã§ Use-After-Free ã‚’é˜²ãã€‚
+    alignas(64) std::atomic<int>         _activeWorkers{ 0 };
 
-    std::atomic_flag _barrierActive = ATOMIC_FLAG_INIT;   // ƒoƒŠƒAÄ“ü–h~
+    std::atomic_flag _barrierActive = ATOMIC_FLAG_INIT;   // ãƒãƒªã‚¢å†å…¥é˜²æ­¢
 
     // ---- ProcessChunks_ ------------------------------------------------
-    // ƒ[ƒJ[‚ÆƒƒCƒ“‚ª•À—ñ‚ÉŒÄ‚Ño‚·ƒ`ƒƒƒ“ƒNÀsƒ‹[ƒvB
-    // jobGenSnapshot ‚ª•Ï‚í‚Á‚½“_‚Å‘¦ breakiŸƒWƒ‡ƒu‚Æ‚Ì¬ü–h~jB
+    // ãƒ¯ãƒ¼ã‚«ãƒ¼ã¨ãƒ¡ã‚¤ãƒ³ãŒä¸¦åˆ—ã«å‘¼ã³å‡ºã™ãƒãƒ£ãƒ³ã‚¯å®Ÿè¡Œãƒ«ãƒ¼ãƒ—ã€‚
+    // jobGenSnapshot ãŒå¤‰ã‚ã£ãŸæ™‚ç‚¹ã§å³ breakï¼ˆæ¬¡ã‚¸ãƒ§ãƒ–ã¨ã®æ··ç·šé˜²æ­¢ï¼‰ã€‚
+    //
+    // å…¥é€€å ´ã§ _activeWorkers ã‚’ã‚«ã‚¦ãƒ³ãƒˆã™ã‚‹ã“ã¨ã§ã€æ¬¡ã‚¸ãƒ§ãƒ–å´ DispatchParallel_ ãŒ
+    // _job ã‚’æ›¸ãæ›ãˆã‚‹å‰ã«å¤ã„ snapshot ã®ã‚¹ãƒ¬ãƒƒãƒ‰ãŒå®Œå…¨ã«æŠœã‘ã‚‹ã®ã‚’å¾…ã¦ã‚‹ã‚ˆã†ã«ã™ã‚‹ã€‚
 
     void ProcessChunks_(uint64_t jobGenSnapshot) noexcept {
+        _activeWorkers.fetch_add(1, std::memory_order_acquire);
+        struct Exit {
+            std::atomic<int>& aw;
+            ~Exit() { aw.fetch_sub(1, std::memory_order_release); }
+        } exitGuard{ _activeWorkers };
+
         auto inv         = _job.invoker;
         void*  ctx       = _job.ctx;
         const size_t beg = _job.begin;
@@ -312,6 +352,11 @@ private:
             const int c = _job.nextChunk.fetch_add(1, std::memory_order_relaxed);
             if (c >= nc) break;
 
+            // è¿½åŠ ãƒã‚§ãƒƒã‚¯: fetch_add å¾Œã« gen ãŒå¤‰ã‚ã£ã¦ã„ãŸã‚‰æ–°ã‚¸ãƒ§ãƒ–ã® nextChunk ã‚’
+            // è§¦ã£ã¦ã—ã¾ã£ã¦ã„ã‚‹å¯èƒ½æ€§ãŒã‚ã‚‹ãŸã‚ã€å¿µã®ãŸã‚ã“ã“ã§ break ã™ã‚‹ã€‚
+            // ï¼ˆDrainActiveWorkers_ ã«ã‚ˆã‚Šæœ¬æ¥ã“ã®çŠ¶æ³ã¯èµ·ããªã„ãŒã€äºŒé‡é˜²è­·ã¨ã—ã¦æ®‹ã™ï¼‰
+            if (_jobGen.load(std::memory_order_acquire) != jobGenSnapshot) break;
+
             const size_t lo = beg + static_cast<size_t>(c) * csz;
             const size_t hi = (std::min)(lo + csz, end);
             for (size_t i = lo; i < hi; ++i) inv(i, ctx);
@@ -322,16 +367,16 @@ private:
     }
 
     // ---- WorkerLoop_ ---------------------------------------------------
-    // ƒ[ƒJ[ƒXƒŒƒbƒh‚ÌƒƒCƒ“ƒ‹[ƒvB
+    // ãƒ¯ãƒ¼ã‚«ãƒ¼ã‚¹ãƒ¬ãƒƒãƒ‰ã®ãƒ¡ã‚¤ãƒ³ãƒ«ãƒ¼ãƒ—ã€‚
     //
-    // Phase 1i’ZŠúƒXƒsƒ“j: ˜A‘±ƒoƒŠƒAŒÄ‚Ño‚µ‚Ì’x‰„‚ğÅ¬‰»
-    // Phase 2iatomic waitj: ’·ŠÔƒAƒCƒhƒ‹‚Í OS ‚É§Œä‚ğ“n‚µ‚ÄÈ“d—Í
+    // Phase 1ï¼ˆçŸ­æœŸã‚¹ãƒ”ãƒ³ï¼‰: é€£ç¶šãƒãƒªã‚¢å‘¼ã³å‡ºã—æ™‚ã®é…å»¶ã‚’æœ€å°åŒ–
+    // Phase 2ï¼ˆatomic waitï¼‰: é•·æ™‚é–“ã‚¢ã‚¤ãƒ‰ãƒ«æ™‚ã¯ OS ã«åˆ¶å¾¡ã‚’æ¸¡ã—ã¦çœé›»åŠ›
 
     void WorkerLoop_() {
         uint64_t myGen = _jobGen.load(std::memory_order_relaxed);
 
         for (;;) {
-            // Phase 1: ƒXƒsƒ“
+            // Phase 1: ã‚¹ãƒ”ãƒ³
 #ifdef _DEBUG
             PerformanceMonitor::Instance().SetThreadState("ThreadPool.Worker.Spin");
 #endif
@@ -345,7 +390,7 @@ private:
                     PerformanceMonitor::Instance().SetThreadState("ThreadPool.Worker.ProcessChunks");
 #endif
                     ProcessChunks_(myGen);
-                    spin = -1; // Š®—¹Œã‚àƒXƒsƒ“Œp‘±iŸƒoƒŠƒA‚É‘¦‘Î‰j
+                    spin = -1; // å®Œäº†å¾Œã‚‚ã‚¹ãƒ”ãƒ³ç¶™ç¶šï¼ˆæ¬¡ãƒãƒªã‚¢ã«å³å¯¾å¿œï¼‰
                     continue;
                 }
 #if defined(_MSC_VER)
@@ -353,11 +398,11 @@ private:
 #endif
             }
 
-            // Phase 2: ƒXƒŠ[ƒv
+            // Phase 2: ã‚¹ãƒªãƒ¼ãƒ—
             {
                 const uint64_t expectedWake = _wakeGen.load(std::memory_order_acquire);
 
-                // Enqueue ƒ^ƒXƒN‚ª‚ ‚ê‚Î—Dæˆ—
+                // Enqueue ã‚¿ã‚¹ã‚¯ãŒã‚ã‚Œã°å„ªå…ˆå‡¦ç†
                 {
                     std::unique_lock<std::mutex> lk(_mtx);
                     if (_stop.load(std::memory_order_relaxed)) return;
@@ -373,7 +418,7 @@ private:
                     }
                 }
 
-                // ƒoƒŠƒAƒWƒ‡ƒu‚ª—ˆ‚Ä‚¢‚ê‚Îˆ—
+                // ãƒãƒªã‚¢ã‚¸ãƒ§ãƒ–ãŒæ¥ã¦ã„ã‚Œã°å‡¦ç†
                 const uint64_t cur = _jobGen.load(std::memory_order_acquire);
                 if (cur != myGen && (cur & 1) == 1) {
                     myGen = cur;
@@ -394,7 +439,7 @@ private:
         }
     }
 
-    // ---- ƒRƒ“ƒXƒgƒ‰ƒNƒ^iƒVƒ“ƒOƒ‹ƒgƒ“—pAprivatej----------------------
+    // ---- ã‚³ãƒ³ã‚¹ãƒˆãƒ©ã‚¯ã‚¿ï¼ˆã‚·ãƒ³ã‚°ãƒ«ãƒˆãƒ³ç”¨ã€privateï¼‰----------------------
 
     ThreadPool() {
         const unsigned int hw = std::thread::hardware_concurrency();
@@ -405,7 +450,7 @@ private:
             _workers.emplace_back([this]() { WorkerLoop_(); });
     }
 
-    // ---- ƒƒ“ƒo•Ï” ----------------------------------------------------
+    // ---- ãƒ¡ãƒ³ãƒå¤‰æ•° ----------------------------------------------------
 
     std::vector<std::thread> _workers;
     std::queue<MoveOnlyTask> _tasks;

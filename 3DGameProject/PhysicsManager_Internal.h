@@ -82,7 +82,12 @@ namespace {
     constexpr float kMaxPen              = 5.0f;
     constexpr float kMaxCorrection       = 0.4f;
     constexpr float kRestitutionThreshold = 0.05f;
-    constexpr float kWarmStartFactor     = 1.0f;
+    // Bullet 既定値の 0.85 を採用。1.0 にすると warm-start が「完全復元」になり、
+    // 壁に水平速度で衝突した球が衝突フレームの normalLambda/frictionLambda を
+    // 維持し続けて空中に張り付く（摩擦が重力を支え続ける安定平衡）が発生する。
+    // 0.85 だと毎フレーム ~15% ずつ減衰し、押し付けが消えた接触は数フレームで
+    // 摩擦コーンが縮んで自然に滑り落ちる。
+    constexpr float kWarmStartFactor     = 0.85f;
     constexpr float kContactMatchDistSq  = 0.01f;
     constexpr float kSplitBiasFactor     = 0.3f;
     constexpr float kSpeculativeMargin   = 0.02f;
@@ -138,28 +143,44 @@ namespace {
     }
 
     // インパルスを2物体に適用（作用反作用）
+    //
+    // sleeping body に対しては「インパルスが起床閾値を超えるか」で扱いを切替:
+    //   - 大きいインパルス (例: 球が箱に衝突): 即 WakeUp() して通常通り速度更新。
+    //                                          → ワンテンポ遅れず、反射過剰も起きない。
+    //   - 微小インパルス (PGS 反復の jitter): skip。
+    //                                          → 静止スタックが誤起床しない。
+    // 閾値は _sleepLinearThreshold を流用するため UpdateSleepState のヒステリシスと整合する。
     inline void ApplyImpulse(
         PhysicsBody* bodyA, PhysicsBody* bodyB,
         float invA, float invB,
         const VECTOR& rA, const VECTOR& rB,
         const VECTOR& impulse) noexcept
     {
-        const float impSq = Dot3(impulse, impulse);
-        const bool hasImpulse = impSq > 1e-12f;
-
         if (bodyA && invA > 0.0f) {
-            bodyA->_velocity = VSub(bodyA->_velocity, VScale(impulse, invA));
-            if (!bodyA->_freezeRotation)
-                bodyA->_angularVelocity = VSub(bodyA->_angularVelocity,
-                    bodyA->ApplyInverseInertia(VCross(rA, impulse)));
-            if (hasImpulse) bodyA->WakeUp();
+            const VECTOR dvA   = VScale(impulse, invA);              // ボディAに加わる速度変化
+            const float  dvSqA = Dot3(dvA, dvA);                     // 速度変化の二乗
+            const float  thA   = bodyA->_sleepLinearThreshold;       // 起床判定閾値
+            const bool   waking = bodyA->_isSleeping && dvSqA > thA * thA;
+            if (!bodyA->_isSleeping || waking) {
+                if (waking) bodyA->WakeUp();
+                bodyA->_velocity = VSub(bodyA->_velocity, dvA);
+                if (!bodyA->_freezeRotation)
+                    bodyA->_angularVelocity = VSub(bodyA->_angularVelocity,
+                        bodyA->ApplyInverseInertia(VCross(rA, impulse)));
+            }
         }
         if (bodyB && invB > 0.0f) {
-            bodyB->_velocity = VAdd(bodyB->_velocity, VScale(impulse, invB));
-            if (!bodyB->_freezeRotation)
-                bodyB->_angularVelocity = VAdd(bodyB->_angularVelocity,
-                    bodyB->ApplyInverseInertia(VCross(rB, impulse)));
-            if (hasImpulse) bodyB->WakeUp();
+            const VECTOR dvB   = VScale(impulse, invB);              // ボディBに加わる速度変化
+            const float  dvSqB = Dot3(dvB, dvB);                     // 速度変化の二乗
+            const float  thB   = bodyB->_sleepLinearThreshold;       // 起床判定閾値
+            const bool   waking = bodyB->_isSleeping && dvSqB > thB * thB;
+            if (!bodyB->_isSleeping || waking) {
+                if (waking) bodyB->WakeUp();
+                bodyB->_velocity = VAdd(bodyB->_velocity, dvB);
+                if (!bodyB->_freezeRotation)
+                    bodyB->_angularVelocity = VAdd(bodyB->_angularVelocity,
+                        bodyB->ApplyInverseInertia(VCross(rB, impulse)));
+            }
         }
     }
 

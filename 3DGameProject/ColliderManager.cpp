@@ -329,7 +329,6 @@ void ColliderManager::Shutdown() noexcept {
 	_currPairs.clear();
 	_prevPairs.clear();
 	_colliders.clear();
-	_prevAABBs.clear();
 }
 
 // 衝突開始イベントの配送。
@@ -407,19 +406,19 @@ static bool IsPair(Collider::Kind a, Collider::Kind b, Collider::Kind x, Collide
 // 完全な連続衝突判定ではないが、高速移動時の broad-phase 取りこぼしを減らせる。
 AABB ColliderManager::GetSweptAABB(Collider* collider) const {
 	const AABB curr = collider->GetAABB();
-	auto it = _prevAABBs.find(collider);
-	if (it == _prevAABBs.end()) {
+	if (!collider->hasPrevAABB) {
 		return curr;
 	}
+	const AABB& prev = collider->prevAABB;
 
 	bool useSweep = collider->enableCCD;
 	if (!useSweep) {
 		// enableCCD が明示されていない場合でも、
 		// フレーム間速度が閾値を超えたら sweep を有効化する。
 		// speed^2 = distance^2 / dt^2 で sqrt を避けて比較している。
-		const VECTOR prevCenter = VGet((it->second.min.x + it->second.max.x) * 0.5f,
-			(it->second.min.y + it->second.max.y) * 0.5f,
-			(it->second.min.z + it->second.max.z) * 0.5f);
+		const VECTOR prevCenter = VGet((prev.min.x + prev.max.x) * 0.5f,
+			(prev.min.y + prev.max.y) * 0.5f,
+			(prev.min.z + prev.max.z) * 0.5f);
 		const VECTOR currCenter = VGet((curr.min.x + curr.max.x) * 0.5f,
 			(curr.min.y + curr.max.y) * 0.5f,
 			(curr.min.z + curr.max.z) * 0.5f);
@@ -438,12 +437,12 @@ AABB ColliderManager::GetSweptAABB(Collider* collider) const {
 
 	// 前回AABBと今回AABBの union を取り、移動区間全体を含むAABBにする。
 	AABB sweep = curr;
-	sweep.min.x = (std::min)(sweep.min.x, it->second.min.x);
-	sweep.min.y = (std::min)(sweep.min.y, it->second.min.y);
-	sweep.min.z = (std::min)(sweep.min.z, it->second.min.z);
-	sweep.max.x = (std::max)(sweep.max.x, it->second.max.x);
-	sweep.max.y = (std::max)(sweep.max.y, it->second.max.y);
-	sweep.max.z = (std::max)(sweep.max.z, it->second.max.z);
+	sweep.min.x = (std::min)(sweep.min.x, prev.min.x);
+	sweep.min.y = (std::min)(sweep.min.y, prev.min.y);
+	sweep.min.z = (std::min)(sweep.min.z, prev.min.z);
+	sweep.max.x = (std::max)(sweep.max.x, prev.max.x);
+	sweep.max.y = (std::max)(sweep.max.y, prev.max.y);
+	sweep.max.z = (std::max)(sweep.max.z, prev.max.z);
 
 	// 回転による見かけの拡大を考慮するため、もしコライダにオーナーがいて Transform が回転しているなら、
 	// AABBの対角線の半分を最大拡大量の目安として、前回AABBと今回AABBのサイズ変化から見かけの拡大を推測し、sweep AABBをさらに拡大する。
@@ -454,9 +453,9 @@ AABB ColliderManager::GetSweptAABB(Collider* collider) const {
 		const float ez = (curr.max.z - curr.min.z) * 0.5f;
 		const float currExtentSq = ex * ex + ey * ey + ez * ez;
 		// 前回AABBと今回AABBのサイズ変化から見かけの拡大を推測する。
-		const float prevEx = (it->second.max.x - it->second.min.x) * 0.5f;
-		const float prevEy = (it->second.max.y - it->second.min.y) * 0.5f;
-		const float prevEz = (it->second.max.z - it->second.min.z) * 0.5f;
+		const float prevEx = (prev.max.x - prev.min.x) * 0.5f;
+		const float prevEy = (prev.max.y - prev.min.y) * 0.5f;
+		const float prevEz = (prev.max.z - prev.min.z) * 0.5f;
 		const float prevExtentSq = prevEx*prevEx + prevEy*prevEy + prevEz*prevEz;
 		const float extentGrowth = std::fabs(std::sqrt(currExtentSq) - std::sqrt(prevExtentSq));
 		if (extentGrowth > 0.01f) {
@@ -495,7 +494,7 @@ void ColliderManager::UpdateAllShapes() {
 		Collider* c = snapshot[i];
 		if (!c) return;
 		c->UpdateShape();
-	}, 32);
+	}, 8);
 }
 
 // 今フレームの衝突候補を再構築。
@@ -554,7 +553,7 @@ void ColliderManager::SpatialPartitioning() {
 		#endif
 		ThreadPool::Instance().ParallelForBarrier(0, active.size(), [&](size_t i) {
 			sweptAABBs[i] = GetSweptAABB(active[i]);
-		}, 32);
+		}, 8);
 	}
 
    // --- グリッド構築 ---
@@ -606,7 +605,7 @@ void ColliderManager::SpatialPartitioning() {
 					}
 				}
 			}
-		}, 64);
+		}, 8);
 	}
 
 	// Phase 2: コライダインデックスをセルに集約してグリッドを構築（並列化）
@@ -621,33 +620,14 @@ void ColliderManager::SpatialPartitioning() {
 		if (totalEntries > 0 && grid.bucket_count() < totalEntries * 2)
 			grid.reserve(totalEntries);
 
-		if (active.size() < 100) {
-			for (size_t i = 0; i < active.size(); ++i) {
-				for (const auto& entry : perColliderCells[i]) {
-					grid[entry.key].push_back(entry.colliderIdx);
-				}
+		// グローバル mutex で直列化されるくらいなら、シリアルマージのほうが
+		// 結局速い (totalEntries 数千程度ならハッシュ挿入はキャッシュに乗る)。
+		// 並列化は perColliderCells / sweptAABBs の事前計算側で十分活かしているため、
+		// ここはあえてシングルスレッドで実行する。
+		for (size_t i = 0; i < active.size(); ++i) {
+			for (const auto& entry : perColliderCells[i]) {
+				grid[entry.key].push_back(entry.colliderIdx);
 			}
-		} else {
-			std::mutex gridMutex;
-			const size_t batchSize = 32;
-			ThreadPool::Instance().ParallelForBarrier(0, (active.size() + batchSize - 1) / batchSize, [&](size_t batchIdx) {
-				const size_t startIdx = batchIdx * batchSize;
-				const size_t endIdx = (std::min)(startIdx + batchSize, active.size());
-
-				std::vector<std::pair<CellKey, int>> localEntries;
-				for (size_t i = startIdx; i < endIdx; ++i) {
-					for (const auto& entry : perColliderCells[i]) {
-						localEntries.emplace_back(entry.key, entry.colliderIdx);
-					}
-				}
-
-				if (!localEntries.empty()) {
-					std::lock_guard lk(gridMutex);
-					for (const auto& [key, idx] : localEntries) {
-						grid[key].push_back(idx);
-					}
-				}
-			}, 1);
 		}
 	}
 
@@ -660,6 +640,9 @@ void ColliderManager::SpatialPartitioning() {
 		#endif
 		// 同じセルにいるコライダペアを列挙し、AABBの重なりをチェックして候補ペアに追加。
 		// 同じペアが複数のセルにまたがって存在する可能性があるため、ペアIDを作って重複を後で削除する。
+		// makePairId は lo=min(ai,bi) を上位 32bit、hi=max(ai,bi) を下位 32bit に詰めるので、
+		// uint64 を sort+unique するだけで重複排除 + 順序付き ai/bi 復元ができる。
+		// これにより、別途 candidates / indices / unique といった一時バッファを持たずに済む。
 		auto& seenPairs = _seenPairsBuf;
 		seenPairs.clear();
 		seenPairs.reserve(active.size() * 2);
@@ -668,6 +651,11 @@ void ColliderManager::SpatialPartitioning() {
 			const auto hi = static_cast<uint32_t>((std::max)(ai, bi));
 			return (static_cast<uint64_t>(lo) << 32) | hi;
 		};
+		// grid (unordered_map) のセルごとに同居コライダのペアを列挙する。
+		// 並列化を試したが、(a) セルあたりのペア数が少ない (b) thread_local + mutex の
+		// マージコストが勝つ、ため直列のほうが速い。BroadPhase の主コストは
+		// CheckLayerMaskCollisions の呼び出しと AABB チェックそのものなので
+		// シリアルキャッシュ局所性を活かす。
 		for (auto& [cell, cellIndices] : grid) {
 			const size_t cn = cellIndices.size();
 			for (size_t i = 0; i < cn; ++i) {
@@ -681,35 +669,25 @@ void ColliderManager::SpatialPartitioning() {
 					if (sa.min.y > sb.max.y || sa.max.y < sb.min.y) continue;
 					if (sa.min.z > sb.max.z || sa.max.z < sb.min.z) continue;
 
-									if (CheckLayerMaskCollisions(active[ai], active[bi])) continue;
+					if (CheckLayerMaskCollisions(active[ai], active[bi])) continue;
 
-									seenPairs.push_back(makePairId(ai, bi));
-									candidates.push_back({ai, bi});
-								}
-							}
-						}
-						// 重複するペアを削除（ソート+uniqueで高速化）
-						if (candidates.size() > 1) {
-							// seenPairsをソートして重複を削除
-							std::vector<size_t> indices(candidates.size());
-							for (size_t i = 0; i < indices.size(); ++i) indices[i] = i;
-
-							std::sort(indices.begin(), indices.end(), [&](size_t a, size_t b) {
-								return seenPairs[a] < seenPairs[b];
-							});
-
-							std::vector<CandidatePair> unique;
-							unique.reserve(candidates.size());
-							uint64_t prevPairId = UINT64_MAX;
-							for (size_t idx : indices) {
-								if (seenPairs[idx] != prevPairId) {
-									unique.push_back(candidates[idx]);
-									prevPairId = seenPairs[idx];
-								}
-							}
-							candidates.swap(unique);
-						}
-					}
+					seenPairs.push_back(makePairId(ai, bi));
+				}
+			}
+		}
+		// sort + unique で重複排除 (一時 vector 不要)。
+		if (seenPairs.size() > 1) {
+			std::sort(seenPairs.begin(), seenPairs.end());
+			seenPairs.erase(std::unique(seenPairs.begin(), seenPairs.end()), seenPairs.end());
+		}
+		// 重複排除後の pairId から ai/bi を復元。
+		candidates.reserve(seenPairs.size());
+		for (uint64_t pid : seenPairs) {
+			const int ai = static_cast<int>(pid >> 32);
+			const int bi = static_cast<int>(pid & 0xFFFFFFFFu);
+			candidates.push_back({ai, bi});
+		}
+	}
 
 	// --- Step 2: ナロウフェーズ判定 (Week 1-2: 並列化) ---
 
@@ -776,7 +754,7 @@ void ColliderManager::SpatialPartitioning() {
 
 					perPairHit[ci] = _tlNarrowHit;
 					_tlContactOut  = nullptr; // スレッドローカルをリセット
-				}, 16); // grainSize=16: バリア待機コストとのバランス
+				}, 4); // grainSize=4: 候補ペア数が少ない場合でも複数ワーカーに分散させる
 
 		// --- Phase B: シリアルマージ + push-out ---
 		// ヒットしたペアの接触点を _contacts に統合し、ペア登録と押し戻しを実行
@@ -844,7 +822,8 @@ void ColliderManager::CheckDetailedCollisions() {
 	}
 	for (auto* c : snapshot) {
 		if (!c) continue;
-		_prevAABBs[c] = c->GetAABB();
+		c->prevAABB = c->GetAABB();
+		c->hasPrevAABB = true;
 	}
 }
 
@@ -938,12 +917,10 @@ void ColliderManager::PushOutSphereSphere(Collider* a, Collider* b) {
 	}
 	else {
 		// CCD: 前フレーム位置からのスイープで衝突時刻を求める
-		auto prevItA = _prevAABBs.find(sa);
-		auto prevItB = _prevAABBs.find(sb);
-		if (prevItA == _prevAABBs.end() || prevItB == _prevAABBs.end()) return;
+		if (!sa->hasPrevAABB || !sb->hasPrevAABB) return;
 
-		const VECTOR prevA = prevItA->second.center;
-		const VECTOR prevB = prevItB->second.center;
+		const VECTOR prevA = sa->prevAABB.center;
+		const VECTOR prevB = sb->prevAABB.center;
 
 		// 相対移動: A固定で B の相対軌道
 		const VECTOR relPrev = VSub(prevB, prevA);
@@ -1005,38 +982,18 @@ void ColliderManager::PushOutSphereSphere(Collider* a, Collider* b) {
 
 	if (ccdResolved) return;
 
-	const float wA = (oa && !oa->isStatic) ? 1.0f : 0.0f;
-	const float wB = (ob && !ob->isStatic) ? 1.0f : 0.0f;
-	const float wSum = wA + wB;
-	if (wSum <= 0.0f) return;
-
-	float moveA = (wA / wSum) * pen * 1.05f;
-	float moveB = (wB / wSum) * pen * 1.05f;
-
-	auto* bodyA = dynamic_cast<PhysicsDebugClass*>(oa);
-	auto* bodyB = dynamic_cast<PhysicsDebugClass*>(ob);
-
-	if (bodyA && bodyB && bodyA->GetPhysicsBody()->IsDynamic() && bodyB->GetPhysicsBody()->IsDynamic()) {
-		const float invMassA = bodyA->GetPhysicsBody()->InverseMass();
-		const float invMassB = bodyB->GetPhysicsBody()->InverseMass();
-		const float invMassSum = invMassA + invMassB;
-		if (invMassSum > 1e-8f) {
-			moveA = (invMassA / invMassSum) * pen * 1.05f;
-			moveB = (invMassB / invMassSum) * pen * 1.05f;
-		}
-	}
-
-	if (oa && !oa->isStatic) {
-		VECTOR p = oa->transform.LocalPosition();
-		p = VSub(p, VScale(n, moveA));
-		oa->transform.SetLocalPosition(p);
-	}
-	if (ob && !ob->isStatic) {
-		VECTOR p = ob->transform.LocalPosition();
-		p = VAdd(p, VScale(n, moveB));
-		ob->transform.SetLocalPosition(p);
-	}
-
+	// ペネトレーション解消は後段の SplitImpulseCorrection /
+	// PositionalCorrection に一任する (Box-Box / Sphere-Box と同方針)。
+	//
+	// 旧実装は EmitContact の後にここで pen * 1.05f の直接位置補正を行って
+	// いたが、これは以下の問題を引き起こしていた:
+	//   1. オーバーシュート (105%) で 2 球が必要以上に反発する。
+	//   2. EmitContact に渡る penetration は補正前の値なので、ソルバが
+	//      その penetration を再度解消しようとし、二重補正になる。
+	//   3. 位置だけ動かして速度を更新しないため、複数の球が連なって
+	//      接触しているシーン (壁沿いに 6 個並ぶ等) で連鎖的に押し合い、
+	//      速度ゼロのまま球が空中に張り付く現象が発生する。
+	// → 接触検出だけ行い、解消はソルバの impulse + position correction に任せる。
 	sa->UpdateShape();
 	sb->UpdateShape();
 }
@@ -1123,10 +1080,9 @@ void ColliderManager::PushOutSphereBox(Collider* a, Collider* b) {
 	}
 
 	if (pen <= 0.0f && !centerInside) {
-		auto prevIt = _prevAABBs.find(s);
-		if (prevIt == _prevAABBs.end()) return;
+		if (!s->hasPrevAABB) return;
 
-		const VECTOR prevCenter = prevIt->second.center;
+		const VECTOR prevCenter = s->prevAABB.center;
 		const VECTOR move = VSub(c, prevCenter);
 		const float distSq = LenSq(move);
 		float dt = _deltaTimeSec;
@@ -1157,12 +1113,13 @@ void ColliderManager::PushOutSphereBox(Collider* a, Collider* b) {
 		ccdResolved = true;
 	}
 
-	// 接触点はBox表面上の最近点と球表面の中間点。
-	// エッジ/コーナーヒットでは球表面点とBox最近点が離れるため
-	// 中間点を使うことで rA/rB の精度を改善する。
-	const VECTOR sphereSurface = VSub(s->GetCenter(), VScale(n, s->GetRadius()));
-	const VECTOR boxSurface = VAdd(s->GetCenter(), VScale(n, pen - s->GetRadius()));
-	const VECTOR contactPoint = VScale(VAdd(sphereSurface, boxSurface), 0.5f);
+	// 接触点は Box 表面上の最近点 (closest) を採用する。
+	// 球中心から法線方向に「球半径分」入った位置に等しく、
+	// rA = contactPoint - sphereCenter のレバーアームが正しい球半径方向
+	// ベクトルになるため、摩擦インパルスから生じるトルクが正しくスケールする。
+	// 中点を使うと rA が短くなり、エッジ接触で球が回転加速して飛ぶ現象が
+	// 起きるためここでは使わない。
+	const VECTOR contactPoint = VSub(s->GetCenter(), VScale(n, s->GetRadius()));
 
 	Contact ct;
 	ct.a = box;
@@ -1172,54 +1129,17 @@ void ColliderManager::PushOutSphereBox(Collider* a, Collider* b) {
 	ct.penetration = pen;
 	EmitContact(ct);
 
-	if (ccdResolved) {
-		return;
-	}
-
-	if (!sFixed && !boxFixed) {
-		auto* pbS = dynamic_cast<PhysicsDebugClass*>(os);
-		auto* pbBox = dynamic_cast<PhysicsDebugClass*>(obox);
-		if (pbS && pbBox) {
-			const float invM1 = pbS->GetPhysicsBody()->InverseMass();
-			const float invM2 = pbBox->GetPhysicsBody()->InverseMass();
-			const float sumInv = invM1 + invM2;
-			if (sumInv > 1e-8f) {
-				const float overshoot = 1.05f;
-				const float sepDist = pen * overshoot;
-				const float s1 = invM1 / sumInv;
-				const float s2 = invM2 / sumInv;
-				VECTOR p1 = os->transform.LocalPosition();
-				p1 = VAdd(p1, VScale(n, s1 * sepDist));
-				os->transform.SetLocalPosition(p1);
-				VECTOR p2 = obox->transform.LocalPosition();
-				p2 = VSub(p2, VScale(n, s2 * sepDist));
-				obox->transform.SetLocalPosition(p2);
-				s->UpdateShape();
-				box->UpdateShape();
-				return;
-			}
-		}
-	}
-
-	const float wS = (!sFixed) ? 1.0f : 0.0f;
-	const float wBox = (!boxFixed) ? 1.0f : 0.0f;
-	const float wSum = wS + wBox;
-	if (wSum <= 0.0f) return;
-
-	const float moveS = (wS / wSum) * pen;
-	const float moveBox = (wBox / wSum) * pen;
-
-	if (os && !os->isStatic) {
-		VECTOR p = os->transform.LocalPosition();
-		p = VAdd(p, VScale(n, moveS));
-		os->transform.SetLocalPosition(p);
-	}
-	if (obox && !obox->isStatic) {
-		VECTOR p = obox->transform.LocalPosition();
-		p = VSub(p, VScale(n, moveBox));
-		obox->transform.SetLocalPosition(p);
-	}
-
+	// ペネトレーション解消は後段の PositionalCorrection /
+	// SplitImpulseCorrection に一任する。
+	// ここで直接位置を動かすと、
+	//   1) コライダー位置補正 (n*β*(pen-slop))
+	//   2) PositionalCorrection (kBiasFactor*(pen-slop)/invSum)
+	//   3) SplitImpulseCorrection (splitBias)
+	// と三重補正になり、低速で転がる球は接触法線 n の微小な揺らぎが
+	// そのまま位置ジッタになる。位置補正は速度/角速度を更新しないため、
+	// 球が瞬間的にワープし、ソルバの摩擦解法が静摩擦/動摩擦境界で振動して
+	// 角速度に積もる。閾値を越えると動摩擦に切り替わり急発進して飛ぶ。
+	// → 直接位置補正をやめ、ソルバ側に統一する（Box-Box と同方針）。
 	s->UpdateShape();
 	box->UpdateShape();
 }
@@ -1268,35 +1188,40 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 	int bestFaceIndex = -1; // 面インデックス (0,1,2)
 	bool separated = false; // 分離軸が見つかったかどうか。見つかった時点で以降の軸は無視して早期リターンするためのフラグ。
 
+	// 面軸（face axis）をエッジ軸（edge axis）より優先するバイアス。
+	// Box2D / Bullet と同様に、面接触の方が安定なマニフォールドを得やすいため、
+	// エッジ軸は面軸より「明確に小さい」場合にのみ採用する。
+	// スタッキング時のペネトレーション同程度では面軸が常に選ばれ、
+	// 押し戻し方向が横に流れて下のオブジェクトが床に潜り込む挙動を防ぐ。
+	constexpr float kFaceBiasAbs = 0.002f; // 絶対値バイアス (m)
+	constexpr float kFaceBiasRel = 0.95f;  // 相対的バイアス (面軸計上)
 	auto ConsiderAxis = [&](const VECTOR& axisW, float dist, float ra, float rb, bool isFaceAxis, int faceOwner = -1, int faceIdx = -1) {
-		if (separated) return; // すでに分離軸が見つかっている場合は無視
+		if (separated) return;
 		const float sep = (ra + rb) - dist;
-		if (sep <= 0.0f) { separated = true; return; } // 分離軸が見つかった場合は以降の軸を無視して早期リターン
-		// もし候補がエッジ軸で、現在のベストが面軸なら、面軸の方を優先する。ただし、面軸に対して十分なマージン（相対的にも絶対的にも）を持ってエッジ軸が優れている場合は、エッジ軸を選ぶ。
-		// このルールは、面軸がエッジ軸よりも安定していて、より意味のある衝突情報を提供する傾向があるためです。
-		// ただし、エッジ軸が面軸よりもはるかに優れている場合（例えば、面軸のpenetrationが非常に小さく、エッジ軸のpenetrationが大きい場合）には、エッジ軸を選択することもあります。
-		if (!isFaceAxis && bestAxisIsFace) {
-			// 面軸に対して十分なマージンを持ってエッジ軸が優れているかどうかの判断
-			if (sep >= bestPen * 0.9f - 0.005f) return;
-		}
-		// 候補が面軸で、現在のベストがエッジ軸なら、面軸を優先する。ただし、エッジ軸の方が十分に優れている場合は、エッジ軸を選ぶ。
-		if (isFaceAxis && !bestAxisIsFace) {
-			// 面軸は優先されるが、エッジ軸が面軸より大幅に小さい場合（貫通が明確に少ない）はエッジ軸を維持する
-			if (sep < bestPen * 1.1f + 0.005f) {
+		if (sep <= 0.0f) { separated = true; return; }
+
+		if (isFaceAxis) {
+			// 面軸は常に更新を試みて確認。面軸同士の比較では単純に最小の sep を選ぶ。
+			if (!bestAxisIsFace || sep < bestPen) {
 				bestPen = sep;
 				bestAxisW = axisW;
 				bestAxisIsFace = true;
 				bestFaceOwner = faceOwner;
 				bestFaceIndex = faceIdx;
 			}
-			return;
-		}
-		if (sep < bestPen) {
-			bestPen = sep;
-			bestAxisW = axisW;
-			bestAxisIsFace = isFaceAxis;
-			bestFaceOwner = faceOwner;
-			bestFaceIndex = faceIdx;
+		} else {
+			// エッジ軸は面軸と比較し、面軸より「明らかに小さい」場合にのみ採用。
+			if (bestAxisIsFace) {
+				if (sep < bestPen * kFaceBiasRel - kFaceBiasAbs) {
+					bestPen = sep;
+					bestAxisW = axisW;
+					bestAxisIsFace = false;
+				}
+			} else if (sep < bestPen) {
+				bestPen = sep;
+				bestAxisW = axisW;
+				bestAxisIsFace = false;
+			}
 		}
 	};
 
@@ -1324,9 +1249,10 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 		const float len = Len3(ax);
 		if (len >1e-5f) {
 			ax = VScale(ax,1.0f / len);
-			const float ra = aExt[1] * AbsR[2][0] + aExt[2] * AbsR[1][0];
-			const float rb = bExt[1] * AbsR[0][2] + bExt[2] * AbsR[0][1];
-			const float dist = std::fabs(tA[2] * R[1][0] - tA[1] * R[2][0]);
+			const float invLen = 1.0f / len;
+			const float ra = (aExt[1] * AbsR[2][0] + aExt[2] * AbsR[1][0]) * invLen;
+			const float rb = (bExt[1] * AbsR[0][2] + bExt[2] * AbsR[0][1]) * invLen;
+			const float dist = std::fabs(tA[2] * R[1][0] - tA[1] * R[2][0]) * invLen;
 			ConsiderAxis(ax, dist, ra, rb, false);
 		}
 	}
@@ -1336,9 +1262,10 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 		const float len = Len3(ax);
 		if (len >1e-5f) {
 			ax = VScale(ax,1.0f / len);
-			const float ra = aExt[1] * AbsR[2][1] + aExt[2] * AbsR[1][1];
-			const float rb = bExt[0] * AbsR[0][2] + bExt[2] * AbsR[0][0];
-			const float dist = std::fabs(tA[2] * R[1][1] - tA[1] * R[2][1]);
+			const float invLen = 1.0f / len;
+			const float ra = (aExt[1] * AbsR[2][1] + aExt[2] * AbsR[1][1]) * invLen;
+			const float rb = (bExt[0] * AbsR[0][2] + bExt[2] * AbsR[0][0]) * invLen;
+			const float dist = std::fabs(tA[2] * R[1][1] - tA[1] * R[2][1]) * invLen;
 			ConsiderAxis(ax, dist, ra, rb, false);
 		}
 	}
@@ -1348,9 +1275,10 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 		const float len = Len3(ax);
 		if (len >1e-5f) {
 			ax = VScale(ax,1.0f / len);
-			const float ra = aExt[1] * AbsR[2][2] + aExt[2] * AbsR[1][2];
-			const float rb = bExt[0] * AbsR[0][1] + bExt[1] * AbsR[0][0];
-			const float dist = std::fabs(tA[2] * R[1][2] - tA[1] * R[2][2]);
+			const float invLen = 1.0f / len;
+			const float ra = (aExt[1] * AbsR[2][2] + aExt[2] * AbsR[1][2]) * invLen;
+			const float rb = (bExt[0] * AbsR[0][1] + bExt[1] * AbsR[0][0]) * invLen;
+			const float dist = std::fabs(tA[2] * R[1][2] - tA[1] * R[2][2]) * invLen;
 			ConsiderAxis(ax, dist, ra, rb, false);
 		}
 	}
@@ -1360,9 +1288,10 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 		const float len = Len3(ax);
 		if (len >1e-5f) {
 			ax = VScale(ax,1.0f / len);
-			const float ra = aExt[0] * AbsR[2][0] + aExt[2] * AbsR[0][0];
-			const float rb = bExt[1] * AbsR[1][2] + bExt[2] * AbsR[1][1];
-			const float dist = std::fabs(tA[0] * R[2][0] - tA[2] * R[0][0]);
+			const float invLen = 1.0f / len;
+			const float ra = (aExt[0] * AbsR[2][0] + aExt[2] * AbsR[0][0]) * invLen;
+			const float rb = (bExt[1] * AbsR[1][2] + bExt[2] * AbsR[1][1]) * invLen;
+			const float dist = std::fabs(tA[0] * R[2][0] - tA[2] * R[0][0]) * invLen;
 			ConsiderAxis(ax, dist, ra, rb, false);
 		}
 	}
@@ -1372,9 +1301,10 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 		const float len = Len3(ax);
 		if (len >1e-5f) {
 			ax = VScale(ax,1.0f / len);
-			const float ra = aExt[0] * AbsR[2][1] + aExt[2] * AbsR[0][1];
-			const float rb = bExt[0] * AbsR[1][2] + bExt[2] * AbsR[1][0];
-			const float dist = std::fabs(tA[0] * R[2][1] - tA[2] * R[0][1]);
+			const float invLen = 1.0f / len;
+			const float ra = (aExt[0] * AbsR[2][1] + aExt[2] * AbsR[0][1]) * invLen;
+			const float rb = (bExt[0] * AbsR[1][2] + bExt[2] * AbsR[1][0]) * invLen;
+			const float dist = std::fabs(tA[0] * R[2][1] - tA[2] * R[0][1]) * invLen;
 			ConsiderAxis(ax, dist, ra, rb, false);
 		}
 	}
@@ -1384,9 +1314,10 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 		const float len = Len3(ax);
 		if (len >1e-5f) {
 			ax = VScale(ax,1.0f / len);
-			const float ra = aExt[0] * AbsR[2][2] + aExt[2] * AbsR[0][2];
-			const float rb = bExt[0] * AbsR[1][1] + bExt[1] * AbsR[1][0];
-			const float dist = std::fabs(tA[0] * R[2][2] - tA[2] * R[0][2]);
+			const float invLen = 1.0f / len;
+			const float ra = (aExt[0] * AbsR[2][2] + aExt[2] * AbsR[0][2]) * invLen;
+			const float rb = (bExt[0] * AbsR[1][1] + bExt[1] * AbsR[1][0]) * invLen;
+			const float dist = std::fabs(tA[0] * R[2][2] - tA[2] * R[0][2]) * invLen;
 			ConsiderAxis(ax, dist, ra, rb, false);
 		}
 	}
@@ -1396,9 +1327,10 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 		const float len = Len3(ax);
 		if (len >1e-5f) {
 			ax = VScale(ax,1.0f / len);
-			const float ra = aExt[0] * AbsR[1][0] + aExt[1] * AbsR[0][0];
-			const float rb = bExt[1] * AbsR[2][2] + bExt[2] * AbsR[2][1];
-			const float dist = std::fabs(tA[1] * R[0][0] - tA[0] * R[1][0]);
+			const float invLen = 1.0f / len;
+			const float ra = (aExt[0] * AbsR[1][0] + aExt[1] * AbsR[0][0]) * invLen;
+			const float rb = (bExt[1] * AbsR[2][2] + bExt[2] * AbsR[2][1]) * invLen;
+			const float dist = std::fabs(tA[1] * R[0][0] - tA[0] * R[1][0]) * invLen;
 			ConsiderAxis(ax, dist, ra, rb, false);
 		}
 	}
@@ -1408,9 +1340,10 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 		const float len = Len3(ax);
 		if (len >1e-5f) {
 			ax = VScale(ax,1.0f / len);
-			const float ra = aExt[0] * AbsR[1][1] + aExt[1] * AbsR[0][1];
-			const float rb = bExt[0] * AbsR[2][2] + bExt[2] * AbsR[2][0];
-			const float dist = std::fabs(tA[1] * R[0][1] - tA[0] * R[1][1]);
+			const float invLen = 1.0f / len;
+			const float ra = (aExt[0] * AbsR[1][1] + aExt[1] * AbsR[0][1]) * invLen;
+			const float rb = (bExt[0] * AbsR[2][2] + bExt[2] * AbsR[2][0]) * invLen;
+			const float dist = std::fabs(tA[1] * R[0][1] - tA[0] * R[1][1]) * invLen;
 			ConsiderAxis(ax, dist, ra, rb, false);
 		}
 	}
@@ -1420,22 +1353,21 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 		const float len = Len3(ax);
 		if (len >1e-5f) {
 			ax = VScale(ax,1.0f / len);
-			const float ra = aExt[0] * AbsR[1][2] + aExt[1] * AbsR[0][2];
-			const float rb = bExt[0] * AbsR[2][1] + bExt[1] * AbsR[2][0];
-			const float dist = std::fabs(tA[1] * R[0][2] - tA[0] * R[1][2]);
+			const float invLen = 1.0f / len;
+			const float ra = (aExt[0] * AbsR[1][2] + aExt[1] * AbsR[0][2]) * invLen;
+			const float rb = (bExt[0] * AbsR[2][1] + bExt[1] * AbsR[2][0]) * invLen;
+			const float dist = std::fabs(tA[1] * R[0][2] - tA[0] * R[1][2]) * invLen;
 			ConsiderAxis(ax, dist, ra, rb, false);
 		}
 	}
 
 	if (separated || bestPen == FLT_MAX || bestPen <=0.0f) {
 		// 分離軸が見つかった場合、または貫通深さがゼロ以下の場合は、CCDスイープで衝突時刻を求めて巻き戻す。
-		auto prevItA = _prevAABBs.find(ba);
-		auto prevItB = _prevAABBs.find(bb);
-		if (prevItA == _prevAABBs.end() || prevItB == _prevAABBs.end()) return;
+		if (!ba->hasPrevAABB || !bb->hasPrevAABB) return;
 		float dt = _deltaTimeSec;
 		if (dt < 1e-6f) dt = 1e-6f;
-		const VECTOR prevCenterA = prevItA->second.center;
-		const VECTOR prevCenterB = prevItB->second.center;
+		const VECTOR prevCenterA = ba->prevAABB.center;
+		const VECTOR prevCenterB = bb->prevAABB.center;
 		const VECTOR moveA = VSub(ba->GetCenter(), prevCenterA);
 		const VECTOR moveB = VSub(bb->GetCenter(), prevCenterB);
 		const float speedSqA = LenSq(moveA) / (dt * dt);
@@ -1662,8 +1594,20 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 	const float wSum = wA + wB;
 	if (wSum <=0.0f) return;
 
-	float moveA = (wA / wSum) * pen * 1.05f;
-	float moveB = (wB / wSum) * pen * 1.05f;
+	// 後段の SplitImpulseCorrection / PositionalCorrection と二重に効くと
+	// スタッキング時にオーバーシュート振動を起こすため、ここでは
+	// slop を残しつつ控えめに補正する（Box2D 流の baumgarte 風）。
+	constexpr float kBoxBoxSlop   = 0.005f;
+	constexpr float kBoxBoxBeta   = 0.4f;
+	const float correctedPen = (std::max)(pen - kBoxBoxSlop, 0.0f) * kBoxBoxBeta;
+	if (correctedPen <= 0.0f) {
+		ba->UpdateShape();
+		bb->UpdateShape();
+		return;
+	}
+
+	float moveA = (wA / wSum) * correctedPen;
+	float moveB = (wB / wSum) * correctedPen;
 
 	auto* bodyA = dynamic_cast<PhysicsDebugClass*>(oa);
 	auto* bodyB = dynamic_cast<PhysicsDebugClass*>(ob);
@@ -1673,8 +1617,8 @@ void ColliderManager::PushOutBoxBox(Collider* a, Collider* b) {
 		const float invMassB = bodyB->GetPhysicsBody()->InverseMass();
 		const float invMassSum = invMassA + invMassB;
 		if (invMassSum > 1e-8f) {
-			moveA = (invMassA / invMassSum) * pen * 1.05f;
-			moveB = (invMassB / invMassSum) * pen * 1.05f;
+			moveA = (invMassA / invMassSum) * correctedPen;
+			moveB = (invMassB / invMassSum) * correctedPen;
 		}
 	}
 
@@ -1756,13 +1700,11 @@ void ColliderManager::PushOutCapsuleCapsule(Collider* a, Collider* b) {
 	const float pen = r - dist;
 	if (pen <= 0.0f) {
 		// CCD: sweep via relative sphere-sphere model on segment closest points
-		auto prevItA = _prevAABBs.find(ca);
-		auto prevItB = _prevAABBs.find(cb);
-		if (prevItA == _prevAABBs.end() || prevItB == _prevAABBs.end()) return;
+		if (!ca->hasPrevAABB || !cb->hasPrevAABB) return;
 		float dt = _deltaTimeSec;
 		if (dt < 1e-6f) dt = 1e-6f;
-		const VECTOR prevA = prevItA->second.center;
-		const VECTOR prevB = prevItB->second.center;
+		const VECTOR prevA = ca->prevAABB.center;
+		const VECTOR prevB = cb->prevAABB.center;
 		const VECTOR moveA = VSub(ca->GetCenter(), prevA);
 		const VECTOR moveB = VSub(cb->GetCenter(), prevB);
 		const float speedSqA = LenSq(moveA) / (dt * dt);
@@ -1831,54 +1773,10 @@ void ColliderManager::PushOutCapsuleCapsule(Collider* a, Collider* b) {
 	ct.penetration = pen;
 	EmitContact(ct);
 
-	const bool aFixed = !oa || oa->isStatic;
-	const bool bFixed = !ob || ob->isStatic;
-	if (aFixed && bFixed) return;
-
-	if (!aFixed && !bFixed) {
-		auto* pbA = dynamic_cast<PhysicsDebugClass*>(oa);
-		auto* pbB = dynamic_cast<PhysicsDebugClass*>(ob);
-		if (pbA && pbB) {
-			const float invMA = pbA->GetPhysicsBody()->InverseMass();
-			const float invMB = pbB->GetPhysicsBody()->InverseMass();
-			const float sumInv = invMA + invMB;
-			if (sumInv > 1e-8f) {
-				const float overshoot = 1.05f;
-				const float sepDist = pen * overshoot;
-				const float sA = invMA / sumInv;
-				const float sB = invMB / sumInv;
-				VECTOR pA = oa->transform.LocalPosition();
-				pA = VSub(pA, VScale(n, sA * sepDist));
-				oa->transform.SetLocalPosition(pA);
-				VECTOR pB = ob->transform.LocalPosition();
-				pB = VAdd(pB, VScale(n, sB * sepDist));
-				ob->transform.SetLocalPosition(pB);
-				ca->UpdateShape();
-				cb->UpdateShape();
-				return;
-			}
-		}
-	}
-
-	const float wA = (oa && !oa->isStatic) ? 1.0f : 0.0f;
-	const float wB = (ob && !ob->isStatic) ? 1.0f : 0.0f;
-	const float wSum = wA + wB;
-	if (wSum <= 0.0f) return;
-
-	const float moveA = (wA / wSum) * pen;
-	const float moveB = (wB / wSum) * pen;
-
-	if (oa && !oa->isStatic) {
-		VECTOR p = oa->transform.LocalPosition();
-		p = VSub(p, VScale(n, moveA));
-		oa->transform.SetLocalPosition(p);
-	}
-	if (ob && !ob->isStatic) {
-		VECTOR p = ob->transform.LocalPosition();
-		p = VAdd(p, VScale(n, moveB));
-		ob->transform.SetLocalPosition(p);
-	}
-
+	// Sphere-Sphere / Sphere-Box と同方針で、ペネトレーション解消は
+	// SplitImpulseCorrection / PositionalCorrection に一任する。
+	// 複数接触シーン (球が壁沿いに連なる等) では、ここでの直接位置補正が
+	// 速度を更新しないまま隣接接触に伝播し、空中接着や張り付きを誘発するため。
 	ca->UpdateShape();
 	cb->UpdateShape();
 }
@@ -1919,13 +1817,11 @@ void ColliderManager::PushOutSphereCapsule(Collider* a, Collider* b) {
 	const float pen = r - dist;
 	if (pen <= 0.0f) {
 		// CCD: sweep sphere against capsule center line
-		auto prevItS = _prevAABBs.find(s);
-		auto prevItC = _prevAABBs.find(c);
-		if (prevItS == _prevAABBs.end() || prevItC == _prevAABBs.end()) return;
+		if (!s->hasPrevAABB || !c->hasPrevAABB) return;
 		float dt = _deltaTimeSec;
 		if (dt < 1e-6f) dt = 1e-6f;
-		const VECTOR prevS = prevItS->second.center;
-		const VECTOR prevC = prevItC->second.center;
+		const VECTOR prevS = s->prevAABB.center;
+		const VECTOR prevC = c->prevAABB.center;
 		const VECTOR moveS0 = VSub(s->GetCenter(), prevS);
 		const VECTOR moveC0 = VSub(c->GetCenter(), prevC);
 		const float speedSqS = LenSq(moveS0) / (dt * dt);
@@ -2095,13 +1991,11 @@ void ColliderManager::PushOutBoxCapsule(Collider* a, Collider* b) {
 	const float r = cap->GetRadius();
 	if (bestDistSq > r * r || r - std::sqrt((std::max)(bestDistSq, 1e-8f)) <= 0.0f) {
 		// CCD: sweep capsule center against Minkowski-expanded box
-		auto prevItBox = _prevAABBs.find(box);
-		auto prevItCap = _prevAABBs.find(cap);
-		if (prevItBox == _prevAABBs.end() || prevItCap == _prevAABBs.end()) return;
+		if (!box->hasPrevAABB || !cap->hasPrevAABB) return;
 		float dt = _deltaTimeSec;
 		if (dt < 1e-6f) dt = 1e-6f;
-		const VECTOR prevBox_ = prevItBox->second.center;
-		const VECTOR prevCap_ = prevItCap->second.center;
+		const VECTOR prevBox_ = box->prevAABB.center;
+		const VECTOR prevCap_ = cap->prevAABB.center;
 		const VECTOR moveBx = VSub(box->GetCenter(), prevBox_);
 		const VECTOR moveCp = VSub(cap->GetCenter(), prevCap_);
 		const float speedSqBx = LenSq(moveBx) / (dt * dt);
@@ -2241,11 +2135,10 @@ void ColliderManager::PushOutSphereHalfPlane(Collider* sphere, Collider* plane) 
 	const float pen = s->GetRadius() - dist;
 	if (pen <= 0.0f) {
 		// CCD: sphere may have tunneled through the half-plane
-		auto prevIt = _prevAABBs.find(s);
-		if (prevIt == _prevAABBs.end()) return;
+		if (!s->hasPrevAABB) return;
 		float dt = _deltaTimeSec;
 		if (dt < 1e-6f) dt = 1e-6f;
-		const VECTOR prevCenter = prevIt->second.center;
+		const VECTOR prevCenter = s->prevAABB.center;
 		const float prevDist = Dot3(prevCenter, pl.normal) - pl.d;
 		// Was the sphere on the positive side last frame and now on negative?
 		if (prevDist >= s->GetRadius() && dist < s->GetRadius()) {
@@ -2364,11 +2257,10 @@ void ColliderManager::PushOutBoxHalfPlane(Collider* box, Collider* plane) {
 	const float pen = proj - dist;
 	if (pen <= 0.0f) {
 		// CCD: box may have tunneled through the half-plane
-		auto prevIt = _prevAABBs.find(b);
-		if (prevIt != _prevAABBs.end()) {
+		if (b->hasPrevAABB) {
 			float dt = _deltaTimeSec;
 			if (dt < 1e-6f) dt = 1e-6f;
-			const VECTOR prevCenter = prevIt->second.center;
+			const VECTOR prevCenter = b->prevAABB.center;
 			const float prevDist = Dot3(prevCenter, pl.normal) - pl.d;
 			if (prevDist >= proj && dist < proj) {
 				const VECTOR move = VSub(b->GetCenter(), prevCenter);
@@ -2449,11 +2341,10 @@ void ColliderManager::PushOutCapsuleHalfPlane(Collider* capsule, Collider* plane
 	const float pen = c->GetRadius() - minDist;
 	if (pen <= 0.0f) {
 		// CCD:はしごの両端が半平面を貫通している可能性。カプセル中心の前フレーム位置を見て、片側にいて今は反対側にいるなら要注意。
-		auto prevIt = _prevAABBs.find(c);
-		if (prevIt != _prevAABBs.end()) {
+		if (c->hasPrevAABB) {
 			float dt = _deltaTimeSec;
 			if (dt < 1e-6f) dt = 1e-6f;
-			const VECTOR prevCenter = prevIt->second.center;
+			const VECTOR prevCenter = c->prevAABB.center;
 			const float prevMinDist = Dot3(prevCenter, pl.normal) - pl.d;
 			if (prevMinDist >= c->GetRadius() && minDist < c->GetRadius()) {
 				const VECTOR move = VSub(c->GetCenter(), prevCenter);
@@ -2619,15 +2510,13 @@ void ColliderManager::CheckSphereSphere(Collider* a, Collider* b) {
 	}
 
 	// CCD フォールバック: 前フレーム位置からのスイープで通過判定
-	auto prevItA = _prevAABBs.find(sa);
-	auto prevItB = _prevAABBs.find(sb);
-	if (prevItA == _prevAABBs.end() || prevItB == _prevAABBs.end()) {
+	if (!sa->hasPrevAABB || !sb->hasPrevAABB) {
 		_tlNarrowHit = false;
 		return;
 	}
 
-	const VECTOR prevA = prevItA->second.center;
-	const VECTOR prevB = prevItB->second.center;
+	const VECTOR prevA = sa->prevAABB.center;
+	const VECTOR prevB = sb->prevAABB.center;
 	const VECTOR moveA = VSub(ca, prevA);
 	const VECTOR moveB = VSub(cb, prevB);
 	float dt = _deltaTimeSec;
@@ -2697,10 +2586,9 @@ void ColliderManager::CheckSphereBox(Collider* a, Collider* b) {
 	_tlNarrowHit = (LenSq(diff) <= r * r);
 	if (_tlNarrowHit) return;
 
-	auto prevIt = _prevAABBs.find(s);
-	if (prevIt == _prevAABBs.end()) return;
+	if (!s->hasPrevAABB) return;
 
-	const VECTOR prevCenter = prevIt->second.center;
+	const VECTOR prevCenter = s->prevAABB.center;
 	const VECTOR move = VSub(c, prevCenter);
 	const float distSq = LenSq(move);
 	float dt = _deltaTimeSec;
@@ -3023,7 +2911,7 @@ void ColliderManager::UnregisterCollider(Collider* collider) {
 		}
 	}
 
-	_prevAABBs.erase(collider);
+	collider->hasPrevAABB = false;
 
 	for (auto it = _prevPairs.begin(); it != _prevPairs.end();) {
 		if (it->a == collider || it->b == collider) {

@@ -157,7 +157,7 @@ private:
 	std::vector<Collider*> _colliders{};			// 登録されているコライダー
 	bool _narrowHit = false;						// 詳細判定結果フラグ (シリアルフォールバック用)
 	std::vector<Contact> _contacts;					// 現フレームの接触情報
-	std::unordered_map<Collider*, AABB> _prevAABBs; // 前フレームの AABB (CCD 用)
+	// (_prevAABBs removed: migrated to Collider::prevAABB / hasPrevAABB)
 
 	// SpatialPartitioning 用バッファ
 	// 毎フレームの動的メモリ確保を回避するための永続バッファ群

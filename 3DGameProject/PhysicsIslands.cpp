@@ -20,17 +20,59 @@ void PhysicsManager::UFUnite(int a, int b) noexcept {
 
 // ---- BuildIslands ---------------------------------------------------
 
-void PhysicsManager::BuildIslands() {
+// ---- Island pool helpers --------------------------------------------
+
+int PhysicsManager::AcquireIsland() {
+    if (!_islandPool.empty()) {
+        _islands.emplace_back(std::move(_islandPool.back()));
+        _islandPool.pop_back();
+        auto& isl = _islands.back();
+        isl.bodies.clear();
+        isl.contactIndices.clear();
+        for (auto& batch : isl.constraintBatches) batch.clear();
+        isl.constraintBatches.clear();
+        isl.allSleeping = false;
+    } else {
+        _islands.emplace_back();
+    }
+    return static_cast<int>(_islands.size()) - 1;
+}
+
+void PhysicsManager::RecycleAllIslands() {
+    // 中身を破棄せずプールへ退避（内部 vector の capacity を温存）
+    const size_t total = _islandPool.size() + _islands.size();
+    if (_islandPool.capacity() < total) _islandPool.reserve(total);
+    for (auto& isl : _islands) {
+        isl.bodies.clear();
+        isl.contactIndices.clear();
+        for (auto& batch : isl.constraintBatches) batch.clear();
+        isl.constraintBatches.clear();
+        isl.allSleeping = false;
+        _islandPool.emplace_back(std::move(isl));
+    }
     _islands.clear();
-    _bodyIslandMap.clear();
-    if (_bodies.empty()) return;
+}
+
+void PhysicsManager::BuildIslands() {
+    if (_bodies.empty()) {
+        RecycleAllIslands();
+        _bodyIslandMap.clear();
+        return;
+    }
 
     // 変化検出: body 数とコンタクトグラフのハッシュが同じなら再構築スキップ
+    // ペア (a,b) と (b,a) を同一視するため min/max を取ってからハッシュ。
+    // 旧実装は冒頭で _islands.clear() を呼んでいたため graphUnchanged が
+    // 常に false になりファストパスがデッドコードだった。
     const size_t newBodyCount = _bodies.size();
-    size_t contactHash = 0;
+    size_t contactHash = _solverContacts.size() * 2654435761ULL;
     for (const auto& sc : _solverContacts) {
-        contactHash ^= reinterpret_cast<size_t>(sc.colA) * 2654435761ULL
-                     + reinterpret_cast<size_t>(sc.colB) * 2246822519ULL;
+        const uintptr_t ua = reinterpret_cast<uintptr_t>(sc.colA);
+        const uintptr_t ub = reinterpret_cast<uintptr_t>(sc.colB);
+        const uintptr_t lo = (ua < ub) ? ua : ub;
+        const uintptr_t hi = (ua < ub) ? ub : ua;
+        contactHash ^= lo * 2654435761ULL + hi * 2246822519ULL
+                     + (contactHash << 6) + (contactHash >> 2);
     }
     const bool graphUnchanged = (newBodyCount == _prevIslandBodyCount)
                              && (contactHash  == _prevContactHash)
@@ -39,7 +81,7 @@ void PhysicsManager::BuildIslands() {
     _prevContactHash     = contactHash;
 
     if (graphUnchanged) {
-        // 高速パス: 接触インデックスだけ再割り当て
+        // 高速パス: アイランド構造は維持し、接触インデックスのみ再割り当て
         for (auto& island : _islands) {
             island.contactIndices.clear();
             island.constraintBatches.clear();
@@ -69,6 +111,9 @@ void PhysicsManager::BuildIslands() {
         }
         return;
     }
+
+    RecycleAllIslands();
+    _bodyIslandMap.clear();
 
     // 通常パス: 完全再構築
     auto& bodyIndex = _bodyIndexBuf;
@@ -105,9 +150,8 @@ void PhysicsManager::BuildIslands() {
         auto it = rootToIsland.find(root);
         int islandIdx;
         if (it == rootToIsland.end()) {
-            islandIdx = static_cast<int>(_islands.size());
+            islandIdx = AcquireIsland();
             rootToIsland[root] = islandIdx;
-            _islands.emplace_back();
         } else {
             islandIdx = it->second;
         }
@@ -202,37 +246,35 @@ void PhysicsManager::SplitLargeIsland(int islandIdx, int maxBodiesPerSplit) {
     for (int c : color) { if (c == 0) ++count0; else ++count1; }
     if (count1 == 0 || count0 == 0) return;
 
-    // emplace_back 前に元データを退避（_islands 再確保で参照が無効になるのを防ぐ）
+    // AcquireIsland() による _islands 再確保で参照が無効になる前に元データを退避
     auto& origBodies   = _splitOrigBodiesBuf;
     auto& origContacts = _splitOrigContactsBuf;
     origBodies   = std::move(_islands[islandIdx].bodies);
     origContacts = std::move(_islands[islandIdx].contactIndices);
+    // 既存スロットの bodies/contactIndices は move 済み（空・capacity 温存）
+    // ここで新スロットを取得（_islands が再確保される可能性あり）
+    const int newIslandIdx = AcquireIsland();
 
-    const int newIslandIdx = static_cast<int>(_islands.size());
-    _islands.emplace_back();
-
-    PhysicsIsland oldNew;
-    oldNew.bodies.reserve(count0);
-    _islands[newIslandIdx].bodies.reserve(count1);
+    auto& oldIsl = _islands[islandIdx];
+    auto& newIsl = _islands[newIslandIdx];
+    if (oldIsl.bodies.capacity() < static_cast<size_t>(count0)) oldIsl.bodies.reserve(count0);
+    if (newIsl.bodies.capacity() < static_cast<size_t>(count1)) newIsl.bodies.reserve(count1);
     for (int i = 0; i < bodyCount; ++i) {
-        if (color[i] == 0) oldNew.bodies.push_back(origBodies[i]);
-        else { _islands[newIslandIdx].bodies.push_back(origBodies[i]); _bodyIslandMap[origBodies[i]] = newIslandIdx; }
+        if (color[i] == 0) oldIsl.bodies.push_back(origBodies[i]);
+        else { newIsl.bodies.push_back(origBodies[i]); _bodyIslandMap[origBodies[i]] = newIslandIdx; }
     }
 
-    oldNew.contactIndices.reserve(origContacts.size());
-    _islands[newIslandIdx].contactIndices.reserve(origContacts.size() / 2);
+    if (oldIsl.contactIndices.capacity() < origContacts.size()) oldIsl.contactIndices.reserve(origContacts.size());
+    if (newIsl.contactIndices.capacity() < origContacts.size() / 2) newIsl.contactIndices.reserve(origContacts.size() / 2);
     for (int ci : origContacts) {
         const auto& sc = _solverContacts[ci];
         auto itA = localIdx.find(sc.bodyA);
         auto itB = localIdx.find(sc.bodyB);
         const int cA = (itA != localIdx.end()) ? color[itA->second] : 0;
         const int cB = (itB != localIdx.end()) ? color[itB->second] : 0;
-        if (cA == 1 && cB == 1) { _islands[newIslandIdx].contactIndices.push_back(ci); _solverContacts[ci].islandId = newIslandIdx; }
-        else oldNew.contactIndices.push_back(ci);
+        if (cA == 1 && cB == 1) { newIsl.contactIndices.push_back(ci); _solverContacts[ci].islandId = newIslandIdx; }
+        else oldIsl.contactIndices.push_back(ci);
     }
-
-    _islands[islandIdx].bodies         = std::move(oldNew.bodies);
-    _islands[islandIdx].contactIndices = std::move(oldNew.contactIndices);
 
     auto computeSleep = [](PhysicsIsland& isl) {
         bool allSleep = true;

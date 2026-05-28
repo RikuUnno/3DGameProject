@@ -101,6 +101,19 @@ void PhysicsManager::BuildSolverContacts(float stepDt) {
         sc.localB = ownerB ? VSub(sc.point, centerB) : sc.point;
 
         // Warm-start: 前フレームの累積インパルスを照合して復元
+        // 注意: frictionLambda1/2 は前フレームの tangent1/2 基底に対する係数。
+        // 球が Box の辺や面の境界をまたいで転がるとき、コライダー側の closest
+        // 点が辺へジャンプすることで「接触点はほぼ同じ位置だが接触法線が
+        // 大きく変わる」状況が発生する。
+        //   - 接触点ベース (localA/B) でのマッチ距離 (kContactMatchDistSq) は
+        //     球半径ぶんしかずれないので閾値内で素通り。
+        //   - しかし前フレームの摩擦インパルス (世界空間ベクトル) は
+        //     前フレーム法線と直交していたものなので、新しい法線の下では
+        //     「摩擦」として再投影できず、低速・静摩擦域では大きな上限まで
+        //     許容されてしまう。これがレバーアーム経由で角速度に化けて
+        //     球が低速転がり中に突然飛ぶ原因になる。
+        // → 法線が有意に変化していたら摩擦ラムダのみ破棄し、法線ラムダだけ
+        //   再利用する (法線ラムダは基底に依存しない)。
         sc.normalLambda    = 0.0f;
         sc.frictionLambda1 = 0.0f;
         sc.frictionLambda2 = 0.0f;
@@ -109,14 +122,29 @@ void PhysicsManager::BuildSolverContacts(float stepDt) {
             const auto& prev = _prevSolverContacts[it->second];
             if (LenSq(VSub(prev.localA, sc.localA)) > kContactMatchDistSq) continue;
             if (LenSq(VSub(prev.localB, sc.localB)) > kContactMatchDistSq) continue;
-            sc.normalLambda    = prev.normalLambda;
-            sc.frictionLambda1 = prev.frictionLambda1;
-            sc.frictionLambda2 = prev.frictionLambda2;
+            // warm-start factor を保存時点で適用しておく。
+            // こうすることで WarmStart() / SolveIsland() で読まれる
+            // 累積ラムダは「前フレーム値 × factor」となり、ソルバ内の
+            // クランプ・累積処理と整合する。WarmStart() でさらに factor を
+            // 掛けると二重適用になり、保存値とソルバ累積値がずれる。
+            sc.normalLambda = prev.normalLambda * kWarmStartFactor;
+            // 法線の整合性を確認。cos(15°) ? 0.966 を閾値とする。
+            // それ以下なら接触面が切り替わったとみなし、摩擦は warm-start
+            // しない (ゼロから蓄積させる)。
+            const float normalAlignment = Dot3(prev.normal, sc.normal);
+            if (normalAlignment > 0.966f) {
+                // 摩擦インパルスをワールド空間に復元してから新しい tangent 基底へ射影
+                const VECTOR prevFrictionImpulse = VAdd(
+                    VScale(prev.tangent1, prev.frictionLambda1),
+                    VScale(prev.tangent2, prev.frictionLambda2));
+                sc.frictionLambda1 = Dot3(prevFrictionImpulse, sc.tangent1) * kWarmStartFactor;
+                sc.frictionLambda2 = Dot3(prevFrictionImpulse, sc.tangent2) * kWarmStartFactor;
+            }
             break;
         }
 
         results[idx] = { sc, true };
-    }, 64);
+    }, 8);
 
     _solverContacts.reserve(rawCount);
     for (auto& r : results) {
@@ -132,9 +160,41 @@ void PhysicsManager::WarmStart() {
         const bool bSleeping = !sc.bodyB || sc.bodyB->_isSleeping;
         if (aSleeping && bSleeping) continue;
 
-        const VECTOR warmN  = VScale(sc.normal,   sc.normalLambda    * kWarmStartFactor);
-        const VECTOR warmT1 = VScale(sc.tangent1, sc.frictionLambda1 * kWarmStartFactor);
-        const VECTOR warmT2 = VScale(sc.tangent2, sc.frictionLambda2 * kWarmStartFactor);
+        // 接触法線方向の相対速度を確認する。
+        // vn > 0 (離れていく) かつ penetration が小さい場合、その接触は
+        // 「実際には押し付け合っていない」可能性が高い。
+        // このとき前フレームの normalLambda をそのまま warm-start すると、
+        // 押し付けていないのに大きな摩擦コーン (mu*normalLambda) が発生し、
+        // 重力で落下しようとする球の鉛直速度を摩擦が完全にゼロ化して
+        // 壁に張り付かせる現象が起きる。
+        // → 浅い接触 (penetration <= kSlop) で離れていく接触は warm-start を破棄。
+        const float vn = RelNormalVelocity(sc.bodyA, sc.bodyB, sc.rA, sc.rB, sc.normal);
+        if (sc.penetration <= kSlop && vn > 0.0f) {
+            sc.normalLambda    = 0.0f;
+            sc.frictionLambda1 = 0.0f;
+            sc.frictionLambda2 = 0.0f;
+            continue;
+        }
+
+        // 摩擦ラムダは「現フレームの法線ラムダから決まる摩擦円錐」内に
+        // 必ず収まっていなければならない。前フレームの normalLambda は
+        // 衝撃で一時的に大きくなるため、そのまま warm-start に流すと
+        // 現フレームの円錐を超える接線インパルスが注入され、球が辺/面で
+        // 接触したまま転がる際に余剰トルクが残り、回転が暴走して飛ぶ。
+        // → warm-start 前に摩擦円錐へクランプし、保存値も縮める。
+        const float maxF = sc.friction * sc.normalLambda;
+        const float fMag = std::sqrt(sc.frictionLambda1 * sc.frictionLambda1
+                                   + sc.frictionLambda2 * sc.frictionLambda2);
+        if (fMag > maxF && fMag > 1e-8f) {
+            const float s = maxF / fMag;
+            sc.frictionLambda1 *= s;
+            sc.frictionLambda2 *= s;
+        }
+
+        // factor は既に BuildSolverContacts で適用済みなのでここでは掛けない。
+        const VECTOR warmN  = VScale(sc.normal,   sc.normalLambda);
+        const VECTOR warmT1 = VScale(sc.tangent1, sc.frictionLambda1);
+        const VECTOR warmT2 = VScale(sc.tangent2, sc.frictionLambda2);
 
         ApplyImpulse(sc.bodyA, sc.bodyB, sc.invA, sc.invB, sc.rA, sc.rB,
             VAdd(VAdd(warmN, warmT1), warmT2));

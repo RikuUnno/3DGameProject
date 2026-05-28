@@ -62,6 +62,7 @@ public:
 		Box, // OBB想定
 		HalfPlane, // 半空間コライダー
 		Compound,  // 複合コライダー
+		Mesh,      // 三角形メッシュコライダー（ステージ等）
 	};
 
 	// コライダー種別取得
@@ -99,6 +100,15 @@ public:
 	void SetDebugColor(unsigned int color) noexcept { _debugColor = color; }
 	unsigned int DebugColor() const noexcept { return _debugColor; }
 	void ClearDebugColor() noexcept { _debugColor =0; }
+
+public:
+	// 前フレームの AABB キャッシュ (CCD / Swept AABB 計算用)
+	// ColliderManager が _prevAABBs (unordered_map) で持っていたが、
+	// 毎フレーム find/insert する N オーダーの hash 操作が無視できない
+	// 負荷になっていたためメンバ化。
+	// hasPrevAABB は登録直後 (まだ前フレームが存在しない) の判別用。
+	AABB prevAABB{};
+	bool hasPrevAABB = false;
 
 private:
 	bool _enabled = true;

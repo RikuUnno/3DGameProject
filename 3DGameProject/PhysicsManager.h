@@ -211,7 +211,7 @@ private:
 	void WarmStart();
 	void SolveIsland(const PhysicsIsland& island, float stepDt);
 	void SolveAllIslands(float stepDt);
-	void PositionalCorrection(float stepDt);
+	void PositionalCorrection(float stepDt, float depthThreshold = 0.005f, float biasScale = 1.0f);
 	void SplitImpulseCorrection(float stepDt);
 	void GenerateSpeculativeContacts(float stepDt);
 	void ResolveToiEvents(float stepDt);
@@ -226,6 +226,11 @@ private:
 	void BuildConstraintBatches(PhysicsIsland& island);
 	std::vector<PhysicsIsland> _islands{};
 	std::unordered_map<PhysicsBody*, int> _bodyIslandMap{}; // body → islandId
+
+	// Island 再利用プール: スロー再構築時、破棄せずバッファを温存
+	std::vector<PhysicsIsland> _islandPool{};
+	int AcquireIsland();          // _islands に 1 スロット追加（プール優先）
+	void RecycleAllIslands();     // _islands の中身をプールへ退避し _islands を空に
 
 	// Union-Find with rank for O(α(n)) amortized merges
 	std::vector<int> _ufParent{};
@@ -330,6 +335,7 @@ private:
 	std::unordered_map<PhysicsBody*, int>                 _bodyIndexBuf;
 	std::unordered_map<int, int>                          _rootToIslandBuf;
 	std::vector<VECTOR>                                   _pseudoVelBuf;
+	std::vector<VECTOR>                                   _posCorrectionBuf;
 	std::unordered_map<PhysicsBody*, size_t>              _bodyIdxBuf;
 	std::vector<ToiEvent>                                 _toiEventsBuf;
 	std::unordered_set<PhysicsBody*>                      _specCoveredBodiesBuf;

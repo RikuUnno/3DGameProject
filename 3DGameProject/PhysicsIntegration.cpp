@@ -167,9 +167,12 @@ void PhysicsManager::IntegrateBodies(float stepDt) {
             }
         }
 
-        if (pos.y < -200.0f) {
-            pos.y = groundEnabled ? (groundD + 0.5f) : 0.5f;
-            body->_velocity = VGet(0, 0, 0);
+        // 場外落下または速度爆発を検出してリセット
+        const float speedSq = LenSq(body->_velocity);
+        const float maxSpd  = body->_maxLinearSpeed;
+        if (pos.y < -200.0f || speedSq > maxSpd * maxSpd) {
+            pos = body->_previousPosition;
+            body->_velocity        = VGet(0, 0, 0);
             body->_angularVelocity = VGet(0, 0, 0);
             body->Sleep();
         }

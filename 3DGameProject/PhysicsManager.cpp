@@ -30,7 +30,18 @@ void PhysicsManager::SetSolverIterations(int solverIterations) noexcept {
 
 int PhysicsManager::ComputeAdaptiveIterations() const noexcept {
     const int contactCount = static_cast<int>(_solverContacts.size());
-    int adaptive = _minSolverIterations + contactCount / 24;
+
+    // 最大アイランドのボディ数も考慮する（巨大アイランドほど収束に多くのイテレーションが必要）
+    int maxIslandBodies = 0;
+    for (const auto& island : _islands) {
+        if (!island.allSleeping)
+            maxIslandBodies = (std::max)(maxIslandBodies, static_cast<int>(island.bodies.size()));
+    }
+
+    // コンタクト数とボディ数の両方からイテレーション数を算出し、大きい方を採用
+    const int adaptiveByContact = _minSolverIterations + contactCount / 16;
+    const int adaptiveByBodies  = _minSolverIterations + maxIslandBodies / 8;
+    int adaptive = (std::max)(adaptiveByContact, adaptiveByBodies);
     adaptive = (std::max)(adaptive, _minSolverIterations);
     adaptive = (std::min)(adaptive, _maxSolverIterations);
 
@@ -57,9 +68,15 @@ void PhysicsManager::Update(float dt) {
         c->Update(dt);
     }
 
-    const int dynamicMaxSubSteps = (dt > _fixedDeltaTime * 4.0f)
-        ? (std::min)(_maxSubSteps, 4)
-        : _maxSubSteps;
+    // フレーム時間が大きいほどサブステップ数を抑える。
+    //   - 通常 (dt < fixedDt*2):     _maxSubSteps をそのまま
+    //   - やや遅い (< fixedDt*4):    2 にクランプ
+    //   - 重い (>= fixedDt*4):       1 にクランプ (spiral of death 防止)
+    // 物理 1 ステップが重いシーンで dt が伸びると、次フレームで accumulator が
+    // 貯まりさらに多くサブステップを回す → さらに遅れる悪循環を切る。
+    int dynamicMaxSubSteps = _maxSubSteps;
+    if (dt >= _fixedDeltaTime * 4.0f)      dynamicMaxSubSteps = 1;
+    else if (dt >= _fixedDeltaTime * 2.0f) dynamicMaxSubSteps = (std::min)(_maxSubSteps, 2);
 
     if (_asyncEnabled) {
 #ifdef _DEBUG
@@ -185,8 +202,15 @@ void PhysicsManager::StepSimulation(float stepDt) {
     if (_splitImpulseEnabled) {
 #ifdef _DEBUG
         { auto _s = PerformanceMonitor::Instance().Scope("Physics.SplitImpulseCorrection"); SplitImpulseCorrection(stepDt); }
+        // SplitImpulse は速度ベースの反復のため wedge / 多接触では収束しきれず
+        // 深いめり込みが残ることがある。仕上げに距離ベースの PositionalCorrection
+        // を「深いめり込みのみ・縮小バイアス」で呼んで残留分のみ押し出す。
+        // 浅い接触 (kSlop ~ 数 cm) には触れないので壁張り付きの原因になる
+        // 過剰押し出しは発生しない。
+        { auto _s = PerformanceMonitor::Instance().Scope("Physics.PositionalCorrection"); PositionalCorrection(stepDt, 0.05f, 0.3f); }
 #else
         SplitImpulseCorrection(stepDt);
+        PositionalCorrection(stepDt, 0.05f, 0.3f);
 #endif
     } else {
 #ifdef _DEBUG

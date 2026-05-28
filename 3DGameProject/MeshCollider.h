@@ -1,18 +1,14 @@
 // MeshCollider.h
-// 三角形メッシュコライダー（ステージ等の任意形状向け）
-// - 既存の BoxCollider / CapsuleCollider / SphereCollider と同じインターフェース
-//   （Collider 派生）で動作するため、ColliderManager の登録/更新フローはそのまま利用可能。
-// - 内部に三角形配列とBVH（Step2以降で実装）を保持する。
-// - 静的ステージ向け（isStatic=true）と、動くプラットフォーム向け（isStatic=false）の
-//   両方を考慮した設計。動的時は UpdateShape() で BVH を更新する。
-//
-// 実装状況（段階導入）:
-//   Step 1: 骨組みのみ（ビルドが通る最小実装。判定は未実装）
-//   Step 2: BVH 構築 + デバッグ描画
-//   Step 3: Sphere   vs Mesh 判定 + 押し出し
-//   Step 4: Capsule  vs Mesh 判定 + 押し出し
-//   Step 5: Box(OBB) vs Mesh 判定 + 押し出し
-//   Step 6: DxLib MV1 モデルからの構築 API
+// MeshCollider.h
+// 三角形メッシュコライダー（ステージ等の任意形状向け）。
+// - Collider 派生として BoxCollider / CapsuleCollider / SphereCollider と
+//   同じインターフェースを持ち、ColliderManager の登録・更新
+//   ・ディスパッチスキームにそのまま乗る。
+// - 三角形配列と BVH（フラット二分木）を保持し、broad-phase での
+//   候補絞り込みに QueryOverlapping() を提供する。
+// - 静的ステージ向け（isStatic=true / 初回のみ構築）と
+//   動くプラットフォーム向け（isStatic=false / 毎フレーム再構築）を
+//   両方サポートする。
 #pragma once
 #include "Collider.h"
 #include "ColliderType.h"
@@ -35,44 +31,107 @@ public:
     void DrawDebugAABB() override;
 
 public:
-    // --- 構築 API（Step 2 以降で本実装。現状は受け取って保持するのみ） ---
+    // --- 構築 API ---
 
-    // 汎用：頂点配列＋インデックス配列からメッシュを構築する。
+    // 頂点配列 + インデックス配列からメッシュを構築する。
     // indices は 3 個ずつ三角形を成す（CCW 推奨）。
-    // owner の Transform を考慮してワールド空間に変換し、BVH を再構築する。
+    // owner の Transform でワールド変換し、BVH を再構築する。
     void BuildFromVertices(const std::vector<VECTOR>& verts,
         const std::vector<int>& indices);
 
-    // 将来追加予定: DxLib MV1 モデルからの直接構築（Step 6）
-    // void BuildFromMV1(int mv1Handle);
+    // DxLib MV1 モデルから直接構築する。
+    // - mv1Handle : MV1LoadModel で取得したハンドル
+    // - frameIndex: -1 でモデル全体、0 以上で特定フレーム（メッシュ）のみ
+    // 三角形はローカル座標で取り込み、owner の Transform でワールド化する。
+    // 取り込み後は MV1 ハンドルを破棄しても問題ない（コライダ側でコピー保持）。
+    // 戻り値: 三角形が 1 つ以上生成できれば true。
+    bool BuildFromMV1(int mv1Handle, int frameIndex = -1);
 
 public:
     // --- 設定 ---
-    // 静的フラグ：true の場合、UpdateShape() で再変換しない（初回のみ）。
-    // ステージなど不動オブジェクトでは true 推奨。
-    // 動くプラットフォーム等では false にして毎フレーム再構築する。
+
+    // 静的フラグ。true なら UpdateShape() で再変換しない（初回構築時のみ）。
+    // ステージ等の不動オブジェクトでは true 推奨。動くプラットフォーム等では false。
     bool isStatic = true;
 
-    // 三角形数の取得（デバッグ/プロファイル用）
+    // 三角形数（デバッグ / プロファイル用）
     size_t TriangleCount() const noexcept { return _trianglesWorld.size(); }
 
+    // ワールド空間の三角形配列への参照（narrow-phase で使用）
+    const std::vector<Triangle>& Triangles() const noexcept { return _trianglesWorld; }
+
+public:
+    // --- BVH 問い合わせ API ---
+
+    // query AABB と重なる三角形の index を callback(size_t triIndex) で通知する。
+    // narrow-phase（Sphere / Capsule / OBB vs Mesh）の候補絞り込みに使用する。
+    // BVH 未構築（三角形 <= 1）の場合は全走査にフォールバックする。
+    template<typename Func>
+    void QueryOverlapping(const AABB& query, Func&& callback) const {
+        if (_bvhNodes.empty()) {
+            for (size_t i = 0; i < _trianglesWorld.size(); ++i) {
+                if (AABBOverlap(_trianglesWorld[i].aabb, query)) {
+                    callback(i);
+                }
+            }
+            return;
+        }
+        QueryBVH(0, query, std::forward<Func>(callback));
+    }
+
+    // query AABB に重なる三角形のみワイヤ描画する（巨大ステージ向け）。
+    void DrawDebugInAABB(const AABB& query);
+
 private:
-    // ローカル空間の三角形（owner の Transform を適用する前のデータ）
-    // 動的更新（isStatic=false）時に毎フレームこちらからワールド空間へ変換する。
+    // BVH ノード（フラット二分木）
+    struct BVHNode {
+        AABB aabb{};
+        int leftOrChild = -1; // leaf: 三角形 index / branch: 左ノード index
+        int right = -1;       // branch: 右ノード index / leaf: -1
+        bool isLeaf = false;
+    };
+
+    // ローカル空間の三角形（owner の Transform 適用前のソース）。
+    // isStatic=false 時は毎フレームこちらからワールド空間へ再変換する。
     std::vector<Triangle> _trianglesLocal;
 
-    // ワールド空間の三角形（実際の判定で使う側）
+    // ワールド空間の三角形（判定で使う側）
     std::vector<Triangle> _trianglesWorld;
 
-    // ブロードフェーズ用の全体AABB
+    // BVH（_trianglesWorld のインデックスを参照するフラットノード列）
+    std::vector<BVHNode> _bvhNodes;
+
+    // broad-phase 用の全体 AABB
     AABB _aabb{};
 
-    // 静的構築済みフラグ（isStatic=true の場合、初回のみ構築する判定に使用）
+    // 初回構築済みフラグ（isStatic=true の二度目以降の更新をスキップするための判定）
     bool _builtOnce = false;
 
-    // BVH 等の加速構造は Step 2 以降で追加予定（実装ファイル側に閉じる）
-
 private:
-    // 内部ヘルパ：_trianglesLocal から _trianglesWorld と _aabb を再計算する。
+    // _trianglesLocal -> _trianglesWorld / _aabb / BVH を再計算する。
     void RecomputeWorld();
+
+    // _trianglesWorld を入力に BVH を構築する。
+    void RebuildBVH();
+    int  BuildBVHNode(std::vector<int>& indices, int begin, int end);
+
+    static bool AABBOverlap(const AABB& a, const AABB& b) noexcept {
+        return (a.min.x <= b.max.x && a.max.x >= b.min.x) &&
+            (a.min.y <= b.max.y && a.max.y >= b.min.y) &&
+            (a.min.z <= b.max.z && a.max.z >= b.min.z);
+    }
+
+    // BVH 探索本体
+    template<typename Func>
+    void QueryBVH(int nodeIdx, const AABB& query, Func&& callback) const {
+        if (nodeIdx < 0 || nodeIdx >= static_cast<int>(_bvhNodes.size())) return;
+        const BVHNode& node = _bvhNodes[nodeIdx];
+        if (!AABBOverlap(node.aabb, query)) return;
+        if (node.isLeaf) {
+            callback(static_cast<size_t>(node.leftOrChild));
+            return;
+        }
+        QueryBVH(node.leftOrChild, query, callback);
+        if (node.right >= 0) QueryBVH(node.right, query, callback);
+    }
 };

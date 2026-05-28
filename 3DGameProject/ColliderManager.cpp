@@ -6,6 +6,7 @@
 #include "CapsuleCollider.h"
 #include "HalfPlaneCollider.h"
 #include "CompoundCollider.h"
+#include "MeshCollider.h"
 #include "PhysicsDebugClass.h"
 #include "Assert.h"
 #include "ThreadPool.h"
@@ -746,6 +747,21 @@ void ColliderManager::SpatialPartitioning() {
 				Collider* hp = (ka == Collider::Kind::HalfPlane) ? a : b;
 				CheckCapsuleHalfPlane(cp, hp);
 			}
+			else if (IsPair(ka, kb, Collider::Kind::Sphere, Collider::Kind::Mesh)) {
+				Collider* sp = (ka == Collider::Kind::Sphere) ? a : b;
+				Collider* ms = (ka == Collider::Kind::Mesh) ? a : b;
+				CheckSphereMesh(sp, ms);
+			}
+			else if (IsPair(ka, kb, Collider::Kind::Capsule, Collider::Kind::Mesh)) {
+				Collider* cp = (ka == Collider::Kind::Capsule) ? a : b;
+				Collider* ms = (ka == Collider::Kind::Mesh) ? a : b;
+				CheckCapsuleMesh(cp, ms);
+			}
+			else if (IsPair(ka, kb, Collider::Kind::Box, Collider::Kind::Mesh)) {
+				Collider* bx = (ka == Collider::Kind::Box) ? a : b;
+				Collider* ms = (ka == Collider::Kind::Mesh) ? a : b;
+				CheckBoxMesh(bx, ms);
+			}
 			else if (ka == Collider::Kind::Compound || kb == Collider::Kind::Compound) {
 				Collider* comp  = (ka == Collider::Kind::Compound) ? a : b;
 				Collider* other = (comp == a) ? b : a;
@@ -878,6 +894,21 @@ void ColliderManager::ResolvePushOut(Collider* a, Collider* b) {
 		Collider* cp = (ka == Collider::Kind::Capsule) ? a : b;
 		Collider* hp = (ka == Collider::Kind::HalfPlane) ? a : b;
 		PushOutCapsuleHalfPlane(cp, hp);
+	}
+	else if (IsPair(ka, kb, Collider::Kind::Sphere, Collider::Kind::Mesh)) {
+		Collider* sp = (ka == Collider::Kind::Sphere) ? a : b;
+		Collider* ms = (ka == Collider::Kind::Mesh) ? a : b;
+		PushOutSphereMesh(sp, ms);
+	}
+	else if (IsPair(ka, kb, Collider::Kind::Capsule, Collider::Kind::Mesh)) {
+		Collider* cp = (ka == Collider::Kind::Capsule) ? a : b;
+		Collider* ms = (ka == Collider::Kind::Mesh) ? a : b;
+		PushOutCapsuleMesh(cp, ms);
+	}
+	else if (IsPair(ka, kb, Collider::Kind::Box, Collider::Kind::Mesh)) {
+		Collider* bx = (ka == Collider::Kind::Box) ? a : b;
+		Collider* ms = (ka == Collider::Kind::Mesh) ? a : b;
+		PushOutBoxMesh(bx, ms);
 	}
 	// Compound: push-out handled by child dispatch (no explicit compound push-out)
 }
@@ -2391,6 +2422,717 @@ void ColliderManager::PushOutCapsuleHalfPlane(Collider* capsule, Collider* plane
 }
 
 // ============================================================
+//  Mesh (Triangle Mesh) narrow-phase + push-out
+//  メッシュ側は静的扱い：押し戻しは Sphere 側のみ移動する。
+//  Mesh が動的（owner!=null かつ !isStatic）の場合でも、現状は相手のみ移動する設計。
+// ============================================================
+namespace {
+	// 点 p から三角形 (a,b,c) 上の最近点を求める（Christer Ericke, RTCD）
+	// 戻り値: 三角形上の最近点。outBary は (u,v,w) で p_near = u*a + v*b + w*c。
+	inline VECTOR ClosestPointOnTriangle(
+		const VECTOR& p,
+		const VECTOR& a, const VECTOR& b, const VECTOR& c) noexcept
+	{
+		const VECTOR ab = VSub(b, a);
+		const VECTOR ac = VSub(c, a);
+		const VECTOR ap = VSub(p, a);
+		const float d1 = Dot3(ab, ap);
+		const float d2 = Dot3(ac, ap);
+		if (d1 <= 0.0f && d2 <= 0.0f) return a; // 領域 A
+
+		const VECTOR bp = VSub(p, b);
+		const float d3 = Dot3(ab, bp);
+		const float d4 = Dot3(ac, bp);
+		if (d3 >= 0.0f && d4 <= d3) return b; // 領域 B
+
+		const float vc = d1 * d4 - d3 * d2;
+		if (vc <= 0.0f && d1 >= 0.0f && d3 <= 0.0f) {
+			const float v = d1 / (d1 - d3);
+			return VAdd(a, VScale(ab, v)); // 辺 AB
+		}
+
+		const VECTOR cp = VSub(p, c);
+		const float d5 = Dot3(ab, cp);
+		const float d6 = Dot3(ac, cp);
+		if (d6 >= 0.0f && d5 <= d6) return c; // 領域 C
+
+		const float vb = d5 * d2 - d1 * d6;
+		if (vb <= 0.0f && d2 >= 0.0f && d6 <= 0.0f) {
+			const float w = d2 / (d2 - d6);
+			return VAdd(a, VScale(ac, w)); // 辺 AC
+		}
+
+		const float va = d3 * d6 - d5 * d4;
+		if (va <= 0.0f && (d4 - d3) >= 0.0f && (d5 - d6) >= 0.0f) {
+			const float w = (d4 - d3) / ((d4 - d3) + (d5 - d6));
+			return VAdd(b, VScale(VSub(c, b), w)); // 辺 BC
+		}
+
+		// 内部
+		const float denom = 1.0f / (va + vb + vc);
+		const float v = vb * denom;
+		const float w = vc * denom;
+		return VAdd(a, VAdd(VScale(ab, v), VScale(ac, w)));
+	}
+
+	// 半径 radius で膨らませた球の AABB を作る（BVH 問い合わせ用）
+	inline AABB MakeSphereAABB(const VECTOR& center, float radius) noexcept {
+		AABB box;
+		box.min = VGet(center.x - radius, center.y - radius, center.z - radius);
+		box.max = VGet(center.x + radius, center.y + radius, center.z + radius);
+		box.center = center;
+		return box;
+	}
+}
+
+void ColliderManager::CheckSphereMesh(Collider* sphere, Collider* mesh) {
+	auto* s = dynamic_cast<SphereCollider*>(sphere);
+	auto* m = dynamic_cast<MeshCollider*>(mesh);
+	if (!s || !m) { _tlNarrowHit = false; return; }
+
+	const VECTOR sc = s->GetCenter();
+	const float r = s->GetRadius();
+	const float r2 = r * r;
+	const AABB query = MakeSphereAABB(sc, r);
+
+	bool anyHit = false;
+	const auto& tris = m->Triangles();
+
+	m->QueryOverlapping(query, [&](size_t triIdx) {
+		const Triangle& tri = tris[triIdx];
+		const VECTOR cp = ClosestPointOnTriangle(sc, tri.v0, tri.v1, tri.v2);
+		const VECTOR diff = VSub(sc, cp);
+		const float distSq = LenSq(diff);
+		if (distSq > r2) return;
+
+		// 接触法線：球中心→最近点 の逆向き。ゼロ距離時は三角形法線で代替。
+		VECTOR normal;
+		float dist;
+		if (distSq > 1e-8f) {
+			dist = std::sqrt(distSq);
+			normal = VScale(diff, 1.0f / dist);
+		}
+		else {
+			dist = 0.0f;
+			normal = tri.normal;
+		}
+		const float pen = r - dist;
+		if (pen <= 0.0f) return;
+
+		anyHit = true;
+		Contact ct;
+		ct.a = mesh;   // mesh 側を a に統一（HalfPlane と同じ規約）
+		ct.b = sphere;
+		ct.normal = normal;
+		ct.point = cp;
+		ct.penetration = pen;
+		EmitContact(ct);
+	});
+
+	_tlNarrowHit = anyHit;
+}
+
+void ColliderManager::PushOutSphereMesh(Collider* sphere, Collider* mesh) {
+	auto* s = dynamic_cast<SphereCollider*>(sphere);
+	auto* m = dynamic_cast<MeshCollider*>(mesh);
+	if (!s || !m) return;
+
+	GameObject* owner = sphere->owner;
+	if (!owner || owner->isStatic) return;
+
+	// メッシュ全体を一度走査して MTV（最深押し戻し）を集計する。
+	// 単純に最深を採用すると角で振動するため、各接触の押し戻しベクトルを
+	// 合成（重複方向はクランプ）するシンプルな反復押し出しを 1 パスで行う。
+	const float rOrig = s->GetRadius();
+	const float r2 = rOrig * rOrig;
+	const auto& tris = m->Triangles();
+
+	VECTOR totalPush = VGet(0, 0, 0);
+	int hitCount = 0;
+
+	const VECTOR sc0 = s->GetCenter();
+	const AABB query = MakeSphereAABB(sc0, rOrig);
+
+	m->QueryOverlapping(query, [&](size_t triIdx) {
+		const Triangle& tri = tris[triIdx];
+		const VECTOR cp = ClosestPointOnTriangle(sc0, tri.v0, tri.v1, tri.v2);
+		const VECTOR diff = VSub(sc0, cp);
+		const float distSq = LenSq(diff);
+		if (distSq > r2) return;
+
+		VECTOR normal;
+		float dist;
+		if (distSq > 1e-8f) {
+			dist = std::sqrt(distSq);
+			normal = VScale(diff, 1.0f / dist);
+		}
+		else {
+			dist = 0.0f;
+			normal = tri.normal;
+		}
+		const float pen = rOrig - dist;
+		if (pen <= 0.0f) return;
+
+		// 同方向の押し戻しが重複しないよう、既存合成方向への投影を差し引いて足す。
+		const float already = Dot3(totalPush, normal);
+		const float add = pen - already;
+		if (add > 0.0f) {
+			totalPush = VAdd(totalPush, VScale(normal, add));
+		}
+		++hitCount;
+	});
+
+	if (hitCount == 0) {
+		// CCD: トンネル抜けの簡易検出（前フレーム中心→現フレーム中心の線分が
+		// 三角形 BVH 範囲を貫いている場合に最小貫通量で押し戻す）。
+		// Step3 では簡易対応に留め、本格的なスイープは将来 Step に回す。
+		if (!s->hasPrevAABB) return;
+		const VECTOR prevCenter = s->prevAABB.center;
+		const VECTOR move = VSub(sc0, prevCenter);
+		const float moveLen2 = LenSq(move);
+		if (moveLen2 < 1e-8f) return;
+
+		// 移動経路の AABB で再問い合わせ
+		AABB sweptQuery;
+		sweptQuery.min = VGet(
+			(std::min)(prevCenter.x, sc0.x) - rOrig,
+			(std::min)(prevCenter.y, sc0.y) - rOrig,
+			(std::min)(prevCenter.z, sc0.z) - rOrig);
+		sweptQuery.max = VGet(
+			(std::max)(prevCenter.x, sc0.x) + rOrig,
+			(std::max)(prevCenter.y, sc0.y) + rOrig,
+			(std::max)(prevCenter.z, sc0.z) + rOrig);
+		sweptQuery.center = VScale(VAdd(sweptQuery.min, sweptQuery.max), 0.5f);
+
+		float bestT = 2.0f;
+		VECTOR bestNormal = VGet(0, 1, 0);
+		m->QueryOverlapping(sweptQuery, [&](size_t triIdx) {
+			const Triangle& tri = tris[triIdx];
+			const float vn = Dot3(move, tri.normal);
+			if (std::fabs(vn) < 1e-6f) return;
+			const float d0 = Dot3(VSub(prevCenter, tri.v0), tri.normal);
+			// 球面が三角形平面に触れる時刻
+			const float t = (rOrig - d0) / vn;
+			if (t < 0.0f || t > 1.0f) return;
+			const VECTOR hitCenter = VAdd(prevCenter, VScale(move, t));
+			// 平面投影点が三角形内に近いかを最近点距離で判定
+			const VECTOR cp = ClosestPointOnTriangle(hitCenter, tri.v0, tri.v1, tri.v2);
+			if (LenSq(VSub(hitCenter, cp)) > rOrig * rOrig + 1e-3f) return;
+			if (t < bestT) {
+				bestT = t;
+				bestNormal = (vn < 0.0f) ? tri.normal : VScale(tri.normal, -1.0f);
+			}
+		});
+		if (bestT > 1.0f) return;
+
+		const VECTOR hitCenter = VAdd(prevCenter, VScale(move, bestT));
+		VECTOR p = owner->transform.LocalPosition();
+		p = VAdd(p, VSub(hitCenter, sc0));
+		p = VAdd(p, VScale(bestNormal, 1e-4f));
+		owner->transform.SetLocalPosition(p);
+		s->UpdateShape();
+
+		Contact ct;
+		ct.a = mesh;
+		ct.b = sphere;
+		ct.normal = bestNormal;
+		ct.point = hitCenter;
+		ct.penetration = 1e-4f;
+		EmitContact(ct);
+		return;
+	}
+
+	// 集計した押し戻しベクトルを適用
+	VECTOR p = owner->transform.LocalPosition();
+	p = VAdd(p, totalPush);
+	owner->transform.SetLocalPosition(p);
+	s->UpdateShape();
+}
+
+// ------------------------------------------------------------
+//  Capsule vs Mesh
+//  カプセル線分上の最近点を求め、その点と三角形最近点の距離で判定する。
+//  Sphere vs Mesh と同じ「投影合成」押し戻しで角の振動を抑える。
+// ------------------------------------------------------------
+namespace {
+	// 点 p と線分 (a,b) の最近点（線分上の点）を返す。outT は a→b の補間係数 [0,1]。
+	inline VECTOR ClosestPointOnSegment(
+		const VECTOR& p, const VECTOR& a, const VECTOR& b,
+		float* outT = nullptr) noexcept
+	{
+		const VECTOR ab = VSub(b, a);
+		const float ab2 = LenSq(ab);
+		if (ab2 < 1e-12f) {
+			if (outT) *outT = 0.0f;
+			return a;
+		}
+		float t = Dot3(VSub(p, a), ab) / ab2;
+		if (t < 0.0f) t = 0.0f; else if (t > 1.0f) t = 1.0f;
+		if (outT) *outT = t;
+		return VAdd(a, VScale(ab, t));
+	}
+
+	// 線分 (s0,s1) と三角形 (v0,v1,v2) の最近点ペアを求める。
+	// 戻り値: 距離の二乗。outSeg は線分上の最近点、outTri は三角形上の最近点。
+	// 実装は単純化のため「両端＋三角形辺3本上の線分-線分最近点」と
+	// 「線分のクランプ平面投影」を組み合わせた近似（ゲーム用途には十分）。
+	inline float ClosestPointSegmentTriangle(
+		const VECTOR& s0, const VECTOR& s1,
+		const VECTOR& v0, const VECTOR& v1, const VECTOR& v2,
+		VECTOR* outSeg, VECTOR* outTri) noexcept
+	{
+		// 候補1: 線分両端 → 三角形最近点
+		const VECTOR cp0 = ClosestPointOnTriangle(s0, v0, v1, v2);
+		const VECTOR cp1 = ClosestPointOnTriangle(s1, v0, v1, v2);
+		float best = LenSq(VSub(s0, cp0));
+		VECTOR bestSeg = s0;
+		VECTOR bestTri = cp0;
+		{
+			const float d1 = LenSq(VSub(s1, cp1));
+			if (d1 < best) { best = d1; bestSeg = s1; bestTri = cp1; }
+		}
+
+		// 候補2: 線分 vs 三角形の各辺の線分-線分最近点
+		auto SegSegClosest = [&](const VECTOR& p0, const VECTOR& p1,
+			const VECTOR& q0, const VECTOR& q1,
+			VECTOR* op, VECTOR* oq) -> float
+		{
+			const VECTOR d1 = VSub(p1, p0);
+			const VECTOR d2 = VSub(q1, q0);
+			const VECTOR r = VSub(p0, q0);
+			const float a = Dot3(d1, d1);
+			const float e = Dot3(d2, d2);
+			const float f = Dot3(d2, r);
+			float s, t;
+			if (a <= 1e-12f && e <= 1e-12f) { s = t = 0.0f; }
+			else if (a <= 1e-12f) {
+				s = 0.0f;
+				t = f / e; if (t < 0.0f) t = 0.0f; else if (t > 1.0f) t = 1.0f;
+			}
+			else {
+				const float c = Dot3(d1, r);
+				if (e <= 1e-12f) {
+					t = 0.0f;
+					s = -c / a; if (s < 0.0f) s = 0.0f; else if (s > 1.0f) s = 1.0f;
+				}
+				else {
+					const float b = Dot3(d1, d2);
+					const float denom = a * e - b * b;
+					if (denom != 0.0f) {
+						s = (b * f - c * e) / denom;
+						if (s < 0.0f) s = 0.0f; else if (s > 1.0f) s = 1.0f;
+					}
+					else {
+						s = 0.0f;
+					}
+					t = (b * s + f) / e;
+					if (t < 0.0f) { t = 0.0f; s = -c / a; if (s < 0.0f) s = 0.0f; else if (s > 1.0f) s = 1.0f; }
+					else if (t > 1.0f) { t = 1.0f; s = (b - c) / a; if (s < 0.0f) s = 0.0f; else if (s > 1.0f) s = 1.0f; }
+				}
+			}
+			const VECTOR cp = VAdd(p0, VScale(d1, s));
+			const VECTOR cq = VAdd(q0, VScale(d2, t));
+			if (op) *op = cp;
+			if (oq) *oq = cq;
+			return LenSq(VSub(cp, cq));
+		};
+
+		VECTOR ep, eq;
+		float d;
+		d = SegSegClosest(s0, s1, v0, v1, &ep, &eq);
+		if (d < best) { best = d; bestSeg = ep; bestTri = eq; }
+		d = SegSegClosest(s0, s1, v1, v2, &ep, &eq);
+		if (d < best) { best = d; bestSeg = ep; bestTri = eq; }
+		d = SegSegClosest(s0, s1, v2, v0, &ep, &eq);
+		if (d < best) { best = d; bestSeg = ep; bestTri = eq; }
+
+		if (outSeg) *outSeg = bestSeg;
+		if (outTri) *outTri = bestTri;
+		return best;
+	}
+
+	// カプセル線分 AABB を radius で膨らませる
+	inline AABB MakeCapsuleAABB(const VECTOR& a, const VECTOR& b, float radius) noexcept {
+		AABB box;
+		box.min = VGet(
+			(std::min)(a.x, b.x) - radius,
+			(std::min)(a.y, b.y) - radius,
+			(std::min)(a.z, b.z) - radius);
+		box.max = VGet(
+			(std::max)(a.x, b.x) + radius,
+			(std::max)(a.y, b.y) + radius,
+			(std::max)(a.z, b.z) + radius);
+		box.center = VScale(VAdd(box.min, box.max), 0.5f);
+		return box;
+	}
+}
+
+void ColliderManager::CheckCapsuleMesh(Collider* capsule, Collider* mesh) {
+	auto* c = dynamic_cast<CapsuleCollider*>(capsule);
+	auto* m = dynamic_cast<MeshCollider*>(mesh);
+	if (!c || !m) { _tlNarrowHit = false; return; }
+
+	const VECTOR ca = c->GetBottom();
+	const VECTOR cb = c->GetTop();
+	const float r = c->GetRadius();
+	const float r2 = r * r;
+	const AABB query = MakeCapsuleAABB(ca, cb, r);
+
+	bool anyHit = false;
+	const auto& tris = m->Triangles();
+
+	m->QueryOverlapping(query, [&](size_t triIdx) {
+		const Triangle& tri = tris[triIdx];
+		VECTOR segP, triP;
+		const float distSq = ClosestPointSegmentTriangle(ca, cb, tri.v0, tri.v1, tri.v2, &segP, &triP);
+		if (distSq > r2) return;
+
+		VECTOR normal;
+		float dist;
+		const VECTOR diff = VSub(segP, triP);
+		if (distSq > 1e-8f) {
+			dist = std::sqrt(distSq);
+			normal = VScale(diff, 1.0f / dist);
+		}
+		else {
+			dist = 0.0f;
+			normal = tri.normal;
+		}
+		const float pen = r - dist;
+		if (pen <= 0.0f) return;
+
+		anyHit = true;
+		Contact ct;
+		ct.a = mesh;
+		ct.b = capsule;
+		ct.normal = normal;
+		ct.point = triP;
+		ct.penetration = pen;
+		EmitContact(ct);
+	});
+
+	_tlNarrowHit = anyHit;
+}
+
+void ColliderManager::PushOutCapsuleMesh(Collider* capsule, Collider* mesh) {
+	auto* c = dynamic_cast<CapsuleCollider*>(capsule);
+	auto* m = dynamic_cast<MeshCollider*>(mesh);
+	if (!c || !m) return;
+
+	GameObject* owner = capsule->owner;
+	if (!owner || owner->isStatic) return;
+
+	const VECTOR ca = c->GetBottom();
+	const VECTOR cb = c->GetTop();
+	const float r = c->GetRadius();
+	const float r2 = r * r;
+	const auto& tris = m->Triangles();
+	const AABB query = MakeCapsuleAABB(ca, cb, r);
+
+	VECTOR totalPush = VGet(0, 0, 0);
+	int hitCount = 0;
+
+	m->QueryOverlapping(query, [&](size_t triIdx) {
+		const Triangle& tri = tris[triIdx];
+		VECTOR segP, triP;
+		const float distSq = ClosestPointSegmentTriangle(ca, cb, tri.v0, tri.v1, tri.v2, &segP, &triP);
+		if (distSq > r2) return;
+
+		VECTOR normal;
+		float dist;
+		const VECTOR diff = VSub(segP, triP);
+		if (distSq > 1e-8f) {
+			dist = std::sqrt(distSq);
+			normal = VScale(diff, 1.0f / dist);
+		}
+		else {
+			dist = 0.0f;
+			normal = tri.normal;
+		}
+		const float pen = r - dist;
+		if (pen <= 0.0f) return;
+
+		const float already = Dot3(totalPush, normal);
+		const float add = pen - already;
+		if (add > 0.0f) {
+			totalPush = VAdd(totalPush, VScale(normal, add));
+		}
+		++hitCount;
+	});
+
+	if (hitCount == 0) {
+		// CCD: 簡易スイープ（カプセル中心の移動経路で再走査）。
+		// 実用上は十分な近似。完全なスイープは将来 Step へ。
+		if (!c->hasPrevAABB) return;
+		const VECTOR center = c->GetCenter();
+		const VECTOR prevCenter = c->prevAABB.center;
+		const VECTOR move = VSub(center, prevCenter);
+		if (LenSq(move) < 1e-8f) return;
+
+		AABB sweptQuery;
+		sweptQuery.min = VGet(
+			(std::min)(query.min.x, query.min.x - move.x),
+			(std::min)(query.min.y, query.min.y - move.y),
+			(std::min)(query.min.z, query.min.z - move.z));
+		sweptQuery.max = VGet(
+			(std::max)(query.max.x, query.max.x - move.x),
+			(std::max)(query.max.y, query.max.y - move.y),
+			(std::max)(query.max.z, query.max.z - move.z));
+		sweptQuery.center = VScale(VAdd(sweptQuery.min, sweptQuery.max), 0.5f);
+
+		float bestT = 2.0f;
+		VECTOR bestNormal = VGet(0, 1, 0);
+		m->QueryOverlapping(sweptQuery, [&](size_t triIdx) {
+			const Triangle& tri = tris[triIdx];
+			const float vn = Dot3(move, tri.normal);
+			if (std::fabs(vn) < 1e-6f) return;
+			// 線分のうち最も平面に近い端点で判定（簡易）
+			const float dPrev = Dot3(VSub(prevCenter, tri.v0), tri.normal);
+			const float t = (r - dPrev) / vn;
+			if (t < 0.0f || t > 1.0f) return;
+			if (t < bestT) {
+				bestT = t;
+				bestNormal = (vn < 0.0f) ? tri.normal : VScale(tri.normal, -1.0f);
+			}
+		});
+		if (bestT > 1.0f) return;
+
+		const VECTOR hitCenter = VAdd(prevCenter, VScale(move, bestT));
+		VECTOR p = owner->transform.LocalPosition();
+		p = VAdd(p, VSub(hitCenter, center));
+		p = VAdd(p, VScale(bestNormal, 1e-4f));
+		owner->transform.SetLocalPosition(p);
+		c->UpdateShape();
+
+		Contact ct;
+		ct.a = mesh;
+		ct.b = capsule;
+		ct.normal = bestNormal;
+		ct.point = hitCenter;
+		ct.penetration = 1e-4f;
+		EmitContact(ct);
+		return;
+	}
+
+	VECTOR p = owner->transform.LocalPosition();
+	p = VAdd(p, totalPush);
+	owner->transform.SetLocalPosition(p);
+	c->UpdateShape();
+}
+
+// ------------------------------------------------------------
+//  Box (OBB) vs Mesh
+//  各候補三角形に対し 13 軸 SAT で重なり判定し、最小貫通量(MTV)を求める。
+//  押し戻しは Sphere/Capsule と同じ「投影合成」方式で角の振動を抑える。
+// ------------------------------------------------------------
+namespace {
+	// 三角形と OBB の SAT 重なり判定。
+	// 戻り値 true なら重なっている。outNormal は OBB 側を押し戻す方向（OBB中心→外）、
+	// outPen は最小貫通量。
+	inline bool OBBTriangleSAT(
+		const BoxCollider* box,
+		const Triangle& tri,
+		VECTOR* outNormal, float* outPen) noexcept
+	{
+		const VECTOR center = box->GetCenter();
+		const VECTOR axisA[3] = { box->GetAxisX(), box->GetAxisY(), box->GetAxisZ() };
+		const VECTOR he = box->GetHalfExtents();
+		const float extA[3] = { he.x, he.y, he.z };
+
+		// 三角形の頂点を OBB 中心基準にする
+		const VECTOR v[3] = {
+			VSub(tri.v0, center),
+			VSub(tri.v1, center),
+			VSub(tri.v2, center),
+		};
+		const VECTOR edges[3] = {
+			VSub(tri.v1, tri.v0),
+			VSub(tri.v2, tri.v1),
+			VSub(tri.v0, tri.v2),
+		};
+
+		float minPen = 1e30f;
+		VECTOR bestAxis = VGet(0, 1, 0);
+
+		auto Test = [&](VECTOR axis) -> bool {
+			const float al2 = LenSq(axis);
+			if (al2 < 1e-10f) return true; // 退化軸は無視（重なり判定では分離なし扱い）
+			const float invLen = 1.0f / std::sqrt(al2);
+			axis = VScale(axis, invLen);
+
+			// OBB 投影半径
+			float rA = 0.0f;
+			for (int i = 0; i < 3; ++i) rA += std::fabs(Dot3(axisA[i], axis)) * extA[i];
+
+			// 三角形投影 [tmin, tmax]
+			const float p0 = Dot3(v[0], axis);
+			const float p1 = Dot3(v[1], axis);
+			const float p2 = Dot3(v[2], axis);
+			const float tmin = (std::min)(p0, (std::min)(p1, p2));
+			const float tmax = (std::max)(p0, (std::max)(p1, p2));
+
+			// 重なり量: 分離していれば <=0
+			const float overlap = (std::min)(rA - tmin, tmax + rA);
+			if (overlap <= 0.0f) return false; // 分離軸
+
+			if (overlap < minPen) {
+				minPen = overlap;
+				// 押し戻し方向：OBB 中心→三角形 と逆向き＝OBB を遠ざける方向にする
+				const float center2tri = 0.5f * (tmin + tmax);
+				bestAxis = (center2tri >= 0.0f) ? VScale(axis, -1.0f) : axis;
+			}
+			return true;
+		};
+
+		// 1. OBB の 3 軸
+		for (int i = 0; i < 3; ++i) {
+			if (!Test(axisA[i])) return false;
+		}
+		// 2. 三角形の法線
+		if (!Test(tri.normal)) return false;
+		// 3. OBB 軸 × 三角形辺 の 9 軸
+		for (int i = 0; i < 3; ++i) {
+			for (int j = 0; j < 3; ++j) {
+				if (!Test(VCross(axisA[i], edges[j]))) return false;
+			}
+		}
+
+		if (outNormal) *outNormal = bestAxis;
+		if (outPen) *outPen = minPen;
+		return true;
+	}
+
+	// OBB の AABB を求める（広域 BVH 問い合わせ用）。BoxCollider::GetAABB() を使う。
+	inline AABB GetBoxQueryAABB(const BoxCollider* box) noexcept {
+		return box->GetAABB();
+	}
+}
+
+void ColliderManager::CheckBoxMesh(Collider* box, Collider* mesh) {
+	auto* b = dynamic_cast<BoxCollider*>(box);
+	auto* m = dynamic_cast<MeshCollider*>(mesh);
+	if (!b || !m) { _tlNarrowHit = false; return; }
+
+	const AABB query = GetBoxQueryAABB(b);
+	const auto& tris = m->Triangles();
+
+	bool anyHit = false;
+	m->QueryOverlapping(query, [&](size_t triIdx) {
+		const Triangle& tri = tris[triIdx];
+		VECTOR normal;
+		float pen;
+		if (!OBBTriangleSAT(b, tri, &normal, &pen)) return;
+		if (pen <= 0.0f) return;
+
+		anyHit = true;
+		Contact ct;
+		ct.a = mesh;
+		ct.b = box;
+		ct.normal = normal;
+		// 接触点：三角形重心の最も近い面投影で近似（Multi-point contact までは作らない）
+		ct.point = VScale(VAdd(VAdd(tri.v0, tri.v1), tri.v2), 1.0f / 3.0f);
+		ct.penetration = pen;
+		EmitContact(ct);
+	});
+
+	_tlNarrowHit = anyHit;
+}
+
+void ColliderManager::PushOutBoxMesh(Collider* box, Collider* mesh) {
+	auto* b = dynamic_cast<BoxCollider*>(box);
+	auto* m = dynamic_cast<MeshCollider*>(mesh);
+	if (!b || !m) return;
+
+	GameObject* owner = box->owner;
+	if (!owner || owner->isStatic) return;
+
+	const AABB query = GetBoxQueryAABB(b);
+	const auto& tris = m->Triangles();
+
+	VECTOR totalPush = VGet(0, 0, 0);
+	int hitCount = 0;
+
+	m->QueryOverlapping(query, [&](size_t triIdx) {
+		const Triangle& tri = tris[triIdx];
+		VECTOR normal;
+		float pen;
+		if (!OBBTriangleSAT(b, tri, &normal, &pen)) return;
+		if (pen <= 0.0f) return;
+
+		const float already = Dot3(totalPush, normal);
+		const float add = pen - already;
+		if (add > 0.0f) {
+			totalPush = VAdd(totalPush, VScale(normal, add));
+		}
+		++hitCount;
+	});
+
+	if (hitCount == 0) {
+		// CCD: OBB 中心の移動経路で簡易再走査（Sphere/Capsule と同方針）。
+		if (!b->hasPrevAABB) return;
+		const VECTOR center = b->GetCenter();
+		const VECTOR prevCenter = b->prevAABB.center;
+		const VECTOR move = VSub(center, prevCenter);
+		if (LenSq(move) < 1e-8f) return;
+
+		AABB sweptQuery;
+		sweptQuery.min = VGet(
+			(std::min)(query.min.x, query.min.x - move.x),
+			(std::min)(query.min.y, query.min.y - move.y),
+			(std::min)(query.min.z, query.min.z - move.z));
+		sweptQuery.max = VGet(
+			(std::max)(query.max.x, query.max.x - move.x),
+			(std::max)(query.max.y, query.max.y - move.y),
+			(std::max)(query.max.z, query.max.z - move.z));
+		sweptQuery.center = VScale(VAdd(sweptQuery.min, sweptQuery.max), 0.5f);
+
+		float bestT = 2.0f;
+		VECTOR bestNormal = VGet(0, 1, 0);
+		const VECTOR axisA[3] = { b->GetAxisX(), b->GetAxisY(), b->GetAxisZ() };
+		const VECTOR he = b->GetHalfExtents();
+		const float extA[3] = { he.x, he.y, he.z };
+
+		m->QueryOverlapping(sweptQuery, [&](size_t triIdx) {
+			const Triangle& tri = tris[triIdx];
+			const float vn = Dot3(move, tri.normal);
+			if (std::fabs(vn) < 1e-6f) return;
+			// OBB の三角形法線方向への投影半径
+			float rA = 0.0f;
+			for (int i = 0; i < 3; ++i) rA += std::fabs(Dot3(axisA[i], tri.normal)) * extA[i];
+			const float dPrev = Dot3(VSub(prevCenter, tri.v0), tri.normal);
+			const float t = (rA - dPrev) / vn;
+			if (t < 0.0f || t > 1.0f) return;
+			if (t < bestT) {
+				bestT = t;
+				bestNormal = (vn < 0.0f) ? tri.normal : VScale(tri.normal, -1.0f);
+			}
+		});
+		if (bestT > 1.0f) return;
+
+		const VECTOR hitCenter = VAdd(prevCenter, VScale(move, bestT));
+		VECTOR p = owner->transform.LocalPosition();
+		p = VAdd(p, VSub(hitCenter, center));
+		p = VAdd(p, VScale(bestNormal, 1e-4f));
+		owner->transform.SetLocalPosition(p);
+		b->UpdateShape();
+
+		Contact ct;
+		ct.a = mesh;
+		ct.b = box;
+		ct.normal = bestNormal;
+		ct.point = hitCenter;
+		ct.penetration = 1e-4f;
+		EmitContact(ct);
+		return;
+	}
+
+	VECTOR p = owner->transform.LocalPosition();
+	p = VAdd(p, totalPush);
+	owner->transform.SetLocalPosition(p);
+	b->UpdateShape();
+}
+
+// ============================================================
 // Compound vs Any: check each child against the other, with AABB culling
 // ============================================================
 void ColliderManager::CheckCompoundVsAny(Collider* compound, Collider* other) {
@@ -2429,6 +3171,21 @@ void ColliderManager::CheckCompoundVsAny(Collider* compound, Collider* other) {
 			Collider* cp = (ck == Collider::Kind::Capsule) ? child : other;
 			Collider* hp = (ck == Collider::Kind::HalfPlane) ? child : other;
 			CheckCapsuleHalfPlane(cp, hp);
+		}
+		else if (IsPair(ck, ok, Collider::Kind::Sphere, Collider::Kind::Mesh)) {
+			Collider* sp = (ck == Collider::Kind::Sphere) ? child : other;
+			Collider* ms = (ck == Collider::Kind::Mesh) ? child : other;
+			CheckSphereMesh(sp, ms);
+		}
+		else if (IsPair(ck, ok, Collider::Kind::Capsule, Collider::Kind::Mesh)) {
+			Collider* cp = (ck == Collider::Kind::Capsule) ? child : other;
+			Collider* ms = (ck == Collider::Kind::Mesh) ? child : other;
+			CheckCapsuleMesh(cp, ms);
+		}
+		else if (IsPair(ck, ok, Collider::Kind::Box, Collider::Kind::Mesh)) {
+			Collider* bx = (ck == Collider::Kind::Box) ? child : other;
+			Collider* ms = (ck == Collider::Kind::Mesh) ? child : other;
+			CheckBoxMesh(bx, ms);
 		}
 
 		if (_tlNarrowHit) anyHit = true;

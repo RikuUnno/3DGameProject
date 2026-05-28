@@ -102,6 +102,11 @@ private:
 	void CheckBoxHalfPlane(Collider* box, Collider* plane);
 	void CheckCapsuleHalfPlane(Collider* capsule, Collider* plane);
 
+	// Mesh（三角形メッシュ）との衝突判定
+	void CheckSphereMesh(Collider* sphere, Collider* mesh);
+	void CheckCapsuleMesh(Collider* capsule, Collider* mesh);
+	void CheckBoxMesh(Collider* box, Collider* mesh);
+
 	// 複合コライダー (Compound) の処理
 	void CheckCompoundVsAny(Collider* compound, Collider* other);
 
@@ -115,6 +120,11 @@ private:
 	void PushOutSphereHalfPlane(Collider* sphere, Collider* plane);
 	void PushOutBoxHalfPlane(Collider* box, Collider* plane);
 	void PushOutCapsuleHalfPlane(Collider* capsule, Collider* plane);
+
+	// Mesh との押し出し処理（メッシュ側は静的扱い：相手のみ移動）
+	void PushOutSphereMesh(Collider* sphere, Collider* mesh);
+	void PushOutCapsuleMesh(Collider* capsule, Collider* mesh);
+	void PushOutBoxMesh(Collider* box, Collider* mesh);
 
 public:
 	// 空間分割セルサイズ設定 (ワールド単位、デフォルト: 4)

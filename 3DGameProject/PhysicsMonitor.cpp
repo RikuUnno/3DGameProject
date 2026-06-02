@@ -19,6 +19,62 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
+namespace {
+    // GameObject **********とりあえず有効なポインタか判定する処理************
+    //  - メモリ上でのアドレスが0x10000未満なら無効とみなす
+    //  - IsBadReadPtr によるポインタ妥当性チェック（Windows専用）
+    bool IsLikelyValidGameObject(const GameObject* obj) noexcept {
+        if (!obj) return false;
+
+        // メモリ上でのアドレスが0x10000未満なら無効とみなす
+        const auto addr = reinterpret_cast<uintptr_t>(obj);
+        if (addr < 0x10000ull) return false;
+
+        // IsBadReadPtr によるポインタ妥当性チェック（Windows専用）
+        if (IsBadReadPtr(obj, sizeof(GameObject))) return false;
+
+        // vtable が null または無効なアドレスの場合は無効とみなす
+        const void* const* vptr = *reinterpret_cast<const void* const* const*>(obj);
+        if (vptr == nullptr) return false;
+        if (reinterpret_cast<uintptr_t>(vptr) < 0x10000ull) return false;
+        if (IsBadReadPtr(vptr, sizeof(void*))) return false;
+
+        return true;
+    }
+
+    // Collider のポインタ妥当性チェック（vtable まで含めて検証）
+    //  - ダングリングポインタによる仮想関数呼び出しクラッシュを防ぐ
+    bool IsLikelyValidCollider(const Collider* col) noexcept {
+        if (!col) return false;
+
+        const auto addr = reinterpret_cast<uintptr_t>(col);
+        if (addr < 0x10000ull) return false;
+
+        if (IsBadReadPtr(col, sizeof(Collider))) return false;
+
+        // vtable チェック
+        const void* const* vptr = *reinterpret_cast<const void* const* const*>(col);
+        if (vptr == nullptr) return false;
+        if (reinterpret_cast<uintptr_t>(vptr) < 0x10000ull) return false;
+        if (IsBadReadPtr(vptr, sizeof(void*))) return false;
+
+        return true;
+    }
+
+    // std::string のポインタ妥当性チェック
+    //  - サイズやアドレスのチェックを行い、怪しい場合は無効とみなす
+    bool IsLikelyValidString(const std::string& s) noexcept {
+        const size_t sz = s.size();
+        const size_t cap = s.capacity();
+        // 異常に大きなサイズ・キャパシティは無効とみなす
+        constexpr size_t kSane = 1ull << 28; // 256MB上限
+        if (sz > kSane || cap > kSane) return false;
+        // サイズがキャパシティを超えているのも無効
+        if (sz > cap) return false;
+        return true;
+    }
+}
+
 PhysicsMonitor& PhysicsMonitor::Instance() noexcept {
     static PhysicsMonitor inst;
     return inst;
@@ -43,6 +99,10 @@ void PhysicsMonitor::UpdateStatistics() {
 
     // PhysicsManagerのシャットダウンチェック
     if (PhysicsManager::Instance().IsShuttingDown()) {
+        return;
+    }
+    // ColliderManager のシャットダウンチェック
+    if (ColliderManager::Instance().IsShuttingDown()) {
         return;
     }
 
@@ -71,7 +131,8 @@ void PhysicsMonitor::UpdateStatistics() {
     const auto& colliders = ColliderManager::Instance().GetColliders();
     _stats.totalColliders = static_cast<int>(colliders.size());
     for (const auto* col : colliders) {
-        if (!col) continue;
+        // ダングリングポインタ対策: vtable まで含めて妥当性を確認
+        if (!IsLikelyValidCollider(col)) continue;
 
         size_t colSize = sizeof(Collider);
         switch (col->GetKind()) {
@@ -142,6 +203,9 @@ void PhysicsMonitor::UpdateObjectList() {
     if (PhysicsManager::Instance().IsShuttingDown()) {
         return;
     }
+    if (ColliderManager::Instance().IsShuttingDown()) {
+        return;
+    }
 
     const auto& colliders = ColliderManager::Instance().GetColliders();
     const auto& bodies = PhysicsManager::Instance().GetBodies();
@@ -150,15 +214,28 @@ void PhysicsMonitor::UpdateObjectList() {
     std::unordered_map<GameObject*, PhysicsBody*> bodyMap;
     for (auto* body : bodies) {
         if (!body || !body->_owner) continue;
+        if (!IsLikelyValidGameObject(body->_owner)) continue;
         bodyMap[body->_owner] = body;
     }
 
     // コライダーを走査してオブジェクト情報を収集
     for (const auto* col : colliders) {
-        if (!col || !col->owner) continue;
+        // ダングリングポインタ対策
+        if (!IsLikelyValidCollider(col)) continue;
+        if (!col->owner) continue;
+
+        // ********** GameObject の妥当性チェック **********
+        // 有効でない場合、スキップ
+        if (!IsLikelyValidGameObject(col->owner)) {
+            continue;
+        }
+        // プールキーが無効な文字列の場合もスキップ
+        if (!IsLikelyValidString(col->owner->_poolKey)) {
+            continue;
+        }
 
         ObjectInfo info;
-        info.name = col->owner->_poolKey.empty() ? "Unknown" : col->owner->_poolKey;
+        info.name = col->owner->_poolKey.empty() ? std::string("Unknown") : col->owner->_poolKey;
         info.worldPos = col->owner->transform.WorldPosition();
         info.isStatic = false;
         info.isSleeping = false;
@@ -204,7 +281,7 @@ void PhysicsMonitor::UpdateObjectList() {
             }
         }
 
-        _objects.push_back(info);
+        _objects.push_back(std::move(info));
     }
 
     // 名前順にソート
@@ -250,7 +327,7 @@ void PhysicsMonitor::Draw(int x, int y) const {
         "Contacts: %d", _stats.totalContacts); ly += lineHeight;
 
     // アイランド統計
-    DrawFormatString(x, ly, white, "Islands: %d (Largest:%d)",
+    DrawFormatString(x, ly, white, "Islands: %d (Largest:%d) ",
         _stats.totalIslands, _stats.largestIslandSize); ly += lineHeight;
 
     // メモリ統計
@@ -281,9 +358,10 @@ void PhysicsMonitor::Draw(int x, int y) const {
     for (int i = 0; i < displayCount; ++i) {
         const auto& obj = sortedObjs[i];
         const unsigned int color = obj.isSleeping ? GetColor(150, 150, 150) : white;
-        DrawFormatString(x, ly, color, "  %s: Contacts:%d Pos:(%.1f,%.1f,%.1f)",
+        DrawFormatString(x, ly, color, "  %s: Contacts:%d Pos:(%.1f,%.1f,%.1f)  Vel:(%.2f,%.2f,%.2f)",
             obj.name.c_str(), obj.contactCount,
-            obj.worldPos.x, obj.worldPos.y, obj.worldPos.z);
+            obj.worldPos.x, obj.worldPos.y, obj.worldPos.z,
+            obj.velocity.x, obj.velocity.y, obj.velocity.z);
         ly += lineHeight;
     }
 }
@@ -356,7 +434,7 @@ void PhysicsMonitor::SaveDetailedLog(const char* filename) const {
     ofs << "Collision Time: " << _stats.collisionTimeMs << " ms\n";
     ofs << "Solver Time: " << _stats.solverTimeMs << " ms\n";
 
-    // 全オブジェクトリスト
+    // オブジェクト詳細
     ofs << "\n--- All Objects Detail ---\n";
     for (const auto& obj : _objects) {
         ofs << "\n[" << obj.name << "]\n";

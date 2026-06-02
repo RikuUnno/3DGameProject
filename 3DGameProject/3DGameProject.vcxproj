@@ -147,6 +147,7 @@
     <ClCompile Include="CameraController.cpp" />
     <ClCompile Include="CameraManager.cpp" />
     <ClCompile Include="CapsuleCollider.cpp" />
+    <ClCompile Include="Collider.cpp" />
     <ClCompile Include="ColliderManager.cpp" />
     <ClCompile Include="ColliderManagerThreadSafe.cpp" />
     <ClCompile Include="Debug Class.cpp" />
@@ -210,6 +211,7 @@
     <ClInclude Include="LayerMask.h" />
     <ClInclude Include="Manager.h" />
     <ClInclude Include="Math\Quaternion.h" />
+    <ClInclude Include="MeshDemoScene.h" />
     <ClInclude Include="ObjectController.h" />
     <ClInclude Include="ObjectFactory.h" />
     <ClInclude Include="GameObject.h" />

@@ -345,7 +345,8 @@
     </Filter>
     <Filter Include="ソース ファイル\System\Collision\Primitive\HalfPlane">
       <UniqueIdentifier>{19a16c6b-03f6-4fb9-88df-91b425564725}</UniqueIdentifier>
-    </Filter>    <Filter Include="ヘッダー ファイル\System\Collision\Primitive\Mesh">
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Collision\Primitive\Mesh">
       <UniqueIdentifier>{8a2b1c4d-1111-4aaa-9bbb-111122223333}</UniqueIdentifier>
     </Filter>
     <Filter Include="ソース ファイル\System\Collision\Primitive\Mesh">
@@ -713,6 +714,9 @@
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="3DGameProject\Assert.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="MeshDemoScene.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
   </ItemGroup>

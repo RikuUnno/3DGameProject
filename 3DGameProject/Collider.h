@@ -1,5 +1,5 @@
 // Colliderの基底クラス
-// 派生先で具体的な形状・判定情報を持つ
+// 派生先で具体的な形状・判定を実装
 // 移動/回転/拡縮は自身では行わない
 // GameObjectのTransformに依存している
 #pragma once
@@ -13,7 +13,8 @@ class GameObject;
 class Collider {
 public:
 	Collider() = default;
-	virtual ~Collider() = default;
+	// デストラクタは Collider.cpp で定義し、ColliderManager から自動的に登録解除する
+	virtual ~Collider();
 
 public:
 	// 所有者（Transform参照/Active判定用）
@@ -25,11 +26,11 @@ public:
 	bool sendEventsToOwner = true;
 
 	// 子Colliderのイベントを owner の親GameObject にも伝えるか
-	// - true: owner の Transform に親がある場合、その親GameObject にもイベントを送る
+	// - true: owner の Transform に親がいる場合、その親GameObject にもイベントを送る
 	// - false: owner までで止める
 	bool bubbleEventsToParentOwner = false;
 
-	// コライダー有効/スリープ（プール待機中・非アクティブ中は false にする想定）
+	// コライダー有効/スリープ（プール待機中・非アクティブ時は false にする想定）
 	bool IsEnabled() const noexcept { return _enabled; }
 	void SetEnabled(bool enabled) noexcept { _enabled = enabled; }
 
@@ -40,13 +41,13 @@ public:
 	int layer = layerMask::DEFAULT;    // デフォルトレイヤー
 	int mask = mask::ALL;              //すべてのレイヤーと当たる
 
-	// シーンIDフィルタ対象か（trueなら現在シーン以外とは判定しない）
+	// シーンIDフィルタ対象か（true なら現在シーン以外とは判定しない）
 	//ほとんどのオブジェクトは true のままでOK
 	bool useSceneFilter = true;
 
 public:
 	// --- CCD / 高速移動検出設定 ---
-	// enableCCD: true のときは常にスイープAABBを使用（広義の衝突検出を有効にする）
+	// enableCCD: true のときは常にスイープAABBを使用（弾形の衝突検出を有効にする）
 	// ccdDistanceThreshold: フレーム間の速度（ワールド単位/秒）がこの値を超える場合にスイープを使う
 	// 具体的には ColliderManager::Update(dt) で渡された dt を用いて、
 	// speed = (center displacement) / deltaTime として比較します。
@@ -54,7 +55,7 @@ public:
 	float ccdDistanceThreshold = 1.0f; // 単位: ワールド距離/秒 (速度)
 
 public:
-	// コライダー種
+	// コライダー種別
 	enum class Kind {
 		AABB,
 		Sphere,
@@ -103,10 +104,10 @@ public:
 
 public:
 	// 前フレームの AABB キャッシュ (CCD / Swept AABB 計算用)
-	// ColliderManager が _prevAABBs (unordered_map) で持っていたが、
+	// ColliderManager の _prevAABBs (unordered_map) で持っていたが、
 	// 毎フレーム find/insert する N オーダーの hash 操作が無視できない
 	// 負荷になっていたためメンバ化。
-	// hasPrevAABB は登録直後 (まだ前フレームが存在しない) の判別用。
+	// hasPrevAABB は登録初回 (まだ前フレームが存在しない) の判別用。
 	AABB prevAABB{};
 	bool hasPrevAABB = false;
 

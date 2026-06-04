@@ -33,14 +33,27 @@ public:
         // 6 面テクスチャを読み込み（存在しなければグレーで描画されるだけ）
         // ファイル名は一般的な命名 (right/left/top/bottom/front/back) を仮定
         _skybox.SetSize(500.0f);
-        _skybox.Load("Data/SkyBox/", {
-            "right.png",
-            "left.png",
-            "top.png",
-            "bottom.png",
-            "front.png",
-            "back.png"
-        });
+        // 実行フォルダによってカレントディレクトリが変わるので、
+        // 候補ディレクトリを順に試して最初に全面読み込めたものを使う。
+        const std::array<std::string, 6> names = {
+            "+X.png",   // Right  (+X)
+            "-X.png",   // Left   (-X)
+            "+Y.png",   // Top    (+Y)
+            "-Y.png",   // Bottom (-Y)
+            "+Z.png",   // Front  (+Z)
+            "-Z.png",   // Back   (-Z)
+        };
+        const std::array<std::string, 6> dirs = {
+            "models/SkyBox/",
+            "./models/SkyBox/",
+            "../models/SkyBox/",
+            "3DGameProject/models/SkyBox/",
+            "../3DGameProject/models/SkyBox/",
+            "../../3DGameProject/models/SkyBox/",
+        };
+        for (const auto& d : dirs) {
+            if (_skybox.Load(d, names)) break;
+        }
     }
 
     void Update(float dtSec) override {

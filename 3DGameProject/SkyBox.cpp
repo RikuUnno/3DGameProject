@@ -1,6 +1,5 @@
 #include "SkyBox.h"
 
-
 namespace {
     // VERTEX3D を作るヘルパ
 	inline VERTEX3D MakeVertex(float x, float y, float z, float u, float v) noexcept {  // constexpr にできるといいけど、DxLib の型は構造体で constexpr コンストラクタがないので仕方ない
@@ -105,12 +104,12 @@ void SkyBox::Draw(const VECTOR& cameraPos) const {
     };
 
     // 各面を「内側から見たとき」の左上→右上→右下→左下 で渡す
-    // Right (+X): 内側から +X を見る (右手 = -Z, 左手 = +Z)
-    drawFace(_handles[(int)Face::Right],  p110, p100, p101, p111);
-    // Left (-X): 内側から -X を見る (右手 = +Z, 左手 = -Z)
-    drawFace(_handles[(int)Face::Left],   p011, p001, p000, p010);
-    // Top (+Y): 内側から +Y を見る (奥 = +Z が上方向に来るよう 12 時方向)
-    drawFace(_handles[(int)Face::Top],    p011, p111, p110, p010);
+    // Right (+X): 内側から +X を見る  左=-Z 右=+Z 上=+Y
+    drawFace(_handles[(int)Face::Right],  p110, p111, p101, p100);
+    // Left (-X): 内側から -X を見る  左=+Z 右=-Z 上=+Y
+    drawFace(_handles[(int)Face::Left],   p011, p010, p000, p001);
+    // Top (+Y): 180度回転
+    drawFace(_handles[(int)Face::Top],    p110, p010, p011, p111);
     // Bottom (-Y): 内側から -Y を見る
     drawFace(_handles[(int)Face::Bottom], p000, p100, p101, p001);
     // Front (+Z): 内側から +Z を見る

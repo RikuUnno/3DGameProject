@@ -20,6 +20,11 @@ public:
     GameObject* Spawn(const std::string& key, const VariantMap& params = {});
     // プール登録
     void RegisterPool(const std::string& key, size_t maxSize = 64);
+    // プール登録 + モデルテンプレート（1キー1モデル）も同時に登録するヘルパー。
+    // modelPath は .mv1 / .x / .fbx (Unity FBX エクスポート形式含む) に対応。
+    // モデル登録のみ失敗した場合は false を返すが、ObjectPool の登録は維持される。
+    bool RegisterPool(const std::string& key, const std::string& modelPath,
+                      size_t maxSize = 64, size_t maxModelPoolSize = 32);
     // オブジェクト返却（プールキーがあれば返却、なければ破棄）
     void Release(GameObject* obj);
 

@@ -7,6 +7,7 @@
 #include "TransformScene.h"
 #include "CcdScene.h"
 #include "MeshDemoScene.h"
+#include "SkyBoxScene.h"
 #include "SceneManager.h"
 #include "SceneTransition.h"
 #include "Time.h"
@@ -92,6 +93,15 @@ void TitleScene::Update(float /*dt*/) {
 		p.pixelShaderPath = "Data/Transition/mask_transition.pso";
 		SceneTransition::Instance().Start(std::make_unique<MeshDemoScene>(), p, 0.5f);
 	}
+
+	if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_K)) {
+		SceneTransition::Params p;
+		p.mode = SceneTransition::Mode::MaskImage;
+		p.durationSec = 0.6;
+		p.maskGraphPath = "Data/Transition/mask.png";
+		p.pixelShaderPath = "Data/Transition/mask_transition.pso";
+		SceneTransition::Instance().Start(std::make_unique<SkyBoxScene>(), p, 0.5f);
+	}
 }
 
 void TitleScene::Draw() {
@@ -103,4 +113,5 @@ void TitleScene::Draw() {
 	DrawString(10, 110, "V : Transformデモ", GetColor(220, 200, 255));
 	DrawString(10, 130, "X : CCDデモ", GetColor(255, 200, 200));
 	DrawString(10, 150, "M : Meshデモ", GetColor(180, 255, 220));
+	DrawString(10, 170, "K : SkyBoxデモ", GetColor(180, 200, 255));
 }

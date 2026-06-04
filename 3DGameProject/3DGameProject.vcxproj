@@ -154,6 +154,8 @@
     <ClCompile Include="DynamicAABBTree.cpp" />
     <ClCompile Include="HalfPlaneCollider.cpp" />
     <ClCompile Include="Math\Quaternion.cpp" />
+    <ClCompile Include="ModelManager.cpp" />
+    <ClCompile Include="Mv1Model.cpp" />
     <ClCompile Include="ObjectController.cpp" />
     <ClCompile Include="ObjectFactory.cpp" />
     <ClCompile Include="KeyInput.cpp" />
@@ -178,6 +180,7 @@
     <ClCompile Include="SceneTransition.cpp" />
     <ClCompile Include="Se.cpp" />
     <ClCompile Include="SeManager.cpp" />
+    <ClCompile Include="SkyBox.cpp" />
     <ClCompile Include="SphereCollider.cpp" />
     <ClCompile Include="Time.cpp" />
     <ClCompile Include="TitleScene.cpp" />
@@ -207,11 +210,15 @@
     <ClInclude Include="Debug Class.h" />
     <ClInclude Include="DynamicAABBTree.h" />
     <ClInclude Include="HalfPlaneCollider.h" />
+    <ClInclude Include="IModel.h" />
     <ClInclude Include="MeshCollider.h" />
     <ClInclude Include="LayerMask.h" />
     <ClInclude Include="Manager.h" />
     <ClInclude Include="Math\Quaternion.h" />
     <ClInclude Include="MeshDemoScene.h" />
+    <ClInclude Include="ModelManager.h" />
+    <ClInclude Include="ModelPool.h" />
+    <ClInclude Include="Mv1Model.h" />
     <ClInclude Include="ObjectController.h" />
     <ClInclude Include="ObjectFactory.h" />
     <ClInclude Include="GameObject.h" />
@@ -240,6 +247,8 @@
     <ClInclude Include="Se.h" />
     <ClInclude Include="SeManager.h" />
     <ClInclude Include="SePool.h" />
+    <ClInclude Include="SkyBox.h" />
+    <ClInclude Include="SkyBoxScene.h" />
     <ClInclude Include="SphereCollider.h" />
     <ClInclude Include="ThreadPool.h" />
     <ClInclude Include="Time.h" />

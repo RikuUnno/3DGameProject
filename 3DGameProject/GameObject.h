@@ -5,6 +5,7 @@
 #include <memory>
 
 #include "Transform.h"
+#include "ModelPool.h"
 
 using VariantMap = std::unordered_map<std::string, std::string>; // パラメータマップ型
 
@@ -51,6 +52,12 @@ public:
 
 	// 再利用設定
 	std::string _poolKey;
+
+	// 描画用モデル（ObjectManager::Spawn が _poolKey で ModelManager から取得し、
+	// 自動で割り当てる）。派生クラスは Draw() で _model->Draw() を呼べば良い。
+	// 単一モデル前提（1 オブジェクト = 1 モデル）。
+	ModelPool::TypedUniquePtr _model{ nullptr, [](IModel*) {} };
+	IModel* GetModel() const noexcept { return _model.get(); }
 
 	// 所属シーンID（シーン終了時の一括破棄用）
 	int _ownerSceneId = -1;

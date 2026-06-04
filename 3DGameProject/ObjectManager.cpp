@@ -2,6 +2,7 @@
 #include "ObjectFactory.h"
 #include "ObjectPool.h"
 #include "GameObject.h"
+#include "ModelManager.h"
 #include "Time.h"
 #include "ThreadPool.h"
 #include <algorithm>
@@ -43,6 +44,13 @@ void ObjectManager::RegisterPool(const std::string& key, size_t maxSize) {
         return ObjectFactory::Instance().Create(key);
     };
     _pools.emplace(key, std::make_unique<ObjectPool>(poolCreator, maxSize));
+}
+
+bool ObjectManager::RegisterPool(const std::string& key, const std::string& modelPath,
+                                 size_t maxSize, size_t maxModelPoolSize) {
+    RegisterPool(key, maxSize);
+    // モデルは 1 キーにつき 1 種類だけ登録する想定（既に登録済みなら true 扱い）
+    return ModelManager::Instance().Register(key, modelPath, maxModelPoolSize);
 }
 
 // ---- シーン ID ---------------------------------------------------------------
@@ -90,6 +98,11 @@ GameObject* ObjectManager::Spawn(const std::string& key, const VariantMap& param
     raw->SetActive(true);
     raw->_poolKey      = (pit != _pools.end()) ? key : std::string{};
     raw->_ownerSceneId = _currentSceneId;
+    // ModelManager に同名キーが登録されていればモデルも自動取得
+    // （1 オブジェクト = 1 モデル前提）
+    if (ModelManager::Instance().IsRegistered(key)) {
+        raw->_model = ModelManager::Instance().Acquire(key);
+    }
     raw->OnAcquire(params);
 
     AssignId(raw, _nextId, _idIndex);
@@ -124,6 +137,8 @@ void ObjectManager::Release(GameObject* obj) {
 #endif
         obj->SetActive(false);
     }
+    // モデルもプールへ返却（unique_ptr の解放でデリータが呼ばれる）
+    obj->_model.reset();
     _objects.erase(it);
 }
 
@@ -146,11 +161,11 @@ void ObjectManager::ReleaseBySceneId(int sceneId) {
             ++_debugTotalDeleted;
 #endif
         }
+        obj->_model.reset();
         obj->SetActive(false);
         it = _objects.erase(it);
     }
 }
-
 // ---- FindById / RemoveById --------------------------------------------------
 // O(1): _idIndex のセカンダリインデックスで検索。
 
@@ -174,6 +189,7 @@ bool ObjectManager::RemoveById(int id) {
 #ifdef _DEBUG
         ++_debugTotalDeleted;
 #endif
+        obj->_model.reset();
         _objects.erase(objIt);
     }
     return true;
@@ -262,6 +278,8 @@ bool ObjectManager::UnregisterPool(const std::string& key) {
 #endif
     if (it->second) it->second->Clear();
     _pools.erase(it);
+    // 紐づくモデルテンプレート/プールも破棄（登録されていなければ no-op）
+    ModelManager::Instance().Unregister(key);
     return true;
 }
 

@@ -400,6 +400,60 @@
     <Filter Include="ソース ファイル\System\Collision\DynamicAABBTree">
       <UniqueIdentifier>{8a5359ea-2427-4fa2-98f1-b38f0ed3c92b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ソース ファイル\System\Collision\Collider">
+      <UniqueIdentifier>{199cbd64-6423-496e-b2ec-27f95fa8288c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\SkyBox">
+      <UniqueIdentifier>{2384aec2-6847-4e87-b49a-a1239acfe3ba}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\SkyBox\SkyBox">
+      <UniqueIdentifier>{c28c3c38-2dce-4189-b057-06d41aa7634e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Model">
+      <UniqueIdentifier>{a81e76a3-20d0-4e68-a2ac-88d319ccfc95}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Model\Manager">
+      <UniqueIdentifier>{de925c99-4687-41e3-a693-d740fc902ffa}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\System\Model\Mv1">
+      <UniqueIdentifier>{f19dbf0a-9fd1-45a4-8ba0-5040c6765831}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Bit">
+      <UniqueIdentifier>{c39762a3-d99d-46b9-a300-704fa8832823}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Bit\Operation">
+      <UniqueIdentifier>{074ff220-d041-4934-bdfb-1ffcbdd1f6d9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Model">
+      <UniqueIdentifier>{5ebc054d-b423-4fe6-97c2-b1731c878157}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Model\IModel">
+      <UniqueIdentifier>{a9e66fa5-10b6-4bc3-86f8-38536cce40a2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Model\Manager">
+      <UniqueIdentifier>{868b6bf6-2704-4c4a-9c20-b2884715c93f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Model\Pool">
+      <UniqueIdentifier>{4daac25b-fdf9-4e22-ba4f-ef28078139ec}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Model\Mv1">
+      <UniqueIdentifier>{7db4262d-50dd-4d72-a2d0-b4c5685dd0fa}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\Physics\Ccd">
+      <UniqueIdentifier>{13aba755-24a8-4a6e-9d6d-c783d7f5b1ae}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\SkyBox">
+      <UniqueIdentifier>{946bdd1d-c8b9-4b68-acbc-78d6fc2ee880}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\System\SkyBox\SkyBox">
+      <UniqueIdentifier>{d6328875-30ac-4152-9919-228e3ae9f833}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Debug\SkyBox">
+      <UniqueIdentifier>{1d6f152f-416b-4788-a814-02bd31ae7c0c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Debug\Mesh">
+      <UniqueIdentifier>{55bb5013-3089-4053-ba19-2e36cdc55d50}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -529,13 +583,16 @@
       <Filter>ソース ファイル\System\Physics\Ccd</Filter>
     </ClCompile>
     <ClCompile Include="Collider.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>ソース ファイル\System\Collision\Collider</Filter>
     </ClCompile>
-    <ClCompile Include="Mv1Model.cpp">
-      <Filter>ソース ファイル</Filter>
+    <ClCompile Include="SkyBox.cpp">
+      <Filter>ソース ファイル\System\SkyBox\SkyBox</Filter>
     </ClCompile>
     <ClCompile Include="ModelManager.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>ソース ファイル\System\Model\Manager</Filter>
+    </ClCompile>
+    <ClCompile Include="Mv1Model.cpp">
+      <Filter>ソース ファイル\System\Model\Mv1</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -719,26 +776,35 @@
     <ClInclude Include="DynamicAABBTree.h">
       <Filter>ヘッダー ファイル\System\Collision\DynamicAABBTree</Filter>
     </ClInclude>
-    <ClInclude Include="PhysicsCcd.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
     <ClInclude Include="3DGameProject\Assert.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>ヘッダー ファイル\System\Assert</Filter>
     </ClInclude>
-    <ClInclude Include="MeshDemoScene.h">
-      <Filter>ヘッダー ファイル</Filter>
+    <ClInclude Include="BitOperation.h">
+      <Filter>ヘッダー ファイル\System\Bit\Operation</Filter>
     </ClInclude>
     <ClInclude Include="IModel.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="Mv1Model.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="ModelPool.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>ヘッダー ファイル\System\Model\IModel</Filter>
     </ClInclude>
     <ClInclude Include="ModelManager.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>ヘッダー ファイル\System\Model\Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="ModelPool.h">
+      <Filter>ヘッダー ファイル\System\Model\Pool</Filter>
+    </ClInclude>
+    <ClInclude Include="Mv1Model.h">
+      <Filter>ヘッダー ファイル\System\Model\Mv1</Filter>
+    </ClInclude>
+    <ClInclude Include="PhysicsCcd.h">
+      <Filter>ヘッダー ファイル\System\Physics\Ccd</Filter>
+    </ClInclude>
+    <ClInclude Include="SkyBox.h">
+      <Filter>ヘッダー ファイル\System\SkyBox\SkyBox</Filter>
+    </ClInclude>
+    <ClInclude Include="MeshDemoScene.h">
+      <Filter>ヘッダー ファイル\Debug\Mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="SkyBoxScene.h">
+      <Filter>ヘッダー ファイル\Debug\SkyBox</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

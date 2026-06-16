@@ -1,18 +1,20 @@
 #include "PhysicsManager_Internal.h"
+#include "BitOperation.h"
 
 void PhysicsManager::GatherBodySoA() {
+    using BF = PhysicsManager::BodySoA::BodyFlag;
     const size_t n = _bodies.size();
     _bodySoA.Resize(n);
     ThreadPool::Instance().ParallelForBarrier(0, n, [&](size_t i) {
         PhysicsBody* b = _bodies[i];
         if (!b || !b->_owner) { _bodySoA.flags[i] = 0; return; }
         uint8_t f = 0;
-        if (b->_enabled && b->_owner->IsActive())                                   f |= 1;
-        if (b->_isKinematic)                                                         f |= 2;
-        if (b->_isSleeping)                                                          f |= 4;
-        if (b->_useGravity)                                                          f |= 8;
-        if (b->_freezeRotation)                                                      f |= 16;
-        if (b->_detectContinuous && b->_ccdQuality >= CcdQuality::Default)           f |= 32;
+        if (b->_enabled && b->_owner->IsActive())                                   f |= BF::Active;
+        if (b->_isKinematic)                                                         f |= BF::Kinematic;
+        if (b->_isSleeping)                                                          f |= BF::Sleeping;
+        if (b->_useGravity)                                                          f |= BF::UseGravity;
+        if (b->_freezeRotation)                                                      f |= BF::FreezeRot;
+        if (b->_detectContinuous && b->_ccdQuality >= CcdQuality::Default)           f |= BF::Ccd;
         _bodySoA.flags[i]           = f;
         _bodySoA.position[i]        = b->_owner->transform.LocalPosition();
         _bodySoA.velocity[i]        = b->_velocity;
@@ -27,9 +29,10 @@ void PhysicsManager::GatherBodySoA() {
 }
 
 void PhysicsManager::ScatterBodySoA(float /*stepDt*/) {
+    using BF = PhysicsManager::BodySoA::BodyFlag;
     const size_t n = _bodies.size();
     ThreadPool::Instance().ParallelForBarrier(0, n, [&](size_t i) {
-        if (!(_bodySoA.flags[i] & 1)) return;
+        if (!BitOperation::HasAny<uint8_t>(_bodySoA.flags[i], BF::Active)) return;
         PhysicsBody* b = _bodies[i];
         if (!b || !b->_owner) return;
         b->_velocity        = _bodySoA.velocity[i];
@@ -38,6 +41,7 @@ void PhysicsManager::ScatterBodySoA(float /*stepDt*/) {
 }
 
 void PhysicsManager::IntegrateBodies(float stepDt) {
+    using BF = PhysicsManager::BodySoA::BodyFlag;
     const size_t bodyCount = _bodies.size();
     if (bodyCount == 0) return;
 
@@ -58,12 +62,12 @@ void PhysicsManager::IntegrateBodies(float stepDt) {
         if (!b || !b->_owner) { _bodySoA.flags[idx] = 0; return; }
 
         uint8_t f = 0;
-        if (b->_enabled && b->_owner->IsActive())                         f |= 1;
-        if (b->_isKinematic)                                               f |= 2;
-        if (b->_isSleeping)                                                f |= 4;
-        if (b->_useGravity)                                                f |= 8;
-        if (b->_freezeRotation)                                            f |= 16;
-        if (b->_detectContinuous && b->_ccdQuality >= CcdQuality::Default) f |= 32;
+        if (b->_enabled && b->_owner->IsActive())                         f |= BF::Active;
+        if (b->_isKinematic)                                               f |= BF::Kinematic;
+        if (b->_isSleeping)                                                f |= BF::Sleeping;
+        if (b->_useGravity)                                                f |= BF::UseGravity;
+        if (b->_freezeRotation)                                            f |= BF::FreezeRot;
+        if (b->_detectContinuous && b->_ccdQuality >= CcdQuality::Default) f |= BF::Ccd;
         _bodySoA.flags[idx]           = f;
         _bodySoA.position[idx]        = b->_owner->transform.LocalPosition();
         _bodySoA.velocity[idx]        = b->_velocity;
@@ -75,33 +79,33 @@ void PhysicsManager::IntegrateBodies(float stepDt) {
         _bodySoA.angularDamping[idx]  = b->_angularDamping;
         _bodySoA.gravityScale[idx]    = b->_gravityScale;
 
-        if (!(f & 1)) return;
-        if (f & 2)    return;
-        if ((f & 4) && LenSq(_bodySoA.force[idx]) <= 1e-8f
+        if (!BitOperation::HasAny<uint8_t>(f, BF::Active)) return;
+        if (BitOperation::HasAny<uint8_t>(f, BF::Kinematic))  return;
+        if (BitOperation::HasAny<uint8_t>(f, BF::Sleeping) && LenSq(_bodySoA.force[idx]) <= 1e-8f
                     && LenSq(_bodySoA.torque[idx]) <= 1e-8f) return;
 
         const float invM = _bodySoA.inverseMass[idx];
         if (invM <= 0.0f) return;
 
         VECTOR acc = VScale(_bodySoA.force[idx], invM);
-        if (f & 8) acc = VAdd(acc, VScale(gravity, _bodySoA.gravityScale[idx]));
+        if (BitOperation::HasAny<uint8_t>(f, BF::UseGravity)) acc = VAdd(acc, VScale(gravity, _bodySoA.gravityScale[idx]));
         _bodySoA.velocity[idx] = VAdd(_bodySoA.velocity[idx], VScale(acc, stepDt));
 
-        if (!(f & 16)) {
+        if (!BitOperation::HasAny<uint8_t>(f, BF::FreezeRot)) {
             const VECTOR angAcc = b->ApplyInverseInertia(_bodySoA.torque[idx]);
             _bodySoA.angularVelocity[idx] = VAdd(_bodySoA.angularVelocity[idx], VScale(angAcc, stepDt));
         }
         if (_bodySoA.linearDamping[idx] > 0.0f)
             _bodySoA.velocity[idx] = VScale(_bodySoA.velocity[idx],
                 1.0f / (1.0f + _bodySoA.linearDamping[idx] * stepDt));
-        if (!(f & 16) && _bodySoA.angularDamping[idx] > 0.0f)
+        if (!BitOperation::HasAny<uint8_t>(f, BF::FreezeRot) && _bodySoA.angularDamping[idx] > 0.0f)
             _bodySoA.angularVelocity[idx] = VScale(_bodySoA.angularVelocity[idx],
                 1.0f / (1.0f + _bodySoA.angularDamping[idx] * stepDt));
     }, 64);
 
     // フェーズ2: Scatter + 位置/回転更新（統合、1バリア）
     ThreadPool::Instance().ParallelForBarrier(0, bodyCount, [&](size_t idx) {
-        if (_bodySoA.flags[idx] & 1) {
+        if (BitOperation::HasAny<uint8_t>(_bodySoA.flags[idx], BF::Active)) {
             PhysicsBody* bs = _bodies[idx];
             if (bs && bs->_owner) {
                 bs->_velocity        = _bodySoA.velocity[idx];
@@ -179,8 +183,8 @@ void PhysicsManager::IntegrateBodies(float stepDt) {
         body->_owner->transform.SetLocalPosition(pos);
 
         if (!body->_freezeRotation) {
-            const float angSpd = Len3(body->_angularVelocity);
-            if (angSpd > 1e-6f) {
+            // sqrt を避けるため二乗で早期判定
+            if (LenSq(body->_angularVelocity) > 1e-12f) {
                 const VECTOR& w = body->_angularVelocity;
                 Quaternion q = body->_owner->transform.LocalRotation();
                 Quaternion wq(w.x * 0.5f * stepDt, w.y * 0.5f * stepDt, w.z * 0.5f * stepDt, 0.0f);

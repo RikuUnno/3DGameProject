@@ -4,6 +4,7 @@
 #include "BoxCollider.h"
 #include "CapsuleCollider.h"
 #include "GameObject.h"
+#include "BitOperation.h"
 #include <algorithm>
 #include <cmath>
 #include <cfloat>
@@ -279,7 +280,7 @@ std::vector<RaycastHit> Raycast::CastAll(const Ray& ray, float maxDistance, int 
         if (col->owner && !col->owner->IsActive()) continue;
 
         // Layer filter
-        if ((col->layer & layerMask) == 0) continue;
+        if (!BitOperation::HasAny(col->layer, layerMask)) continue;
 
         // Broad-phase: Ray vs AABB
         float aabbT = 0.0f;

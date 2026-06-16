@@ -11,6 +11,7 @@
 #include "Assert.h"
 #include "ThreadPool.h"
 #include "PerformanceMonitor.h"
+#include "BitOperation.h"
 #include <algorithm>
 #include <cmath>
 #include <cfloat>
@@ -2020,7 +2021,8 @@ void ColliderManager::PushOutBoxCapsule(Collider* a, Collider* b) {
 	}
 
 	const float r = cap->GetRadius();
-	if (bestDistSq > r * r || r - std::sqrt((std::max)(bestDistSq, 1e-8f)) <= 0.0f) {
+	if (bestDistSq > r * r) {
+		// 距離 > 半径 ⇔ 二乗比較で十分（sqrt 不要）
 		// CCD: sweep capsule center against Minkowski-expanded box
 		if (!box->hasPrevAABB || !cap->hasPrevAABB) return;
 		float dt = _deltaTimeSec;
@@ -3689,9 +3691,8 @@ void ColliderManager::UnregisterCollider(Collider* collider) {
 // Layer / Mask フィルタ。
 // false ではなく true を返した時に「衝突させない」設計になっている点に注意。
 bool ColliderManager::CheckLayerMaskCollisions(Collider* a, Collider* b) {
-	if ((a->layer & b->mask) ==0) return true;
-	if ((b->layer & a->mask) ==0) return true;
-	return false;
+	// 双方向のレイヤー/マスク一致が成立していなければ衝突させない
+	return !BitOperation::MutualMatch(a->layer, a->mask, b->layer, b->mask);
 }
 
 // 現在AABB同士の通常判定。

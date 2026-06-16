@@ -41,21 +41,103 @@ void PhysicsManager::SolveIsland(const PhysicsIsland& island, float /*stepDt*/) 
         {
             const float vt1 = RelDirVelocity(sc.bodyA, sc.bodyB, sc.rA, sc.rB, sc.tangent1);
             const float vt2 = RelDirVelocity(sc.bodyA, sc.bodyB, sc.rA, sc.rB, sc.tangent2);
-            const float tSpd = std::sqrt(vt1*vt1 + vt2*vt2);
-            const float fri = (tSpd < kFrictionStaticThreshold) ? sc.staticFriction : sc.friction;
+            const float tSpdSq = vt1*vt1 + vt2*vt2; // 二乗で比較し sqrt を省略
+            const float fri = (tSpdSq < kFrictionStaticThreshold * kFrictionStaticThreshold) ? sc.staticFriction : sc.friction;
             const float maxF = fri * sc.normalLambda;
             float d1 = -vt1 / sc.effectiveInvMassT1;
             float d2 = -vt2 / sc.effectiveInvMassT2;
             float n1 = sc.frictionLambda1 + d1;
             float n2 = sc.frictionLambda2 + d2;
-            const float fMag = std::sqrt(n1*n1 + n2*n2);
-            if (fMag > maxF && fMag > 1e-8f) { const float s = maxF / fMag; n1 *= s; n2 *= s; }
+            const float fMagSq = n1*n1 + n2*n2;
+            if (fMagSq > maxF * maxF && fMagSq > 1e-16f) {
+                const float fMag = std::sqrt(fMagSq); // クランプ時のみ sqrt
+                const float s = maxF / fMag; n1 *= s; n2 *= s;
+            }
             d1 = n1 - sc.frictionLambda1; d2 = n2 - sc.frictionLambda2;
             sc.frictionLambda1 = n1; sc.frictionLambda2 = n2;
             ApplyImpulse(sc.bodyA, sc.bodyB, sc.invA, sc.invB, sc.rA, sc.rB,
                 VAdd(VScale(sc.tangent1, d1), VScale(sc.tangent2, d2)));
         }
+
+        // 転がり抵抗（接触法線まわりの相対角速度を摩擦コーン上限で減衰）。
+        // レバーアーム経由で蓄積した余剰スピンを抑え、球が辺/壁に張り付いて
+        // 回転が暴走する現象を防ぐ。
+        SolveRollingFriction(sc);
     }
+}
+
+// SolveRollingFriction - 接触での相対角速度を摩擦上限内で打ち消す。
+void PhysicsManager::SolveRollingFriction(SolverContact& sc) {
+    if (sc.normalLambda <= 0.0f) return;
+    if (sc.speculative) return; // まだ接触していない予測接触には適用しない
+
+    // 衝突した瞬間（法線方向に速く近づいている）には転がり抵抗を効かせない。
+    // ここで効かせると、衝突フレームで大きくなる normalLambda により摩擦上限が
+    // 跳ね上がり、回転（と接線摩擦経由で並進）が一瞬で消える。
+    // 転がり暴走は「低速で持続的に接触している」状況で起きるため、
+    // ほぼ静止に近い接触（|vn| が小さい）に限定して適用する。
+    const float vn = RelNormalVelocity(sc.bodyA, sc.bodyB, sc.rA, sc.rB, sc.normal);
+    if (std::fabs(vn) > kRestitutionThreshold) return;
+
+    const VECTOR wRel = RelAngularVelocity(sc.bodyA, sc.bodyB);
+    if (LenSq(wRel) < 1e-10f) return;
+
+    // レバーアーム（接触点までの腕の長さ）。
+    // 静的ボディ（大きな床/壁 Box など）は中心から接触点までの距離が
+    // 数 m?十数 m になり、これを使うと摩擦上限が桁違いに跳ね上がって
+    // 1 ステップで球の回転が消える（坂で転がらない・辺で転がりが途切れる）。
+    // → 動的ボディ側の腕（球なら半径相当）のみから採用する。
+    float lever = -1.0f;
+    if (sc.bodyA && sc.invA > 0.0f) {
+        const float l = Len3(sc.rA);
+        lever = (lever < 0.0f) ? l : (std::min)(lever, l);
+    }
+    if (sc.bodyB && sc.invB > 0.0f) {
+        const float l = Len3(sc.rB);
+        lever = (lever < 0.0f) ? l : (std::min)(lever, l);
+    }
+    if (lever <= 1e-6f) return;
+
+    // 成分ごとに減衰量を適用するヘルパー。
+    // 受動性ガード: インパルスは「その成分を減らす方向」にのみ許可し、
+    // 角速度を反転させるほどの過剰なインパルスはクランプする。
+    // （旧実装では normalLambda の変動で蓄積クランプが折り返り、
+    //   相対角速度が反転 → 軸が反転 → 発振してエネルギーが注入され、
+    //   壁や Box の辺に張り付いた球の回転が加速する原因になっていた）
+    auto applyResistance = [&sc](const VECTOR& wComp, float maxImpulse) {
+        const float wLenSq = LenSq(wComp);
+        if (wLenSq < 1e-10f || maxImpulse <= 0.0f) return;
+        const VECTOR axis = VScale(wComp, 1.0f / std::sqrt(wLenSq));
+        const float effInvMass = AngularEffectiveInvMass(sc.bodyA, sc.bodyB, axis);
+        if (effInvMass <= 1e-8f) return;
+
+        // 1イテレーションで全角速度を消さないよう、減衰割合に上限を設ける。
+        const float wAlong = std::sqrt(wLenSq); // = Dot(wComp, axis)
+        float delta = -(wAlong * kRollingFrictionMaxStop) / effInvMass;
+        const float oldMag = Dot3(sc.rollingLambda, axis);
+        float newMag = std::clamp(oldMag + delta, -maxImpulse, maxImpulse);
+        delta = newMag - oldMag;
+        // 受動性ガード: 加速方向(>0)と反転(-wAlong/effInvMass 未満)を禁止。
+        delta = std::clamp(delta, -wAlong / effInvMass, 0.0f);
+        if (delta >= 0.0f) return;
+
+        const VECTOR impulse = VScale(axis, delta);
+        sc.rollingLambda = VAdd(sc.rollingLambda, impulse);
+        ApplyAngularImpulse(sc.bodyA, sc.bodyB, impulse);
+    };
+
+    // 相対角速度を「接触法線まわりのスピン」と「転がり（接線まわり）」に分離。
+    //   - スピン成分: 重力等の駆動トルクが存在しないため強めに減衰してよい。
+    //     Box の辺や壁に張り付いた球の回転暴走を抑える。
+    //   - 転がり成分: 坂を転がる球の本体。強く減衰すると斜面の重力トルクに
+    //     勝ってしまい「坂に乗っても転がらず減速して止まる」ため、
+    //     ごく弱い転がり抵抗のみを適用する。
+    const float wSpin = Dot3(wRel, sc.normal);
+    const VECTOR wSpinVec = VScale(sc.normal, wSpin);
+    const VECTOR wRollVec = VSub(wRel, wSpinVec);
+
+    applyResistance(wSpinVec, kRollingFrictionFactor   * sc.friction * lever * sc.normalLambda);
+    applyResistance(wRollVec, kRollingResistanceFactor * sc.friction * lever * sc.normalLambda);
 }
 
 // SolveAllIslands - すべてのアイランドの制約を反復的に解く
@@ -141,18 +223,22 @@ void PhysicsManager::SolveAllIslands(float stepDt) {
         {
             const float vt1 = RelDirVelocity(sc.bodyA, sc.bodyB, sc.rA, sc.rB, sc.tangent1);
             const float vt2 = RelDirVelocity(sc.bodyA, sc.bodyB, sc.rA, sc.rB, sc.tangent2);
-            const float tSpd = std::sqrt(vt1*vt1 + vt2*vt2);
-            const float fri  = (tSpd < kFrictionStaticThreshold) ? sc.staticFriction : sc.friction;
+            const float tSpdSq = vt1*vt1 + vt2*vt2;
+            const float fri  = (tSpdSq < kFrictionStaticThreshold * kFrictionStaticThreshold) ? sc.staticFriction : sc.friction;
             const float maxF = fri * sc.normalLambda;
             float d1 = -vt1 / sc.effectiveInvMassT1, d2 = -vt2 / sc.effectiveInvMassT2;
             float n1 = sc.frictionLambda1 + d1, n2 = sc.frictionLambda2 + d2;
-            const float fMag = std::sqrt(n1*n1 + n2*n2);
-            if (fMag > maxF && fMag > 1e-8f) { const float s = maxF/fMag; n1 *= s; n2 *= s; }
+            const float fMagSq = n1*n1 + n2*n2;
+            if (fMagSq > maxF * maxF && fMagSq > 1e-16f) {
+                const float fMag = std::sqrt(fMagSq);
+                const float s = maxF/fMag; n1 *= s; n2 *= s;
+            }
             d1 = n1 - sc.frictionLambda1; d2 = n2 - sc.frictionLambda2;
             sc.frictionLambda1 = n1; sc.frictionLambda2 = n2;
             ApplyImpulse(sc.bodyA, sc.bodyB, sc.invA, sc.invB, sc.rA, sc.rB,
                 VAdd(VScale(sc.tangent1, d1), VScale(sc.tangent2, d2)));
         }
+        SolveRollingFriction(sc);
     };
 
     // アイランド間はボディを共有しないため並列化可能。

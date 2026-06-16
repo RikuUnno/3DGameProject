@@ -93,7 +93,21 @@ namespace {
     constexpr float kSpeculativeMargin   = 0.02f;
     constexpr float kFrictionStaticThreshold = 0.05f;
     constexpr float kMaxMassRatio        = 10000.0f;
-
+    // 転がり抵抗係数。接触法線まわり以外の相対角速度に対して、
+    // 「摩擦係数 × レバーアーム × 法線インパルス」で上限を掛けた角インパルスを
+    // 逆向きに与え、転がりを徐々に減衰させる。これがないと球が Box の辺や壁に
+    // 押し付けられたとき、接触摩擦のレバーアームがトルクを供給し続け、角速度を
+    // 抑えるものが微小な角減衰しかないため回転が暴走して張り付き・打ち上げが起きる。
+    constexpr float kRollingFrictionFactor = 0.25f;
+    // 転がり抵抗の1イテレーションあたりの最大減衰割合。
+    // 1.0 にすると相対角速度を一気に打ち消し、接触摩擦と相まって回転・移動が
+    // 衝突の瞬間に消えてしまう。0.2 程度にして徐々に減衰させる。
+    constexpr float kRollingFrictionMaxStop = 0.2f;
+    // Rolling resistance factor for the tangential (rolling) component of the
+    // relative angular velocity at a contact. Kept much smaller than
+    // kRollingFrictionFactor so the gravity torque on slopes always wins and
+    // spheres keep rolling downhill instead of decelerating to a stop.
+    constexpr float kRollingResistanceFactor = 0.05f;
     // ---- コライダーの最小半径（CCD トンネリング判定用）--------------
 
     inline float GetColliderMinHalfExtent(const Collider* col) noexcept {
@@ -203,6 +217,42 @@ namespace {
         const VECTOR& d) noexcept
     {
         return RelNormalVelocity(bodyA, bodyB, rA, rB, d);
+    }
+
+    // 接触の相対角速度（ωB - ωA）。転がり抵抗の対象。
+    inline VECTOR RelAngularVelocity(PhysicsBody* bodyA, PhysicsBody* bodyB) noexcept {
+        const VECTOR wA = bodyA ? bodyA->_angularVelocity : VGet(0, 0, 0);
+        const VECTOR wB = bodyB ? bodyB->_angularVelocity : VGet(0, 0, 0);
+        return VSub(wB, wA);
+    }
+
+    // 軸方向の「角」有効逆質量（転がり抵抗用）。
+    // axis 方向の相対角速度を変化させるのに必要な角インパルスの逆係数。
+    //   K = axis^T * IA^-1 * axis + axis^T * IB^-1 * axis
+    inline float AngularEffectiveInvMass(
+        PhysicsBody* bodyA, PhysicsBody* bodyB,
+        const VECTOR& axis) noexcept
+    {
+        float result = 0.0f;
+        if (bodyA && bodyA->InverseMass() > 0.0f && !bodyA->_freezeRotation)
+            result += Dot3(bodyA->ApplyInverseInertia(axis), axis);
+        if (bodyB && bodyB->InverseMass() > 0.0f && !bodyB->_freezeRotation)
+            result += Dot3(bodyB->ApplyInverseInertia(axis), axis);
+        return result;
+    }
+
+    // 角インパルスのみを2剛体へ適用（並進速度は変えない・転がり抵抗用）。
+    //   ωA -= IA^-1 * L,  ωB += IB^-1 * L
+    inline void ApplyAngularImpulse(
+        PhysicsBody* bodyA, PhysicsBody* bodyB,
+        const VECTOR& angularImpulse) noexcept
+    {
+        if (bodyA && bodyA->InverseMass() > 0.0f && !bodyA->_freezeRotation && !bodyA->_isSleeping)
+            bodyA->_angularVelocity = VSub(bodyA->_angularVelocity,
+                bodyA->ApplyInverseInertia(angularImpulse));
+        if (bodyB && bodyB->InverseMass() > 0.0f && !bodyB->_freezeRotation && !bodyB->_isSleeping)
+            bodyB->_angularVelocity = VAdd(bodyB->_angularVelocity,
+                bodyB->ApplyInverseInertia(angularImpulse));
     }
 
     // 半平面からの符号付き距離（正 = 表側、負 = 裏側）

@@ -49,7 +49,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	// キー入力の初期化とリピート設定
 	KeyInput::Instance().BeginKeyInput();
-	KeyInput::Instance().SetInputRepeatedTime(KEY_INPUT_RETURN, 0.2);
+	KeyInput::Instance().SetInputRepeatedTime(KEY_INPUT_RETURN, 0.2); // Enterキーのリピート間隔を0.2秒に設定
 
 	// 最初のシーンをタイトルシーンに設定
 	SceneManager::Instance().ChangeScene(std::make_unique<TitleScene>()); // 最初のシーンをタイトルシーンに設定

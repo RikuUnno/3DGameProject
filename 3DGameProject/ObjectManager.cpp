@@ -11,18 +11,18 @@
 #include "DxLib.h"
 #endif
 
+// シングルトンインスタンス取得
 ObjectManager& ObjectManager::Instance() noexcept {
     static ObjectManager inst;
     return inst;
 }
-
+// デストラクタで全オブジェクトをクリア（通常はシーン切替前に ReleaseBySceneId されている想定）
 ObjectManager::~ObjectManager() {
     _objects.clear();
     _pools.clear();
 }
 
-// ---- 内部ヘルパー: オブジェクトを _objects / _idIndex に登録 ----------------
-
+// ID 割り当てユーティリティ（Spawn 時に呼び出す）。ID が未割り当てなら次の ID を付与してインデックス登録する。
 static int AssignId(GameObject* obj, std::atomic<int>& nextId,
     std::unordered_map<int, GameObject*>& idIndex)
 {
@@ -35,8 +35,8 @@ static int AssignId(GameObject* obj, std::atomic<int>& nextId,
     return id;
 }
 
-// ---- プール登録 --------------------------------------------------------------
-
+// Pool 登録
+// すでに登録済みなら何もしない。Creator は ObjectFactory::Create を呼び出すラムダを渡す。
 void ObjectManager::RegisterPool(const std::string& key, size_t maxSize) {
     std::lock_guard lk(_mtx);
     if (_pools.count(key)) return;
@@ -46,6 +46,8 @@ void ObjectManager::RegisterPool(const std::string& key, size_t maxSize) {
     _pools.emplace(key, std::make_unique<ObjectPool>(poolCreator, maxSize));
 }
 
+// Pool 登録 + モデル登録
+// モデル登録は ObjectFactory::Create で生成されるオブジェクトがモデルを自動取得できるようにするためのヘルパー。
 bool ObjectManager::RegisterPool(const std::string& key, const std::string& modelPath,
                                  size_t maxSize, size_t maxModelPoolSize) {
     RegisterPool(key, maxSize);
@@ -53,23 +55,21 @@ bool ObjectManager::RegisterPool(const std::string& key, const std::string& mode
     return ModelManager::Instance().Register(key, modelPath, maxModelPoolSize);
 }
 
-// ---- シーン ID ---------------------------------------------------------------
-
+// 現在アクティブなシーン ID を設定 / 取得
+// Spawn 時にオブジェクトの ownerSceneId に付与するためのもの。
 void ObjectManager::SetCurrentSceneId(int sceneId) {
     std::lock_guard lk(_mtx);
     _currentSceneId = sceneId;
 }
 
+// 現在アクティブなシーン ID を取得
 int ObjectManager::CurrentSceneId() const {
     std::lock_guard lk(_mtx);
     return _currentSceneId;
 }
 
-// ---- Spawn ------------------------------------------------------------------
-// 1) プール登録済みなら Acquire → OnAcquire
-// 2) なければ Factory::Create → OnAcquire
-// どちらも _objects / _idIndex に登録して raw ポインタを返す。
-
+// Spawn
+// プールがあれば Acquire、なければ Factory 生成。生成後は ID 割り当て、モデル割り当て、OnAcquire コールバック呼び出しを行い、管理コンテナに登録してから返す。
 GameObject* ObjectManager::Spawn(const std::string& key, const VariantMap& params) {
     std::lock_guard lk(_mtx);
 
@@ -108,16 +108,16 @@ GameObject* ObjectManager::Spawn(const std::string& key, const VariantMap& param
     AssignId(raw, _nextId, _idIndex);
     _objects.emplace(raw, std::move(up));
 
-#ifdef _DEBUG
+	
+#ifdef _DEBUG // デバッグ統計
     ++_debugTotalAcquire;
     if (wasCreated) ++_debugTotalCreated;
 #endif
     return raw;
 }
 
-// ---- Release ----------------------------------------------------------------
-// O(1): raw ポインタキーで直接 erase。
-
+// Release
+// プールキーがあればプールへ返却、なければ破棄。ID インデックスからも削除する。モデルもプールへ返却（unique_ptr の解放でデリータが呼ばれる）。オブジェクトの OnRelease / OnDestroy コールバックも呼び出す。
 void ObjectManager::Release(GameObject* obj) {
     if (!obj) return;
     std::lock_guard lk(_mtx);
@@ -132,9 +132,11 @@ void ObjectManager::Release(GameObject* obj) {
         obj->SetActive(false);
     } else {
         obj->OnDestroy();
-#ifdef _DEBUG
+
+#ifdef _DEBUG // デバッグ統計
         ++_debugTotalDeleted;
 #endif
+
         obj->SetActive(false);
     }
     // モデルもプールへ返却（unique_ptr の解放でデリータが呼ばれる）
@@ -142,8 +144,8 @@ void ObjectManager::Release(GameObject* obj) {
     _objects.erase(it);
 }
 
-// ---- シーン一括 Release -----------------------------------------------------
-
+// シーン ID 指定で一括 Release
+// シーン終了時に呼び出す想定。指定シーン ID のオブジェクトを全て Release する。Release と同様にプール返却 or 破棄、ID インデックス削除、モデル返却、コールバック呼び出しを行う。
 void ObjectManager::ReleaseBySceneId(int sceneId) {
     std::lock_guard lk(_mtx);
     for (auto it = _objects.begin(); it != _objects.end(); ) {
@@ -157,24 +159,27 @@ void ObjectManager::ReleaseBySceneId(int sceneId) {
             obj->OnRelease();
         } else {
             obj->OnDestroy();
-#ifdef _DEBUG
+
+#ifdef _DEBUG // デバッグ統計
             ++_debugTotalDeleted;
 #endif
+
         }
         obj->_model.reset();
         obj->SetActive(false);
         it = _objects.erase(it);
     }
 }
-// ---- FindById / RemoveById --------------------------------------------------
-// O(1): _idIndex のセカンダリインデックスで検索。
 
+// FindById / RemoveById
+// ID でオブジェクトを検索する。ID インデックスを参照して O(1) で見つける。
 GameObject* ObjectManager::FindById(int id) const {
     std::lock_guard lk(_mtx);
     auto it = _idIndex.find(id);
     return (it != _idIndex.end()) ? it->second : nullptr;
 }
 
+// ID でオブジェクトを削除する。ID インデックスを参照して O(1) で見つけ、Release と同様の処理を行う。
 bool ObjectManager::RemoveById(int id) {
     std::lock_guard lk(_mtx);
     auto idIt = _idIndex.find(id);
@@ -186,17 +191,19 @@ bool ObjectManager::RemoveById(int id) {
     auto objIt = _objects.find(obj);
     if (objIt != _objects.end()) {
         obj->OnDestroy();
-#ifdef _DEBUG
+
+#ifdef _DEBUG // デバッグ統計
         ++_debugTotalDeleted;
 #endif
+
         obj->_model.reset();
         _objects.erase(objIt);
     }
     return true;
 }
 
-// ---- UpdateAll / DrawAll ----------------------------------------------------
-
+// UpdateAll / DrawAll
+// UpdateAll はスナップショットを作成してからロックを解放
 void ObjectManager::UpdateAll(float dtSec) {
     // ローカル変数としてスナップショットを作成（thisへの依存を排除）
     std::vector<GameObject*> snapshot;
@@ -218,6 +225,8 @@ void ObjectManager::UpdateAll(float dtSec) {
     }, 16);
 }
 
+// DrawAll はロックを保持したまま全オブジェクトを描画する（描画中のオブジェクト追加/削除は反映されない）
+// Draw の実装が重い場合は UpdateAll と同様にスナップショットを作成してロックを解放してから描画することも検討。
 void ObjectManager::DrawAll() {
     std::lock_guard lk(_mtx);
     for (auto& [ptr, up] : _objects) {
@@ -225,31 +234,39 @@ void ObjectManager::DrawAll() {
     }
 }
 
-// ---- プール管理・内容 -------------------------------------------------------
-
+// Poolクリア
+// Poolの未使用ストックを全破棄（使用中オブジェクトには触れない）。プールが存在しないか空なら false を返す。
 bool ObjectManager::ClearPool(const std::string& key) {
     std::lock_guard lk(_mtx);
     auto it = _pools.find(key);
     if (it == _pools.end() || !it->second) return false;
-#ifdef _DEBUG
+
+#ifdef _DEBUG // デバッグ統計
     _debugTotalDeleted += it->second->Size();
 #endif
+
     it->second->Clear();
     return true;
 }
 
+// Poolの未使用ストック削除
+// Poolの未使用ストックのうち、maxIdleSeconds 以上未使用のものを削除。戻り値は削除した個数。プールが存在しないか空なら 0 を返す。
 size_t ObjectManager::TrimPoolUnused(const std::string& key, double maxIdleSeconds) {
     const double now = Time::Instance().GetTotalTime();
     std::lock_guard lk(_mtx);
     auto it = _pools.find(key);
     if (it == _pools.end() || !it->second) return 0;
     const size_t removed = it->second->TrimUnused(maxIdleSeconds, now);
-#ifdef _DEBUG
+
+#ifdef _DEBUG // デバッグ統計
     _debugTotalDeleted += removed;
 #endif
+
     return removed;
 }
 
+// 全プールの未使用ストック削除
+// 全プールの未使用ストックのうち、maxIdleSeconds 以上未使用のものを削除。戻り値は削除した個数。
 size_t ObjectManager::TrimAllPoolsUnused(double maxIdleSeconds) {
     const double now = Time::Instance().GetTotalTime();
     std::lock_guard lk(_mtx);
@@ -258,13 +275,18 @@ size_t ObjectManager::TrimAllPoolsUnused(double maxIdleSeconds) {
         if (!pool) continue;
         const size_t removed = pool->TrimUnused(maxIdleSeconds, now);
         total += removed;
-#ifdef _DEBUG
+
+#ifdef _DEBUG // デバッグ統計
         _debugTotalDeleted += removed;
 #endif
+
     }
     return total;
 }
 
+// Pool登録解除
+// 使用中オブジェクトが残っている場合は登録解除しない。プールが存在しない場合も false を返す。登録解除に成功した場合は true を返す
+// 登録解除に成功した場合、紐づくモデルテンプレート/プールも破棄される（登録されていなければ no-op）。
 bool ObjectManager::UnregisterPool(const std::string& key) {
     std::lock_guard lk(_mtx);
     // 使用中オブジェクトが残っている場合は登録解除しない
@@ -273,9 +295,11 @@ bool ObjectManager::UnregisterPool(const std::string& key) {
     }
     auto it = _pools.find(key);
     if (it == _pools.end()) return false;
-#ifdef _DEBUG
+
+#ifdef _DEBUG // デバッグ統計
     if (it->second) _debugTotalDeleted += it->second->Size();
 #endif
+
     if (it->second) it->second->Clear();
     _pools.erase(it);
     // 紐づくモデルテンプレート/プールも破棄（登録されていなければ no-op）
@@ -283,17 +307,18 @@ bool ObjectManager::UnregisterPool(const std::string& key) {
     return true;
 }
 
-// ---- デバッグ表示 -----------------------------------------------------------
-
+// デバッグ描画
 #ifdef _DEBUG
 void ObjectManager::DebugDraw(int x, int y) const {
-    std::lock_guard lk(_mtx);
+	std::lock_guard lk(_mtx); // ロックを保持したまま描画する（描画中のオブジェクト追加/削除は反映されない）
 
+	// 描画レイアウト定数
     const int lineH  = 16;
     const int rightX = x + 360;
     int leftY  = y;
     int rightY = y;
 
+	// オブジェクト管理状況
     DrawFormatString(x, leftY, GetColor(255,255,0),
         "[ObjectManager] objects:%d", (int)_objects.size()); leftY += lineH;
     DrawFormatString(x, leftY, GetColor(255,255,0),
@@ -307,6 +332,7 @@ void ObjectManager::DebugDraw(int x, int y) const {
     DrawFormatString(x, leftY, GetColor(255,255,0),
         "[ObjectManager] pools:%d",   (int)_pools.size());
 
+	// Pool管理状況
     DrawFormatString(rightX, rightY, GetColor(255,255,0), "[Pool] free stock"); rightY += lineH;
     for (const auto& [key, pool] : _pools) {
         DrawFormatString(rightX, rightY, GetColor(200,255,200),

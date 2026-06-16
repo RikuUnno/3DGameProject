@@ -4,6 +4,7 @@
 // - MeshCollider のデモシーン
 // - data/models/MeshDemoCity.mv1 をステージとして読み込み、メッシュコライダーを適用
 // - デバッグカメラ（右ドラッグ+WASDQE）でステージを見学
+// - WASD でプレイヤー移動、Space でジャンプ、P でカメラ切替（追従/デバッグ）
 // - L で MeshCollider のワイヤ描画 ON/OFF
 // - R でリセット、T でタイトルへ戻る
 
@@ -19,6 +20,7 @@
 
 #include "CameraController.h"
 #include "CameraManager.h"
+#include "Camera.h"
 #include "CameraTags.h"
 #include "KeyInput.h"
 
@@ -26,6 +28,7 @@
 #include "MeshCollider.h"
 #include "ColliderManager.h"
 #include "LayerMask.h"
+#include "Player.h"
 
 class MeshDemoScene : public SceneTpl<MeshDemoScene> {
 public:
@@ -57,7 +60,7 @@ public:
         }
         _stage = std::make_unique<GameObject>();
         _stage->isStatic = true;
-        _stage->transform.SetLocalPosition(VGet(0.0f, -20.0f, 0.0f));
+        _stage->transform.SetLocalPosition(VGet(-270.0f, -40.0f, -110.0f));
         // ステージを 1 倍に拡大。Transform のスケールと MV1 のスケールを揃えることで、
         // 描画と MeshCollider（owner の WorldScale を反映して頂点をワールド化）が一致する。
         _stage->transform.SetLocalScale(VGet(_stageScale, _stageScale, _stageScale));
@@ -72,17 +75,33 @@ public:
         }
         ColliderManager::Instance().RegisterCollider(_stageCollider.get());
 
+        // --- プレイヤー生成（ステージ中央付近の少し上から落下させて着地） ---
+        _player = std::make_unique<Player>();
+        const VECTOR stagePos = _stage->transform.LocalPosition();
+        const VECTOR playerStart = VAdd(stagePos, VGet(0.0f, 60.0f, 0.0f));
+        _player->Spawn(playerStart);
+
         // --- カメラ ---
         if (_debugCamId == 0 || camMgr.Get(_debugCamId) == nullptr) {
             _debugCamId = _debugCamCtrl.SpawnAuto(sceneId, CameraTag::Debug,
                 VGet(0.0f, 30.0f, -60.0f), VGet(0.30f, 0.0f, 0.0f));
         }
-        _currentCamId = _debugCamId;
+        // プレイヤー追従カメラ
+        if (_followCamId == 0 || camMgr.Get(_followCamId) == nullptr) {
+            _followCamId = _followCamCtrl.SpawnAuto(sceneId, CameraTag::Game,
+                playerStart, VGet(0.0f, 0.0f, 0.0f));
+        }
+        _useFollowCamera = true;
+        _currentCamId = _followCamId;
         camMgr.SetRender(_currentCamId);
     }
 
     void End() override {
         // 登録解除（GameObject/Collider のデストラクタ前に必ず外す）
+        if (_player) {
+            _player->Despawn();
+            _player.reset();
+        }
         if (_stageCollider) {
             ColliderManager::Instance().UnregisterCollider(_stageCollider.get());
         }
@@ -96,9 +115,23 @@ public:
     }
 
     void Update(float dtSec) override {
+        auto& key = KeyInput::Instance();
+
+        // P でカメラ切替（追従 ⇔ デバッグ自由視点）
+        if (key.IsKeyInputTrigger(KEY_INPUT_P)) {
+            _useFollowCamera = !_useFollowCamera;
+            _currentCamId = _useFollowCamera ? _followCamId : _debugCamId;
+            CameraManager::Instance().SetRender(_currentCamId);
+        }
+
+        // プレイヤー更新（追従カメラ時はカメラ基準の移動方向を渡す）
+        if (_player) {
+            UpdatePlayerMoveBasis_();
+            _player->Update(dtSec);
+        }
+
         UpdateCamera_(dtSec);
 
-        auto& key = KeyInput::Instance();
         if (key.IsKeyInputTrigger(KEY_INPUT_L)) {
             _drawMeshWire = !_drawMeshWire;
         }
@@ -162,7 +195,7 @@ public:
 
         // メッシュコライダーのワイヤ描画（デバッグカメラ位置周辺のみ：巨大ステージ対策）
         if (_drawMeshWire && _stageCollider) {
-            auto* cam = CameraManager::Instance().Get(_debugCamId);
+            const Camera* cam = CameraManager::Instance().Get(_currentCamId);
             const VECTOR pc = cam ? cam->transform.LocalPosition() : VGet(0, 0, 0);
             const float r = 60.0f;
             AABB q;
@@ -173,11 +206,17 @@ public:
             _stageCollider->DrawDebugInAABB(q);
         }
 
+        // プレイヤー描画
+        if (_player) {
+            _player->Draw();
+        }
+
         // UI
         DrawString(10, 10, "MeshDemoScene  R:Reset  T:Title", GetColor(255, 255, 255));
-        DrawString(10, 30, "[Camera] Right-Drag+WASDQE = Free Move", GetColor(180, 220, 255));
-        DrawString(10, 50, "[Stage]  Arrows:Move XZ  PgUp/PgDn:Move Y  Z/X(+/-):Scale", GetColor(255, 220, 180));
-        DrawString(10, 70, "[Debug]  L:Mesh wire toggle", GetColor(200, 255, 200));
+        DrawString(10, 30, "[Player] WASD:Move  Space:Jump", GetColor(180, 255, 200));
+        DrawString(10, 50, "[Camera] P:Toggle Follow/Debug  (Debug: Right-Drag+WASDQE)", GetColor(180, 220, 255));
+        DrawString(10, 70, "[Stage]  Arrows:Move XZ  PgUp/PgDn:Move Y  Z/X(+/-):Scale", GetColor(255, 220, 180));
+        DrawString(10, 90, "[Debug]  L:Mesh wire toggle", GetColor(200, 255, 200));
 
         char buf[160];
         // 読み込み状況
@@ -202,13 +241,53 @@ public:
         sprintf_s(buf, sizeof(buf), "Path : %s",
             _loadedPath.empty() ? "(not loaded)" : _loadedPath.c_str());
         DrawString(10, 180, buf, mv1Loaded ? GetColor(180, 220, 255) : GetColor(255, 180, 180));
+
+        // プレイヤー状態
+        if (_player) {
+            const VECTOR pp = _player->transform.LocalPosition();
+            sprintf_s(buf, sizeof(buf), "Player pos    : (%.2f, %.2f, %.2f)  %s  Cam:%s",
+                pp.x, pp.y, pp.z,
+                _player->IsGrounded() ? "GROUNDED" : "AIR",
+                _useFollowCamera ? "FOLLOW" : "DEBUG");
+            DrawString(10, 200, buf, GetColor(200, 255, 200));
+        }
     }
 
 private:
     void UpdateCamera_(float dtSec) {
-        // Debug カメラは自由視点
-        _debugCamCtrl.SetCamera(_debugCamId);
-        _debugCamCtrl.UpdateFreeMoveMouse(20.0f, 0.45f, 12.0f, dtSec);
+        if (_useFollowCamera) {
+            UpdateFollowCamera_(dtSec);
+        } else {
+            // Debug カメラは自由視点
+            _debugCamCtrl.SetCamera(_debugCamId);
+            _debugCamCtrl.UpdateFreeMoveMouse(20.0f, 0.45f, 12.0f, dtSec);
+        }
+    }
+
+    // プレイヤー追従カメラ（背後やや上から見下ろし、プレイヤーを注視）
+    void UpdateFollowCamera_(float /*dtSec*/) {
+        auto* cam = CameraManager::Instance().Get(_followCamId);
+        if (!cam || !_player) return;
+
+        const VECTOR target = _player->transform.LocalPosition();
+        // 注視点はプレイヤーの少し上（頭付近）
+        const VECTOR look = VAdd(target, VGet(0.0f, _player->Height() * 0.5f, 0.0f));
+        // カメラはプレイヤーの背後（-Z 方向）やや上に配置
+        const VECTOR eye = VAdd(target, VGet(0.0f, 6.0f, -12.0f));
+        cam->LookAt(eye, look, VGet(0, 1, 0));
+        cam->MarkDirty();
+    }
+
+    // 追従カメラの向きを基準に、プレイヤーの移動前方/右方向を決める。
+    void UpdatePlayerMoveBasis_() {
+        if (!_player) return;
+        if (_useFollowCamera) {
+            // 追従カメラはプレイヤー背後の固定オフセットなので、ワールド +Z を前方とする。
+            _player->SetMoveBasis(VGet(0, 0, 1), VGet(1, 0, 0));
+        } else if (auto* cam = CameraManager::Instance().Get(_debugCamId)) {
+            // デバッグカメラ時はカメラの向きを基準にする。
+            _player->SetMoveBasis(cam->transform.Forward(), cam->transform.Right());
+        }
     }
 
 private:
@@ -219,10 +298,16 @@ private:
     std::unique_ptr<GameObject>   _stage;
     std::unique_ptr<MeshCollider> _stageCollider;
 
+    // プレイヤー
+    std::unique_ptr<Player> _player;
+
     // カメラ
     CameraController _debugCamCtrl;
+    CameraController _followCamCtrl;
     CameraController::CameraId _debugCamId = 0;
+    CameraController::CameraId _followCamId = 0;
     CameraController::CameraId _currentCamId = 0;
+    bool _useFollowCamera = true;
 
     // デバッグ表示
     bool _drawMeshWire = false;

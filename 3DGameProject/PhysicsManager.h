@@ -71,6 +71,9 @@ struct SolverContact {
 	float splitBias         = 0.0f;    // @ 132
 	float penetration       = 0.0f;    // @ 136
 
+	// 転がり抵抗の累積角インパルス（接触法線まわりの回転暴走を抑える）
+	VECTOR rollingLambda = VGet(0, 0, 0);
+
 	// アイランド ID
 	int islandId = -1;                 // @ 140
 
@@ -191,7 +194,18 @@ private:
 		std::vector<float>  linearDamping;
 		std::vector<float>  angularDamping;
 		std::vector<float>  gravityScale;
-		std::vector<uint8_t> flags; // bit0=active, bit1=kinematic, bit2=sleeping, bit3=useGravity, bit4=freezeRot, bit5=ccd
+		std::vector<uint8_t> flags; // BodyFlag を OR したビット集合 (BodyFlag を参照)
+
+		// SoA フラグ用ビット定義 (BitOperation と組み合わせて使う)
+		struct BodyFlag {
+			static constexpr uint8_t Active      = 1 << 0; // _enabled && owner active
+			static constexpr uint8_t Kinematic   = 1 << 1;
+			static constexpr uint8_t Sleeping    = 1 << 2;
+			static constexpr uint8_t UseGravity  = 1 << 3;
+			static constexpr uint8_t FreezeRot   = 1 << 4;
+			static constexpr uint8_t Ccd         = 1 << 5;
+		};
+
 		void Resize(size_t n) {
 			position.resize(n); velocity.resize(n); angularVelocity.resize(n);
 			force.resize(n); torque.resize(n);
@@ -210,6 +224,7 @@ private:
 	void BuildSolverContacts(float stepDt);
 	void WarmStart();
 	void SolveIsland(const PhysicsIsland& island, float stepDt);
+	void SolveRollingFriction(SolverContact& sc);
 	void SolveAllIslands(float stepDt);
 	void PositionalCorrection(float stepDt, float depthThreshold = 0.005f, float biasScale = 1.0f);
 	void SplitImpulseCorrection(float stepDt);

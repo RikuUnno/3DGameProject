@@ -1,7 +1,7 @@
 #include "PhysicsManager_Internal.h"
 
-// ---- ライフサイクル -------------------------------------------------
-
+// Shutdown 時に呼び出される
+// 物理スレッドが停止していることを保証した上で、全データをクリアする。
 void PhysicsManager::Shutdown() {
     const bool was = _shuttingDown.exchange(true, std::memory_order_relaxed);
     if (was) return;
@@ -16,18 +16,22 @@ void PhysicsManager::Shutdown() {
     _accumulator = 0.0f;
 }
 
+// 固定フレームレートとサブステップ数の設定
 void PhysicsManager::SetFixedDeltaTime(float fixedDeltaTime) noexcept {
     _fixedDeltaTime = (fixedDeltaTime > 1e-4f) ? fixedDeltaTime : (1.0f / 120.0f);
 }
 
+// サブステップ数の設定
 void PhysicsManager::SetMaxSubSteps(int maxSubSteps) noexcept {
     _maxSubSteps = (maxSubSteps > 1) ? maxSubSteps : 1;
 }
 
+// ソルバー反復数の設定
 void PhysicsManager::SetSolverIterations(int solverIterations) noexcept {
     _solverIterations = (solverIterations > 1) ? solverIterations : 1;
 }
 
+// コンタクト数やアイランドの大きさに応じて、イテレーション数を動的に増減させる
 int PhysicsManager::ComputeAdaptiveIterations() const noexcept {
     const int contactCount = static_cast<int>(_solverContacts.size());
 
@@ -49,20 +53,22 @@ int PhysicsManager::ComputeAdaptiveIterations() const noexcept {
     return (std::max)(adaptive, base);
 }
 
-// ---- Update / 非同期 ------------------------------------------------
-
+// Update: 物理シミュレーションのステップを進める。dt は前フレームからの経過時間
 void PhysicsManager::Update(float dt) {
     if (IsShuttingDown()) return;
-    if (dt < 0.0f) dt = 0.0f;
 
-#ifdef _DEBUG
+#ifdef _DEBUG // デバッグビルドでは物理更新の区間を計測する
     auto _scopeUpdate = PerformanceMonitor::Instance().Scope("Physics.Update");
 #endif
 
+	// dt が負の値になることは通常ないが、万が一そうなった場合は 0 にクランプする（物理ステップを進めない）
+    if (dt < 0.0f) dt = 0.0f;
     {
         std::lock_guard lk(_mtx);
         _ctrlSnapshotBuf.assign(_controllers.begin(), _controllers.end());
     }
+
+	// コントローラーの Update を呼び出す（物理ステップの前に状態を更新してもらう）
     for (auto* c : _ctrlSnapshotBuf) {
         if (!c) continue;
         c->Update(dt);
@@ -79,42 +85,47 @@ void PhysicsManager::Update(float dt) {
     else if (dt >= _fixedDeltaTime * 2.0f) dynamicMaxSubSteps = (std::min)(_maxSubSteps, 2);
 
     if (_asyncEnabled) {
-#ifdef _DEBUG
+#ifdef _DEBUG   // デバッグビルドでは物理更新の区間をさらに細かく計測する
         { auto _s = PerformanceMonitor::Instance().Scope("Physics.WaitForPhysics");       WaitForPhysics(); }
         { auto _s = PerformanceMonitor::Instance().Scope("Physics.ComputeInterpolation"); ComputeInterpolation(); }
         { auto _s = PerformanceMonitor::Instance().Scope("Physics.AsyncEnqueue");
           _asyncFuture = ThreadPool::Instance().Enqueue([this, dt, dynamicMaxSubSteps]() { RunAsyncStep(dt, dynamicMaxSubSteps); }); }
-#else
+#else           // リリースビルドでは計測なしでシンプルに実行する
         WaitForPhysics();
         ComputeInterpolation();
         _asyncFuture = ThreadPool::Instance().Enqueue([this, dt, dynamicMaxSubSteps]() { RunAsyncStep(dt, dynamicMaxSubSteps); });
-#endif
-    } else {
+#endif          // 非同期ステップを開始する前に、前のステップが完了していることを保証するために WaitForPhysics() を呼び出す。
+    }   else 
+	    {   
         const float maxDt = _fixedDeltaTime * static_cast<float>(dynamicMaxSubSteps);
         _accumulator += (std::min)(dt, maxDt);
         int sub = 0;
+
         while (_accumulator + 1e-6f >= _fixedDeltaTime && sub < dynamicMaxSubSteps) {
-#ifdef _DEBUG
+#ifdef _DEBUG   // デバッグビルドでは物理ステップの区間をさらに細かく計測する
             { auto _s = PerformanceMonitor::Instance().Scope("Physics.StepSimulation"); StepSimulation(_fixedDeltaTime); }
-#else
+#else           // リリースビルドでは計測なしでシンプルに実行する
             StepSimulation(_fixedDeltaTime);
-#endif
+#endif          // サブステップを回すごとに accumulator から fixedDeltaTime を減らしていく
             _accumulator -= _fixedDeltaTime;
             ++sub;
         }
+		// 浮動小数点の誤差で accumulator がわずかに負になることがあるので、0 未満になったらクランプする
         if (_accumulator < 0.0f) _accumulator = 0.0f;
-#ifdef _DEBUG
+#ifdef _DEBUG   // サブステップのループが終わった後に、補間計算の区間を計測する
         { auto _s = PerformanceMonitor::Instance().Scope("Physics.ComputeInterpolation"); ComputeInterpolation(); }
-#else
+#else           // リリースビルドでは計測なしでシンプルに実行する
         ComputeInterpolation();
-#endif
-    }
+#endif          // Update の最後に ComputeInterpolation() を呼び出して、次のフレームで補間されたトランスフォームを計算する
+        }
 }
 
+// 前の物理ステップが非同期で実行されている場合に、それが完了するまで待機する
 void PhysicsManager::WaitForPhysics() {
     if (_asyncFuture.valid()) _asyncFuture.get();
 }
 
+// 非同期で物理ステップを実行するための関数。Update() から ThreadPool に渡されて呼び出される。
 void PhysicsManager::RunAsyncStep(float dt, int maxSubSteps) {
     const float maxDt = _fixedDeltaTime * static_cast<float>((std::max)(1, maxSubSteps));
     _accumulator += (std::min)(dt, maxDt);
@@ -127,8 +138,8 @@ void PhysicsManager::RunAsyncStep(float dt, int maxSubSteps) {
     if (_accumulator < 0.0f) _accumulator = 0.0f;
 }
 
-// ---- ルックアップキャッシュ -----------------------------------------
-
+// キャッシュの構築
+// 物理ステップの前に呼び出される。Owner (GameObject) から Body / Collider を O(1) で見つけるためのハッシュマップを構築する。
 void PhysicsManager::BuildLookupCaches() {
     _bodyByOwner.clear();
     const size_t bodySize = _bodies.size();
@@ -149,12 +160,14 @@ void PhysicsManager::BuildLookupCaches() {
     }
 }
 
+// Owner (GameObject) から Body / Collider を O(1) で見つけるためのキャッシュを参照する関数。Owner が nullptr なら nullptr を返す。
 PhysicsBody* PhysicsManager::CachedFindBody(GameObject* owner) const {
     if (!owner) return nullptr;
     auto it = _bodyByOwner.find(owner);
     return (it != _bodyByOwner.end()) ? it->second : nullptr;
 }
 
+// Owner (GameObject) から Body / Collider を O(1) で見つけるためのキャッシュを参照する関数。Owner が nullptr なら nullptr を返す。
 Collider* PhysicsManager::CachedFindCollider(GameObject* owner) const {
     if (!owner) return nullptr;
     auto it = _colliderByOwner.find(owner);

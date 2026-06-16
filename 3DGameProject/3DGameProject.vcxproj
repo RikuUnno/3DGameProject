@@ -175,6 +175,7 @@
     <ClCompile Include="PhysicsMonitor.cpp" />
     <ClCompile Include="PhysicsSolver.cpp" />
     <ClCompile Include="PhysicsScene.cpp" />
+    <ClCompile Include="Player.cpp" />
     <ClCompile Include="Raycast.cpp" />
     <ClCompile Include="SceneManager.cpp" />
     <ClCompile Include="SceneTransition.cpp" />
@@ -188,6 +189,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="3DGameProject\Assert.h" />
+    <ClInclude Include="BitOperation.h" />
     <ClInclude Include="Bgm.h" />
     <ClInclude Include="BgmManager.h" />
     <ClInclude Include="BgmPool.h" />
@@ -238,6 +240,7 @@
     <ClInclude Include="PhysicsMaterial.h" />
     <ClInclude Include="PhysicsMonitor.h" />
     <ClInclude Include="PhysicsScene.h" />
+    <ClInclude Include="Player.h" />
     <ClInclude Include="Pool.h" />
     <ClInclude Include="Ray.h" />
     <ClInclude Include="Raycast.h" />

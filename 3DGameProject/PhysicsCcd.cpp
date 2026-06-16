@@ -361,7 +361,7 @@ void PhysicsCcd::ProcessCCD(
 
     const VECTOR currentPos = body->_owner->transform.WorldPosition(); // 現在位置
     const VECTOR predictedPos = VAdd(currentPos, VScale(body->_velocity, stepDt)); // 予測位置
-    const float displacement = Len3(VSub(predictedPos, currentPos)); // 移動距離
+    const float displacementSq = LenSq(VSub(predictedPos, currentPos)); // 移動距離の二乗（sqrt不要）
 
     float minRadius = 0.5f; // コライダーの最小サイズ
     if (collider->GetKind() == Collider::Kind::Sphere) {
@@ -378,7 +378,7 @@ void PhysicsCcd::ProcessCCD(
                             (quality == CcdQuality::Bullet) ? (minRadius * 0.5f) :
                             (minRadius * 0.2f);
 
-    if (displacement < threshold) {
+    if (displacementSq < threshold * threshold) {
         return;
     }
 
@@ -416,8 +416,10 @@ void PhysicsCcd::ProcessCCD(
 
     if (quality == CcdQuality::Default) {
         const float speedLimit = minRadius / stepDt; // 速度の上限
-        const float currentSpeed = Len3(body->_velocity); // 現在の速度の大きさ
-        if (currentSpeed > speedLimit) {
+        const float speedLimitSq = speedLimit * speedLimit;
+        const float currentSpeedSq = LenSq(body->_velocity); // 二乗で早期判定
+        if (currentSpeedSq > speedLimitSq) {
+            const float currentSpeed = std::sqrt(currentSpeedSq); // スケール限りのため sqrt
             body->_velocity = VScale(body->_velocity, speedLimit / currentSpeed);
         }
         return;

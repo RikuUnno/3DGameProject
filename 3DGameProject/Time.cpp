@@ -44,9 +44,9 @@ double Time::GetWallTimeSeconds() const noexcept {
 
 // 時間をリセットする
 void Time::Reset() noexcept {
-	std::lock_guard<std::mutex> lock(_mtx);
-	_start = std::chrono::steady_clock::now();
-	_last = _start;
-	_deltaSec =0.0;
-	_totalSec =0.0;
+	std::lock_guard<std::mutex> lock(_mtx);		// スレッド安全にリセット
+	_start = std::chrono::steady_clock::now();	// 現在の時刻を基準にしてスタートとラストをリセット
+	_last = _start;								// 経過時間もリセット
+	_deltaSec = 0.0;							// 総経過時間もリセット
+	_totalSec = 0.0;							// これで次の Update() から新しい基準で時間が計測されるようになる
 }

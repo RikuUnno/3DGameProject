@@ -122,6 +122,13 @@ void PhysicsManager::BuildSolverContacts(float stepDt) {
             const auto& prev = _prevSolverContacts[it->second];
             if (LenSq(VSub(prev.localA, sc.localA)) > kContactMatchDistSq) continue;
             if (LenSq(VSub(prev.localB, sc.localB)) > kContactMatchDistSq) continue;
+            // Normal changed beyond 60 deg: the contact switched to another face
+            // (e.g. a sphere crossing a box edge). Discard every warm-start
+            // lambda. Carrying the old normalLambda over applies a large impulse
+            // along the new normal and inflates the friction cone, which makes
+            // spheres stick to edges and spin up.
+            const float normalAlignment = Dot3(prev.normal, sc.normal);
+            if (normalAlignment < 0.5f) break;
             // warm-start factor を保存時点で適用しておく。
             // こうすることで WarmStart() / SolveIsland() で読まれる
             // 累積ラムダは「前フレーム値 × factor」となり、ソルバ内の
@@ -131,7 +138,6 @@ void PhysicsManager::BuildSolverContacts(float stepDt) {
             // 法線の整合性を確認。cos(15°) ? 0.966 を閾値とする。
             // それ以下なら接触面が切り替わったとみなし、摩擦は warm-start
             // しない (ゼロから蓄積させる)。
-            const float normalAlignment = Dot3(prev.normal, sc.normal);
             if (normalAlignment > 0.966f) {
                 // 摩擦インパルスをワールド空間に復元してから新しい tangent 基底へ射影
                 const VECTOR prevFrictionImpulse = VAdd(
@@ -183,9 +189,10 @@ void PhysicsManager::WarmStart() {
         // 接触したまま転がる際に余剰トルクが残り、回転が暴走して飛ぶ。
         // → warm-start 前に摩擦円錐へクランプし、保存値も縮める。
         const float maxF = sc.friction * sc.normalLambda;
-        const float fMag = std::sqrt(sc.frictionLambda1 * sc.frictionLambda1
-                                   + sc.frictionLambda2 * sc.frictionLambda2);
-        if (fMag > maxF && fMag > 1e-8f) {
+        const float fMagSq = sc.frictionLambda1 * sc.frictionLambda1
+                           + sc.frictionLambda2 * sc.frictionLambda2;
+        if (fMagSq > maxF * maxF && fMagSq > 1e-16f) {
+            const float fMag = std::sqrt(fMagSq); // クランプが必要な時だけ sqrt
             const float s = maxF / fMag;
             sc.frictionLambda1 *= s;
             sc.frictionLambda2 *= s;

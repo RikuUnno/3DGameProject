@@ -10,8 +10,8 @@ Time& Time::Instance() noexcept {
 Time::Time() noexcept {
 	_start = std::chrono::steady_clock::now();
 	_last = _start;
-	_deltaSec =0.0;
-	_totalSec =0.0;
+	_deltaSec = 0.0;
+	_totalSec = 0.0;
 }
 
 // 毎フレーム呼んで時間を更新（スレッド安全）
@@ -25,14 +25,15 @@ void Time::Update() noexcept {
 
 // 前回更新からの経過秒を返す
 double Time::GetDeltaTime() const noexcept {
-	std::lock_guard<std::mutex> lock(_mtx);
-	return _deltaSec;
+	// ロックフリー読み取り（atomic）。ホットループ/ワーカースレッドからの
+	// 頻繁な呼び出しでもロック競合（Contention）が発生しない。
+	return _deltaSec.load(std::memory_order_relaxed);
 }
 
 // プログラム開始からの総経過秒を返す
 double Time::GetTotalTime() const noexcept {
-	std::lock_guard<std::mutex> lock(_mtx);
-	return _totalSec;
+	// ロックフリー読み取り（atomic）。
+	return _totalSec.load(std::memory_order_relaxed);
 }
 
 // システムの現在時刻を秒で返す

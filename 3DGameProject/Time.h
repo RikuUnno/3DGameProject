@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <mutex>
+#include <atomic>
 
 class Time
 {
@@ -32,7 +33,7 @@ private:
 	mutable std::mutex _mtx;
 
 	// Œo‰ßŠÔ
-	double _deltaSec;
+	std::atomic<double> _deltaSec{ 0.0 };
 	// ‘Œo‰ßŠÔ
-	double _totalSec;
+	std::atomic<double> _totalSec{ 0.0 };
 };

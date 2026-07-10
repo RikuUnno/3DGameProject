@@ -53,15 +53,15 @@ private:
 	void EnsureColliderRegistered_();
 
 	// 外部パラメータから形状・物理値を構築
-	void ConfigureFromParams_(const VariantMap& params);
-	void CreateCollider_(ShapeType shapeType);
-	void ApplyVisualDefaults_();
+	void ConfigureFromParams_(const VariantMap& params);	// 物理パラメータの構築
+	void CreateCollider_(ShapeType shapeType);				// コライダーの生成
+	void ApplyVisualDefaults_();							// デバッグ描画用の補助設定を適用
 
 	// VariantMap から安全に値を読み出すヘルパー
-	static float ParseFloat_(const VariantMap& params, const char* key, float defaultValue);
-	static int ParseInt_(const VariantMap& params, const char* key, int defaultValue);
-	static bool ParseBool_(const VariantMap& params, const char* key, bool defaultValue);
-	static std::string ParseString_(const VariantMap& params, const char* key, const std::string& defaultValue);
+	static float ParseFloat_(const VariantMap& params, const char* key, float defaultValue);						// float 値の取得
+	static int ParseInt_(const VariantMap& params, const char* key, int defaultValue);								// int 値の取得
+	static bool ParseBool_(const VariantMap& params, const char* key, bool defaultValue);							// bool 値の取得
+	static std::string ParseString_(const VariantMap& params, const char* key, const std::string& defaultValue);	// string 値の取得
 
 private:
 	// 形状は切り替え式。未使用形状も保持して再生成コストを抑える
@@ -77,11 +77,11 @@ private:
 	ShapeType _shapeType = ShapeType::Box;
 
 	// デバッグ描画用の補助設定
-	unsigned int _drawColor = 0;
-	float _drawRadius = 0.5f;
-	VECTOR _drawHalfExtents = VGet(0.5f, 0.5f, 0.5f);
-	float _drawHeight = 2.0f;
-	std::string _materialName;
+	unsigned int _drawColor = 0;						// 描画色（ARGB）
+	float _drawRadius = 0.5f;							// Sphere/Capsule の半径
+	VECTOR _drawHalfExtents = VGet(0.5f, 0.5f, 0.5f);	// Box の半分のサイズ
+	float _drawHeight = 2.0f;							// Capsule の高さ（半径を除く）
+	std::string _materialName;							// 物理マテリアル名（PhysicsMaterialManager から取得）
 };
 
 // PhysicsDebugBox
@@ -113,3 +113,4 @@ public:
 protected:
 	ShapeType DefaultShapeType() const noexcept override { return ShapeType::Capsule; }
 };
+

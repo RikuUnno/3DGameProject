@@ -238,7 +238,7 @@ private:
 	void PositionalCorrection(float stepDt, float depthThreshold = 0.005f, float biasScale = 1.0f);		// ペネトレーションリカバリーの位置補正（Split impulse なし）
 	void SplitImpulseCorrection(float stepDt);															// ペネトレーションリカバリーの位置補正（Split impulse あり）
 	void GenerateSpeculativeContacts(float stepDt);														// Speculative CCD（予測接触検出）による接触の生成
-	void ResolveToiEvents(float stepDt);																// Havok CCD（スイープAABBによる連続衝突検出）による接触の解決
+	// void ResolveToiEvents(float stepDt);																// Havok CCD（スイープAABBによる連続衝突検出）による接触の解決
 	void PropagateIslandSleep();																		// アイランド内のスリープ状態の伝播（すべてのボディがスリープ状態ならアイランド全体をスリープ状態にする）
 
 	// SolverContact のリストと前フレームのリスト

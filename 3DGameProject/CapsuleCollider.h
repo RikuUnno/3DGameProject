@@ -22,8 +22,10 @@ public:
 	Capsule _cap{};
 
 public:
-	void DrawDebug() override;
-	void DrawDebugAABB() override;
+	// デバッグ描画
+	void DrawDebug() override;		// デバッグ描画 (線状の形状)
+	void DrawDebugAABB() override;	// デバッグ描画（AABBのみ）
+	void DrawPrimitive() override;	// デバッグ描画（DXLibのプリミティブ描画）
 
 private:
 	VECTOR _center{}; // ワールド中心

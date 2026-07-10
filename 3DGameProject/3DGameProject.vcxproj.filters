@@ -454,6 +454,36 @@
     <Filter Include="ヘッダー ファイル\Debug\Mesh">
       <UniqueIdentifier>{55bb5013-3089-4053-ba19-2e36cdc55d50}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ソース ファイル\MiniGame">
+      <UniqueIdentifier>{c15b0963-27e5-427f-8a93-537562d7c34c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\MiniGame\MiniGame1">
+      <UniqueIdentifier>{b9c23854-4fb6-41b2-b504-c7262933774b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\MiniGame\MiniGame1\Object">
+      <UniqueIdentifier>{684a6c0c-646a-41b9-be40-4458e1c9f650}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\MiniGame\MiniGame1\Stage">
+      <UniqueIdentifier>{0c0d5e1e-60e5-4127-ba71-a604036fe902}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\MiniGame\MiniGame1\Object\Player">
+      <UniqueIdentifier>{b156a7a9-52ce-4afd-a7ab-6a00b2aeda5f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\MiniGame">
+      <UniqueIdentifier>{02f9a017-ac15-4255-bf2b-d863a762d647}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\MiniGame\MiniGame1">
+      <UniqueIdentifier>{be7d3bd4-2296-49b6-9ac1-97102549162e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\MiniGame\MiniGame1\Stage">
+      <UniqueIdentifier>{1deb461a-d2e4-47a6-b5e3-7e413106ceb1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\MiniGame\MiniGame1\Object">
+      <UniqueIdentifier>{019908f5-0cb1-41aa-8149-0e5c7b77895a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\MiniGame\MiniGame1\Object\Player">
+      <UniqueIdentifier>{5ce6a746-993e-48ce-9332-bd6801052e6c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -593,6 +623,12 @@
     </ClCompile>
     <ClCompile Include="Mv1Model.cpp">
       <Filter>ソース ファイル\System\Model\Mv1</Filter>
+    </ClCompile>
+    <ClCompile Include="Player.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="FighterAircraft.cpp">
+      <Filter>ヘッダー ファイル\MiniGame\MiniGame1\Object\Player</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -805,6 +841,12 @@
     </ClInclude>
     <ClInclude Include="SkyBoxScene.h">
       <Filter>ヘッダー ファイル\Debug\SkyBox</Filter>
+    </ClInclude>
+    <ClInclude Include="Player.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="FighterAircraft.h">
+      <Filter>ソース ファイル\MiniGame\MiniGame1\Object\Player</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

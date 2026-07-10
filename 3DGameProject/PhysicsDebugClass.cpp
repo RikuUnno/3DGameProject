@@ -44,7 +44,7 @@ void PhysicsDebugClass::Update(float /*dt*/) {
 // 現在の形状に応じたデバッグ描画を行う
 void PhysicsDebugClass::Draw() {
 	if (Collider* collider = GetCollider()) {
-		collider->DrawDebug();
+		collider->DrawPrimitive();
 	}
 }
 

@@ -46,39 +46,32 @@ SphereCollider::SphereCollider() {
 SphereCollider::~SphereCollider() = default;
 
 void SphereCollider::UpdateShape() {
-	// owner がある場合、_sphere.center は「ワールド中心」ではなく
-	// 「owner基準のローカルオフセット」として扱う。
-	// これにより親回転・親スケール・親移動をすべて反映できる。
-	if (owner) {
-		const VECTOR worldScale = owner->transform.WorldScale();
-		// Sphere は非一様スケールを厳密には表現できないため、
-		// 最大スケールを採用して抜けにくさを優先する。
-		const float maxScale = (std::max)((std::max)(std::fabs(worldScale.x), std::fabs(worldScale.y)), std::fabs(worldScale.z));
-		_center = owner->transform.TransformPoint(_sphere.center);
-		_radius = _sphere.radius * maxScale;
+	// Transform がある場合はワールド変換を考慮してワールド中心と半径を更新
+	if (owner) {	// Transform がある場合はワールド変換を考慮してワールド中心と半径を更新
+		const VECTOR worldScale = owner->transform.WorldScale();																	// 親スケールを含んだワールドスケール
+		const float maxScale = (std::max)((std::max)(std::fabs(worldScale.x), std::fabs(worldScale.y)), std::fabs(worldScale.z));	// 最大スケールを取得
+		_center = owner->transform.TransformPoint(_sphere.center);																	// ローカル中心点をワールドに変換
+		_radius = _sphere.radius * maxScale;																						// ワールド半径を計算
 	}
-	else {
-		_center = _sphere.center;
-		_radius = _sphere.radius;
+	else {			// Transform がない場合はローカル設定をそのままワールドにコピー
+		_center = _sphere.center;	// ワールド中心をコピー
+		_radius = _sphere.radius;	// ワールド半径をコピー
 	}
 
-	_aabb.center = _center;
-	_aabb.min = VGet(_center.x - _radius, _center.y - _radius, _center.z - _radius);
-	_aabb.max = VGet(_center.x + _radius, _center.y + _radius, _center.z + _radius);
+	// AABB を更新
+	_aabb.center = _center;																// AABB の中心点を設定
+	_aabb.min = VGet(_center.x - _radius, _center.y - _radius, _center.z - _radius);	// AABB の最小点を設定
+	_aabb.max = VGet(_center.x + _radius, _center.y + _radius, _center.z + _radius);	// AABB の最大点を設定
 }
 
-// デバッグ描画。
-// ワイヤーフレーム球に加え、ownerの回転を視認できるよう
-// 3軸方向のリング（大円）と軸線を描画する。
-//  赤 = Right(X)方向, 緑 = Up(Y)方向, 青 = Forward(Z)方向
+// デバッグ描画（線状の形状）
 void SphereCollider::DrawDebug() {
-	const unsigned int defaultCol = isTrigger ? GetColor(255,220,80) : GetColor(80,200,200);
-	const unsigned int col = DebugColor() != 0 ? DebugColor() : defaultCol;
+	_debugColor = (_debugColor != 0) ? _debugColor : GetColor(255, 255, 255);	// デフォルト色は白色
 
 	// ワイヤーフレーム球本体
-	DrawSphere3D(_center, _radius,20, col, col, FALSE);
+	DrawSphere3D(_center, _radius,20, _debugColor, _debugColor, FALSE);
 	// 中心点
-	DrawSphere3D(_center,0.05f,8, col, col, TRUE);
+	DrawSphere3D(_center,0.05f,8, _debugColor, _debugColor, TRUE);
 
 	// --- 回転視覚化 ---
 	// ownerがなければ既定の軸を使用
@@ -115,8 +108,9 @@ void SphereCollider::DrawDebug() {
 	DrawLine3D(_center, VAdd(_center, VScale(axisForward, axisLen)), colB);
 }
 
+// デバッグ描画（AABBのみ）
 void SphereCollider::DrawDebugAABB() {
-	const unsigned int col = GetColor(120,120,120);
+	_debugColor = (_debugColor != 0) ? _debugColor : GetColor(128, 128, 128);	// デフォルト色はグレー	
 	const VECTOR mn = _aabb.min;
 	const VECTOR mx = _aabb.max;
 
@@ -129,19 +123,54 @@ void SphereCollider::DrawDebugAABB() {
 	const VECTOR p110 = VGet(mx.x,mx.y,mn.z);
 	const VECTOR p111 = VGet(mx.x,mx.y,mx.z);
 
-	DrawLine3D(p000, p001, col);
-	DrawLine3D(p001, p011, col);
-	DrawLine3D(p011, p010, col);
-	DrawLine3D(p010, p000, col);
+	DrawLine3D(p000, p001, _debugColor);
+	DrawLine3D(p001, p011, _debugColor);
+	DrawLine3D(p011, p010, _debugColor);
+	DrawLine3D(p010, p000, _debugColor);
 
-	DrawLine3D(p100, p101, col);
-	DrawLine3D(p101, p111, col);
-	DrawLine3D(p111, p110, col);
-	DrawLine3D(p110, p100, col);
+	DrawLine3D(p100, p101, _debugColor);
+	DrawLine3D(p101, p111, _debugColor);
+	DrawLine3D(p111, p110, _debugColor);
+	DrawLine3D(p110, p100, _debugColor);
 
-	DrawLine3D(p000, p100, col);
-	DrawLine3D(p001, p101, col);
-	DrawLine3D(p010, p110, col);
-	DrawLine3D(p011, p111, col);
+	DrawLine3D(p000, p100, _debugColor);
+	DrawLine3D(p001, p101, _debugColor);
+	DrawLine3D(p010, p110, _debugColor);
+	DrawLine3D(p011, p111, _debugColor);
 }
 
+// デバッグ描画（DXLibのプリミティブ描画）
+void SphereCollider::DrawPrimitive() {
+	_debugColor = (_debugColor != 0) ? _debugColor : GetColor(255, 255, 255);	// デフォルト色は白色
+
+	// 球本体
+	DrawSphere3D(_center, _radius, 20, _debugColor, _debugColor, TRUE);
+
+	// --- 回転視覚化 ---
+	// ownerがなければ既定の軸を使用
+	VECTOR axisRight = VGet(1, 0, 0); // X軸方向
+	VECTOR axisUp = VGet(0, 1, 0); // Y軸方向
+	VECTOR axisForward = VGet(0, 0, 1); // Z軸方向
+
+	if (owner) {
+		// 親回転込みのワールド方向ベクトルを取得
+		axisRight = owner->transform.Right();
+		axisUp = owner->transform.Up();
+		axisForward = owner->transform.Forward();
+	}
+
+	// 軸カラー（RGB = XYZ 対応、一般的な3Dエディタの慣例に合わせる）
+	const unsigned int colR = GetColor(220, 40, 40);  // 赤: Right(X)
+	const unsigned int colG = GetColor(40, 220, 40);   // 緑: Up(Y)
+	const unsigned int colB = GetColor(40, 80, 220);   // 青: Forward(Z)
+
+	// --- 大円（Great Circle）を3つ描画 ---
+	// 各大円は「軸に直交する平面」上の円。
+	// YZ平面のリング → Right軸(X)に直交 → axisUp, axisForward で張る
+	DrawGreatCircle(_center, _radius, axisUp, axisForward, colR);
+	// XZ平面のリング → Up軸(Y)に直交 → axisRight, axisForward で張る
+	DrawGreatCircle(_center, _radius, axisRight, axisForward, colG);
+	// XY平面のリング → Forward軸(Z)に直交 → axisRight, axisUp で張る
+	DrawGreatCircle(_center, _radius, axisRight, axisUp, colB);
+
+}

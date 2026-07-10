@@ -152,6 +152,7 @@
     <ClCompile Include="ColliderManagerThreadSafe.cpp" />
     <ClCompile Include="Debug Class.cpp" />
     <ClCompile Include="DynamicAABBTree.cpp" />
+    <ClCompile Include="FighterAircraft.cpp" />
     <ClCompile Include="HalfPlaneCollider.cpp" />
     <ClCompile Include="Math\Quaternion.cpp" />
     <ClCompile Include="ModelManager.cpp" />
@@ -211,6 +212,7 @@
     <ClInclude Include="CompoundCollider.h" />
     <ClInclude Include="Debug Class.h" />
     <ClInclude Include="DynamicAABBTree.h" />
+    <ClInclude Include="FighterAircraft.h" />
     <ClInclude Include="HalfPlaneCollider.h" />
     <ClInclude Include="IModel.h" />
     <ClInclude Include="MeshCollider.h" />

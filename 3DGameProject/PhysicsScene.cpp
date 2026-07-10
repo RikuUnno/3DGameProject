@@ -42,6 +42,7 @@ namespace {
 	enum class RampSelection { Left, Corner, Back };
 	RampSelection _selectedRamp = RampSelection::Left;
 
+	// 選択中の斜面を返す
 	PhysicsDebugClass* GetSelectedRamp_() {
 		switch (_selectedRamp) {
 		case RampSelection::Left: return _rampLeftWall;

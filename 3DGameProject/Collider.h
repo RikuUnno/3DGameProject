@@ -46,13 +46,9 @@ public:
 	bool useSceneFilter = true;
 
 public:
-	// --- CCD / 高速移動検出設定 ---
-	// enableCCD: true のときは常にスイープAABBを使用（弾形の衝突検出を有効にする）
-	// ccdDistanceThreshold: フレーム間の速度（ワールド単位/秒）がこの値を超える場合にスイープを使う
-	// 具体的には ColliderManager::Update(dt) で渡された dt を用いて、
-	// speed = (center displacement) / deltaTime として比較します。
-	bool enableCCD = false;
-	float ccdDistanceThreshold = 1.0f; // 単位: ワールド距離/秒 (速度)
+	// Speculative CCD（予測接触検出）有効化フラグ
+	bool enableCCD = false;				// true なら Speculative CCD を有効化（高速移動でのトンネルを減らすための予測接触検出）
+	float ccdDistanceThreshold = 1.0f;	// 単位: ワールド距離/秒 (速度)
 
 public:
 	// コライダー種別
@@ -94,24 +90,22 @@ public:
 
 public:
 	// デバッグ描画
-	virtual void DrawDebug() {}
-	virtual void DrawDebugAABB() {}
+	virtual void DrawDebug() {}			// デバッグ描画 (線状の形状)
+	virtual void DrawDebugAABB() {}		// デバッグ描画（AABBのみ）
+	virtual void DrawPrimitive() {}		// デバッグ描画（DXLibのプリミティブ描画）
 
 	// デバッグ描画色（0 の場合は各Colliderのデフォルト色）
-	void SetDebugColor(unsigned int color) noexcept { _debugColor = color; }
-	unsigned int DebugColor() const noexcept { return _debugColor; }
-	void ClearDebugColor() noexcept { _debugColor =0; }
+	void SetDebugColor(unsigned int color) noexcept { _debugColor = color; }	// 0xAARRGGBB
+	unsigned int DebugColor() const noexcept { return _debugColor; }			// 0 の場合は各Colliderのデフォルト色
+	void ClearDebugColor() noexcept { _debugColor = 0; }						// デバッグ描画色をクリア（0 にする）
 
 public:
-	// 前フレームの AABB キャッシュ (CCD / Swept AABB 計算用)
-	// ColliderManager の _prevAABBs (unordered_map) で持っていたが、
-	// 毎フレーム find/insert する N オーダーの hash 操作が無視できない
-	// 負荷になっていたためメンバ化。
-	// hasPrevAABB は登録初回 (まだ前フレームが存在しない) の判別用。
-	AABB prevAABB{};
-	bool hasPrevAABB = false;
+	// 前フレームのAABB（Broad-phase用）
+	AABB prevAABB{};			// 前フレームのAABB（Broad-phase用）
+	bool hasPrevAABB = false;	// true なら prevAABB が有効
 
 private:
-	bool _enabled = true;
-	unsigned int _debugColor =0;
+	bool _enabled = true;			// コライダー有効/スリープ（プール待機中・非アクティブ時は false にする想定）
+protected: // DebugColor() は派生クラスからもアクセスできるように protected にする
+	unsigned int _debugColor = 0;	// デバッグ描画色（0 の場合は各Colliderのデフォルト色を使用）
 };

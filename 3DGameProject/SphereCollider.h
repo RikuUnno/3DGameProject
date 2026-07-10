@@ -22,6 +22,7 @@ public:
 public:
 	void DrawDebug() override;
 	void DrawDebugAABB() override;
+	void DrawPrimitive() override;
 
 private:
 	VECTOR _center{}; // ƒ[ƒ‹ƒh’†S

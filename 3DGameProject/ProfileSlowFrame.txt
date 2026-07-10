@@ -9763,3 +9763,89 @@ Collider.BroadPhase us=3 calls=1
 -- SectionsTop --
 Physics.Update us=24 calls=1
 Physics.ComputeInterpolation us=3 calls=1
+
+[SLOW] frame=2349 frameTimeMs=84.414 fps=822.857 cpu%=0 workers=15 queue=0
+-- SectionsTop --
+Physics.Update us=30 calls=1
+Physics.ComputeInterpolation us=3 calls=1
+
+[SLOW] frame=1015 frameTimeMs=35.649 fps=616.025 cpu%=7.21984 workers=15 queue=0
+-- SectionsTop --
+Physics.Update us=1914 calls=1
+Physics.StepSimulation us=1797 calls=1
+Collider.Update us=1324 calls=1
+Collider.UpdateFrame us=1319 calls=1
+Collider.CheckDetailedCollisions us=921 calls=1
+Collider.BuildCurrentPairs us=888 calls=1
+Collider.SpatialPartitioning us=861 calls=1
+ThreadPool.Barrier.SpinWait us=486 calls=2
+Collider.UpdateAllShapes us=359 calls=1
+Collider.NarrowPhase us=328 calls=1
+Collider.GridMerge us=308 calls=1
+Physics.SolveAllIslands us=125 calls=1
+Physics.BuildIslands us=106 calls=1
+Collider.BroadPhase us=48 calls=1
+Physics.BuildLookupCaches us=47 calls=1
+Physics.BuildSolverContacts us=40 calls=1
+
+[SLOW] frame=2 frameTimeMs=38.004 fps=0 cpu%=0 workers=15 queue=0
+-- SectionsTop --
+Physics.Update us=527 calls=1
+Physics.StepSimulation us=484 calls=1
+Collider.Update us=179 calls=1
+Collider.UpdateFrame us=168 calls=1
+Collider.CheckDetailedCollisions us=136 calls=1
+Collider.BuildCurrentPairs us=100 calls=1
+Collider.SpatialPartitioning us=87 calls=1
+Collider.ProcessPairEvents us=16 calls=1
+Physics.SplitImpulseCorrection us=12 calls=1
+Collider.UpdateAllShapes us=10 calls=1
+Physics.BuildLookupCaches us=9 calls=1
+Collider.SweptAABB us=8 calls=1
+Collider.BroadPhase us=8 calls=1
+Collider.NarrowPhase us=8 calls=1
+Collider.ActiveCollect us=6 calls=1
+Physics.BuildIslands us=6 calls=1
+
+[SLOW] frame=2 frameTimeMs=41.365 fps=0 cpu%=3.35298 workers=15 queue=0
+-- SectionsTop --
+Physics.Update us=361 calls=1
+Physics.StepSimulation us=315 calls=1
+Collider.Update us=170 calls=1
+Collider.UpdateFrame us=160 calls=1
+Collider.CheckDetailedCollisions us=131 calls=1
+Collider.BuildCurrentPairs us=96 calls=1
+Collider.SpatialPartitioning us=82 calls=1
+Collider.ProcessPairEvents us=16 calls=1
+Physics.SplitImpulseCorrection us=11 calls=1
+Collider.UpdateAllShapes us=9 calls=1
+Physics.BuildLookupCaches us=8 calls=1
+Collider.SweptAABB us=7 calls=1
+Collider.BroadPhase us=7 calls=1
+Collider.NarrowPhase us=7 calls=1
+Physics.BuildIslands us=6 calls=1
+Physics.IntegrateBodies us=5 calls=1
+
+[SLOW] frame=3113 frameTimeMs=55.556 fps=525.203 cpu%=0 workers=15 queue=0
+-- SectionsTop --
+Physics.Update us=36 calls=1
+Physics.ComputeInterpolation us=8 calls=1
+
+[SLOW] frame=7645 frameTimeMs=650.879 fps=411.391 cpu%=0 workers=15 queue=0
+-- SectionsTop --
+Physics.Update us=2881 calls=1
+Physics.StepSimulation us=2621 calls=1
+Collider.Update us=1051 calls=1
+Collider.UpdateFrame us=1044 calls=1
+Collider.CheckDetailedCollisions us=1002 calls=1
+Collider.BuildCurrentPairs us=947 calls=1
+Collider.SpatialPartitioning us=925 calls=1
+ThreadPool.Barrier.SpinWait us=363 calls=4
+Physics.BuildSolverContacts us=336 calls=1
+Physics.SolveAllIslands us=284 calls=1
+Physics.SplitImpulseCorrection us=244 calls=1
+Collider.NarrowPhase us=203 calls=1
+Collider.GridCellCompute us=193 calls=1
+Collider.SweptAABB us=82 calls=1
+Collider.GridMerge us=73 calls=1
+Collider.BroadPhase us=59 calls=1

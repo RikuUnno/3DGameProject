@@ -36,16 +36,16 @@ public:
 	virtual void OnTriggerExit(Collider* self, Collider* other) {}
 
 	// ライフサイクル
-	virtual void Awake() {}
-	virtual void Start() {}
-	virtual void Update(float /*dt*/) {}
-	virtual void Draw() {}
-	virtual void End() {}
-	virtual void OnDestroy() {}
+	virtual void Awake() {}					// 初期化（生成直後に呼ばれる）
+	virtual void Start() {}					// 初期化（Awake 後、最初の Update 前に呼ばれる）
+	virtual void Update(float /*dt*/) {}	// 更新（毎フレーム呼ばれる）
+	virtual void Draw() {}					// 描画（毎フレーム呼ばれる）
+	virtual void End() {}					// 終了（破棄前に呼ばれる）
+	virtual void OnDestroy() {}				// 破棄（完全破棄時に呼ばれる）
 
 	// プール/再利用フック
-	virtual void OnAcquire(const VariantMap& params) {}
-	virtual void OnRelease() {}
+	virtual void OnAcquire(const VariantMap& params) {}	// プールから取得された直後の初期化
+	virtual void OnRelease() {}							// プールに返却される直前の後片付け
 
 	// Prototype: 複製機能（派生で実装）未実装なら nullptr を返す
 	virtual std::unique_ptr<GameObject> Clone() const { return nullptr; }

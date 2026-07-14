@@ -155,13 +155,13 @@
     <ClCompile Include="FighterAircraft.cpp" />
     <ClCompile Include="HalfPlaneCollider.cpp" />
     <ClCompile Include="Math\Quaternion.cpp" />
+    <ClCompile Include="MiniGame_1_MenuScene.cpp" />
     <ClCompile Include="ModelManager.cpp" />
     <ClCompile Include="Mv1Model.cpp" />
     <ClCompile Include="ObjectController.cpp" />
     <ClCompile Include="ObjectFactory.cpp" />
     <ClCompile Include="KeyInput.cpp" />
     <ClCompile Include="Main.cpp" />
-    <ClCompile Include="MenuScene.cpp" />
     <ClCompile Include="MeshCollider.cpp" />
     <ClCompile Include="ObjectManager.cpp" />
     <ClCompile Include="ObjectPool.cpp" />
@@ -220,6 +220,7 @@
     <ClInclude Include="Manager.h" />
     <ClInclude Include="Math\Quaternion.h" />
     <ClInclude Include="MeshDemoScene.h" />
+    <ClInclude Include="MiniGame_1_MenuScene.h" />
     <ClInclude Include="ModelManager.h" />
     <ClInclude Include="ModelPool.h" />
     <ClInclude Include="Mv1Model.h" />
@@ -228,7 +229,6 @@
     <ClInclude Include="GameObject.h" />
     <ClInclude Include="Info.h" />
     <ClInclude Include="KeyInput.h" />
-    <ClInclude Include="MenuScene.h" />
     <ClInclude Include="ObjectManager.h" />
     <ClInclude Include="ObjectPool.h" />
     <ClInclude Include="ObjectPoolDebugClass.h" />

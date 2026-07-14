@@ -1,5 +1,5 @@
+// Scene 一覧
 #include "TitleScene.h"
-#include "MenuScene.h"
 #include "PhysicsScene.h"
 #include "CameraScene.h"
 #include "CollisionScene.h"
@@ -8,6 +8,9 @@
 #include "CcdScene.h"
 #include "MeshDemoScene.h"
 #include "SkyBoxScene.h"
+#include "MiniGame_1_MenuScene.h"
+
+// System
 #include "SceneManager.h"
 #include "SceneTransition.h"
 #include "Time.h"
@@ -22,15 +25,6 @@ void TitleScene::Start() {
 }
 
 void TitleScene::Update(float /*dt*/) {
-	if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_F1)) {
-		SceneTransition::Params p;
-		p.mode = SceneTransition::Mode::MaskImage;
-		p.durationSec = 0.6;
-		p.maskGraphPath = "Data/Transition/mask.png";
-		p.pixelShaderPath = "Data/Transition/mask_transition.pso";
-		SceneTransition::Instance().Start(std::make_unique<MenuScene>(), p, 0.5f);
-	}
-
 	if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_P)) {
 		SceneTransition::Params p;
 		p.mode = SceneTransition::Mode::MaskImage;
@@ -102,6 +96,18 @@ void TitleScene::Update(float /*dt*/) {
 		p.pixelShaderPath = "Data/Transition/mask_transition.pso";
 		SceneTransition::Instance().Start(std::make_unique<SkyBoxScene>(), p, 0.5f);
 	}
+
+
+	// MiniGame
+
+	if(KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_1)) {
+		SceneTransition::Params p;
+		p.mode = SceneTransition::Mode::MaskImage;
+		p.durationSec = 0.6;
+		p.maskGraphPath = "Data/Transition/mask.png";
+		p.pixelShaderPath = "Data/Transition/mask_transition.pso";
+		SceneTransition::Instance().Start(std::make_unique<MiniGame_1_MenuScene>(), p, 0.5f);
+	}
 }
 
 void TitleScene::Draw() {
@@ -114,4 +120,7 @@ void TitleScene::Draw() {
 	DrawString(10, 130, "X : CCDデモ", GetColor(255, 200, 200));
 	DrawString(10, 150, "M : Meshデモ", GetColor(180, 255, 220));
 	DrawString(10, 170, "K : SkyBoxデモ", GetColor(180, 200, 255));
+
+	// MiniGame
+	DrawString(10, 200, "1 : ミニゲーム1", GetColor(255, 255, 0));
 }

@@ -9,7 +9,7 @@ public:
 	virtual ~IScene() = default;        // 仮想デストラクタ必須
 	virtual void Awake() {}             // 生成直後
 	virtual void Start() {}             // 開始直後
-	virtual void Update(float /*dt*/) {} // 可変FPS対応の主更新入口
+	virtual void Update(float dt) {}// 可変FPS対応の主更新入口
 	virtual void Draw() {}              // 描画処理
 	virtual void End() {}               // 終了直前
 	virtual void OnSuspend() {}         // 一時停止直前

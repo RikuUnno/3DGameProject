@@ -2,26 +2,26 @@
 ========================================
 [PHYSICS DETAILED LOG]
 ========================================
-Timestamp: 2026/7/14 11:46:16
+Timestamp: 2026/7/21 11:27:33
 
 --- Object Statistics ---
-Total Objects: 1
-  Dynamic: 1
+Total Objects: 0
+  Dynamic: 0
   Static: 0
-  Active: 1
+  Active: 0
   Sleeping: 0
 
 --- Collider Statistics ---
-Total Colliders: 1
+Total Colliders: 0
   Sphere: 0
   Box: 0
-  Capsule: 1
+  Capsule: 0
   Plane: 0
   Compound: 0
 
 --- Physics Body Statistics ---
-Total Bodies: 1
-  Active: 1
+Total Bodies: 0
+  Active: 0
   Sleeping: 0
 
 --- Contact Statistics ---
@@ -29,31 +29,21 @@ Total Contacts: 0
 Active Contacts: 0
 
 --- Island Statistics ---
-Total Islands: 1
-Largest Island Size: 1
+Total Islands: 0
+Largest Island Size: 0
 
 --- Memory Usage ---
-Total: 0.484375 KB
-  Bodies: 0.289062 KB
-  Colliders: 0.195312 KB
+Total: 0 KB
+  Bodies: 0 KB
+  Colliders: 0 KB
   Contacts: 0 KB
 
 --- Performance ---
-Physics Time: 0.172 ms
-Collision Time: 0.168 ms
-Solver Time: 0.004 ms
+Physics Time: 0.023 ms
+Collision Time: 0 ms
+Solver Time: 0 ms
 
 --- All Objects Detail ---
-
-[Unknown]
-  Position: (-6.83434, 4.18056, -34.0302)
-  Size: (0.7, 1.2, 0.699997)
-  Memory: 0.84375 KB
-  Static: No
-  Sleeping: No
-  Mass: 1.5
-  Velocity: (0, -0.0285833, 0)
-  Contacts: 0
 
 ========================================
 

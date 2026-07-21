@@ -148,19 +148,19 @@ VECTOR Transform::WorldScale() const noexcept {
 }
 
 // 前方ベクトル取得（親回転込みのワールド軸）
-VECTOR Transform::Forward() const noexcept {
+VECTOR Transform::WForward() const noexcept {
 	const MATRIX& W = WorldMatrix();
 	return SafeNormalizeLocal(VGet(W.m[2][0], W.m[2][1], W.m[2][2]), VGet(0,0,1));
 }
 
 // 右方向ベクトル取得（親回転込みのワールド軸）
-VECTOR Transform::Right() const noexcept {
+VECTOR Transform::WRight() const noexcept {
 	const MATRIX& W = WorldMatrix();
 	return SafeNormalizeLocal(VGet(W.m[0][0], W.m[0][1], W.m[0][2]), VGet(1,0,0));
 }
 
 // 上方向ベクトル取得（親回転込みのワールド軸）
-VECTOR Transform::Up() const noexcept {
+VECTOR Transform::WUp() const noexcept {
 	const MATRIX& W = WorldMatrix();
 	return SafeNormalizeLocal(VGet(W.m[1][0], W.m[1][1], W.m[1][2]), VGet(0,1,0));
 }
@@ -199,4 +199,41 @@ const MATRIX& Transform::WorldMatrix() const {
 VECTOR Transform::WorldPosition() const {
 	const MATRIX& W = WorldMatrix();
 	return VGet(W.m[3][0], W.m[3][1], W.m[3][2]);
+}
+
+// ワールド回転取得（親回転込みの Quaternion）
+Quaternion Transform::WorldRotation() const noexcept {
+	if (_parent) {
+		return _parent->WorldRotation() * _localRotation;
+	}
+	return _localRotation;
+}
+
+// ローカル軸方向に delta だけ移動する（Unity の Translate(delta, Space.Self) 相当）
+// 自身の現在の向きに沿って動くため、回転済みオブジェクトの「前進」などに使う。
+void Transform::Translate(const VECTOR& delta) noexcept {
+	// ローカル軸 -> ワールド空間に変換してから加算する
+	_localPosition = VAdd(_localPosition, TransformVector(delta));
+	// 注意: TransformVector は WorldMatrix のスケールも含むため、
+	//       スケールが1でない場合は意図した距離と異なる場合がある。
+	MarkDirty();
+}
+
+// ワールド軸方向に delta だけ移動する（Unity の Translate(delta, Space.World) 相当）
+// 親子関係があっても常にワールド座標基準で動かしたい場合に使う。
+void Transform::TranslateWorld(const VECTOR& delta) noexcept {
+	if (_parent) {
+		// 親のワールド逆行列で delta をローカル空間へ変換してから加算する
+		const MATRIX invParent = MInverse(_parent->WorldMatrix());
+		const VECTOR localDelta = VGet(
+			delta.x * invParent.m[0][0] + delta.y * invParent.m[1][0] + delta.z * invParent.m[2][0],
+			delta.x * invParent.m[0][1] + delta.y * invParent.m[1][1] + delta.z * invParent.m[2][1],
+			delta.x * invParent.m[0][2] + delta.y * invParent.m[1][2] + delta.z * invParent.m[2][2]
+		);
+		_localPosition = VAdd(_localPosition, localDelta);
+	} else {
+		// 親なし → ローカル = ワールドなのでそのまま加算
+		_localPosition = VAdd(_localPosition, delta);
+	}
+	MarkDirty();
 }

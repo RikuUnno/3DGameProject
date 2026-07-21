@@ -1,10 +1,12 @@
+ï»¿#include "FighterAircraft.h"
 #include "FighterAircraft.h"
-
 #include <algorithm>
 #include <cmath>
 #include <string>
 
+#include "BoxCollider.h"
 #include "CapsuleCollider.h"
+#include "CompoundCollider.h"
 #include "ColliderManager.h"
 #include "DxLib.h"
 #include "KeyInput.h"
@@ -12,20 +14,16 @@
 #include "PhysicsManager.h"
 #include "PhysicsMaterial.h"
 
-
-// ƒwƒ‹ƒp[ŠÖ”ŒQi“à•”g—pj
+// ãƒ¦ãƒ¼ãƒ†ã‚£ãƒªãƒ†ã‚£é–¢æ•°ç¾¤
 namespace {
-	// VariantMap ‚©‚ç float ‚ğæ“¾‚·‚éBƒL[‚ª‘¶İ‚µ‚È‚¢ê‡‚â•ÏŠ·‚É¸”s‚µ‚½ê‡‚Í fallback ‚ğ•Ô‚·B
+	// VariantMap ã‹ã‚‰ float ã‚’å–å¾—ã™ã‚‹ãƒ¦ãƒ¼ãƒ†ã‚£ãƒªãƒ†ã‚£é–¢æ•°
     inline float ParseFloat(const VariantMap& params, const std::string& key, float fallback) {
         auto it = params.find(key);
         if (it == params.end()) return fallback;
-        try {
-            return std::stof(it->second);
-        } catch (...) {
-            return fallback;
-        }
+        try { return std::stof(it->second); } catch (...) { return fallback; }
     }
-	// VariantMap ‚©‚ç VECTOR ‚ğæ“¾‚·‚éBƒL[‚ª‘¶İ‚µ‚È‚¢ê‡‚â•ÏŠ·‚É¸”s‚µ‚½ê‡‚Í fallback ‚ğ•Ô‚·B
+
+	// VariantMap ã‹ã‚‰ VECTOR ã‚’å–å¾—ã™ã‚‹ãƒ¦ãƒ¼ãƒ†ã‚£ãƒªãƒ†ã‚£é–¢æ•°
     inline VECTOR ParseVector3(const VariantMap& params, const std::string& prefix, const VECTOR& fallback) {
         return VGet(
             ParseFloat(params, prefix + "x", fallback.x),
@@ -33,231 +31,343 @@ namespace {
             ParseFloat(params, prefix + "z", fallback.z)
         );
     }
-	// VECTOR ‚Ì Y ¬•ª‚ğ 0 ‚É‚µ‚Ä•½–Ê‰»‚·‚é
-    inline VECTOR FlattenY(const VECTOR& v) noexcept {
-        return VGet(v.x, 0.0f, v.z);
-    }
-	// VECTOR ‚ğ³‹K‰»‚·‚éB’·‚³‚ª 0 ‚É‹ß‚¢ê‡‚Í fallback ‚ğ•Ô‚·B
-    inline VECTOR SafeNormalize(const VECTOR& v, const VECTOR& fallback) noexcept {
-        const float lenSq = v.x * v.x + v.y * v.y + v.z * v.z;
-        if (lenSq < 1e-8f) return fallback;
-        return VScale(v, 1.0f / std::sqrt(lenSq));
-    }
+
+	// ç·šå½¢è£œé–“é–¢æ•°
+    inline float Lerp(float a, float b, float t) noexcept { return a + (b - a) * t; }
 }
 
-// FighterAircraft ƒNƒ‰ƒX‚ÌÀ‘•
-FighterAircraft::FighterAircraft() {   
-	// ƒfƒtƒHƒ‹ƒg‚ÌƒRƒ‰ƒCƒ_[Œ`ó‚ğİ’è
-	_capsuleCollider = std::make_unique<CapsuleCollider>(); // ƒJƒvƒZƒ‹ƒRƒ‰ƒCƒ_[‚ğì¬
-	_capsuleCollider->owner = this;                         // ƒRƒ‰ƒCƒ_[‚ÌŠ—LÒ‚ğİ’è
-	_capsuleCollider->layer = layerMask::PLAYER;            // ƒRƒ‰ƒCƒ_[‚ÌƒŒƒCƒ„[‚ğƒvƒŒƒCƒ„[‚Éİ’è
-	_capsuleCollider->mask = mask::ALL;                     // ƒRƒ‰ƒCƒ_[‚Ìƒ}ƒXƒN‚ğ‚·‚×‚Ä‚ÌƒŒƒCƒ„[‚Éİ’è
-	_capsuleCollider->isTrigger = false;                    // ƒRƒ‰ƒCƒ_[‚ğƒgƒŠƒK[‚Å‚Í‚È‚­À‘Ì‚Æ‚µ‚Äİ’è
-	_capsuleCollider->sendEventsToOwner = true;             // ƒRƒ‰ƒCƒ_[‚ÌƒCƒxƒ“ƒg‚ğŠ—LÒ‚É‘—‚é‚æ‚¤‚Éİ’è
-	_capsuleCollider->bubbleEventsToParentOwner = false;    // ƒRƒ‰ƒCƒ_[‚ÌƒCƒxƒ“ƒg‚ğe‚ÌŠ—LÒ‚Éƒoƒuƒ‹‚³‚¹‚È‚¢‚æ‚¤‚Éİ’è
+// ã‚³ãƒ³ã‚¹ãƒˆãƒ©ã‚¯ã‚¿
+FighterAircraft::FighterAircraft() {
+	// CompoundCollider ã‚’ç”Ÿæˆï¼ˆèƒ´ä½“Box + å…ˆé ­Capsule ã‚’å­ã¨ã—ã¦æŒã¤ï¼‰
+	auto compound = std::make_unique<CompoundCollider>();
+	compound->owner = this;                         // ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ã®æ‰€æœ‰è€…ã‚’è¨­å®š
+	compound->layer = layerMask::PLAYER;            // ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ã®ãƒ¬ã‚¤ãƒ¤ãƒ¼ã‚’ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ã«è¨­å®š
+	compound->mask  = mask::ALL;                    // ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ã®ãƒã‚¹ã‚¯ã‚’ã™ã¹ã¦ã®ãƒ¬ã‚¤ãƒ¤ãƒ¼ã«è¨­å®š
+	compound->isTrigger = false;                    // ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ã‚’ãƒˆãƒªã‚¬ãƒ¼ã§ã¯ãªãå®Ÿä½“ã¨ã—ã¦è¨­å®š
+	compound->sendEventsToOwner = true;             // ã‚¤ãƒ™ãƒ³ãƒˆã‚’æ‰€æœ‰è€…ã«é€ä¿¡
+	compound->bubbleEventsToParentOwner = false;    // ã‚¤ãƒ™ãƒ³ãƒˆã‚’è¦ªã®æ‰€æœ‰è€…ã«ãƒãƒ–ãƒ«ã—ãªã„
 
-	// PhysicsBody ‚Ì‰Šú‰»
-	_physicsBody._owner = this;                             // PhysicsBody ‚ÌŠ—LÒ‚ğİ’è
-	_physicsBody.Reset();                                   // PhysicsBody ‚Ìƒpƒ‰ƒ[ƒ^‚ğƒŠƒZƒbƒg
-	_physicsBody._useGravity = true;                        // d—Í‚ğ—LŒø‰»
-	_physicsBody._freezeRotation = true;                    // ‰ñ“]‚ğŒÅ’è
-	_physicsBody._linearDamping = 0.0f;                     // üŒ`Œ¸Š‚ğİ’è
-	_physicsBody._angularDamping = 0.05f;                   // Šp‘¬“xŒ¸Š‚ğİ’è
-	_physicsBody._friction = 0.15f;                         // “®–€CŒW”‚ğİ’è
-	_physicsBody._restitution = 0.0f;                       // ”½”­ŒW”‚ğİ’è
-	_physicsBody._material = PhysicsMaterial::Default();    // •¨—ƒ}ƒeƒŠƒAƒ‹‚ğƒfƒtƒHƒ‹ƒg‚Éİ’è
-	_physicsBody._material.friction = 0.15f;                // •¨—ƒ}ƒeƒŠƒAƒ‹‚Ì–€CŒW”‚ğİ’è
-	_physicsBody._material.staticFriction = 0.2f;           // •¨—ƒ}ƒeƒŠƒAƒ‹‚ÌÃ~–€CŒW”‚ğİ’è
-	_physicsBody._material.restitution = 0.0f;              // •¨—ƒ}ƒeƒŠƒAƒ‹‚Ì”½”­ŒW”‚ğİ’è
-	_physicsBody._gravityScale = 0.35f;                     // d—ÍƒXƒP[ƒ‹‚ğİ’è
-	_physicsBody._maxLinearSpeed = 40.0f;                   // Å‘åüŒ`‘¬“x‚ğİ’è
+	// èƒ´ä½“ãƒœãƒƒã‚¯ã‚¹ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ï¼ˆé•·æ–¹å½¢ã€æ©Ÿä½“ã®ä¸­å¿ƒã«é…ç½®ï¼‰
+	auto body = std::make_unique<BoxCollider>();
+	body->owner = this;
+	body->layer = layerMask::PLAYER;
+	body->mask  = mask::ALL;
+	body->_box.center     = VGet(0.0f, 0.0f, 0.0f);      // æ©Ÿä½“ä¸­å¿ƒ
+	body->_box.halfExtents = VGet(_radius, _radius * 0.6f, _height * 0.f); // å¹…ãƒ»é«˜ã•ãƒ»å‰å¾Œé•·
+	body->_box.axisX = VGet(1, 0, 0);
+	body->_box.axisY = VGet(0, 1, 0);
+	body->_box.axisZ = VGet(0, 0, 1);
+	body->UpdateShape();
+	_bodyCollider = body.get();                     // ç”Ÿãƒã‚¤ãƒ³ã‚¿ã‚’ä¿å­˜ï¼ˆCompoundCollider ãŒæ‰€æœ‰æ¨©ã‚’æŒã¤ï¼‰
+	compound->AddChild(std::move(body));
 
-	// ƒfƒtƒHƒ‹ƒgƒpƒ‰ƒ[ƒ^‚Å\¬
-    ConfigureFromParams_(VariantMap{});
-    if (_capsuleCollider) {
-		_capsuleCollider->UpdateShape();                    // ƒRƒ‰ƒCƒ_[‚ÌŒ`ó‚ğXV
-    }
+	// ã‚«ãƒ—ã‚»ãƒ«ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ï¼ˆã‚¢ãƒ•ã‚¿ãƒ¼ãƒãƒ¼ãƒŠãƒ¼ ,é€²è¡Œæ–¹å‘å¾Œæ–¹ã«é…ç½®ï¼‰
+	auto nose = std::make_unique<CapsuleCollider>();
+	nose->owner = this;
+	nose->layer = layerMask::PLAYER;
+	nose->mask  = mask::ALL;
+	nose->_cap.radius = _radius;                            // ãƒãƒ¼ã‚ºã®åŠå¾„
+	nose->_cap.bottom = VGet(0.0f, 0.0f, _height * 0.5f);  // èƒ´ä½“å‰ç«¯ã‹ã‚‰å§‹ã¾ã‚‹
+	nose->_cap.top    = VGet(0.0f, 0.0f, _height * 0.5f + _radius * 1.0f); // å…ˆç«¯
+	nose->UpdateShape();
+	_afterCollider = nose.get();                     // ç”Ÿãƒã‚¤ãƒ³ã‚¿ã‚’ä¿å­˜
+	compound->AddChild(std::move(nose));
+
+	// ãƒœãƒƒã‚¯ã‚¹ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ï¼ˆä¸»ç¿¼å³å´ï¼‰
+	auto wingRight = std::make_unique<BoxCollider>();
+	wingRight->owner = this;
+	wingRight->layer = layerMask::PLAYER;
+	wingRight->mask = mask::ALL;
+	wingRight->_box.center = VGet(_radius * 2.0f, 0.0f, 0.0f); // å³å´ã«é…ç½®
+	wingRight->_box.halfExtents = VGet(_radius * 1.0f, _radius * 0.1f, _height * 0.2f); // ä¸»ç¿¼ã®ã‚µã‚¤ã‚º
+	wingRight->_box.axisX = VGet(1, 0, 0);
+	wingRight->_box.axisY = VGet(0, 1, 0);
+	wingRight->_box.axisZ = VGet(0, 0, 1);
+	wingRight->UpdateShape();
+	_wingRightCollider = wingRight.get();                     // ç”Ÿãƒã‚¤ãƒ³ã‚¿ã‚’ä¿å­˜ï¼ˆCompoundCollider ãŒæ‰€æœ‰æ¨©ã‚’æŒã¤ï¼‰
+	compound->AddChild(std::move(wingRight));
+
+	// ãƒœãƒƒã‚¯ã‚¹ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ï¼ˆä¸»ç¿¼å·¦å´ï¼‰
+	auto wingLeft = std::make_unique<BoxCollider>();
+	wingLeft->owner = this;
+	wingLeft->layer = layerMask::PLAYER;
+	wingLeft->mask = mask::ALL;
+	wingLeft->_box.center = VGet(-_radius * 2.0f, 0.0f, 0.0f); // å·¦å´ã«é…ç½®
+	wingLeft->_box.halfExtents = VGet(_radius * 1.0f, _radius * 0.1f, _height * 0.2f); // ä¸»ç¿¼ã®ã‚µã‚¤ã‚º
+	wingLeft->_box.axisX = VGet(1, 0, 0);
+	wingLeft->_box.axisY = VGet(0, 1, 0);
+	wingLeft->_box.axisZ = VGet(0, 0, 1);
+	wingLeft->UpdateShape();
+	_wingLeftCollider = wingLeft.get();                     // ç”Ÿãƒã‚¤ãƒ³ã‚¿ã‚’ä¿å­˜ï¼ˆCompoundCollider ãŒæ‰€æœ‰æ¨©ã‚’æŒã¤ï¼‰
+	compound->AddChild(std::move(wingLeft));
+
+	// ãƒœãƒƒã‚¯ã‚¹ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ï¼ˆå‚ç›´å°¾ç¿¼ï¼‰
+	auto tailVertical = std::make_unique<BoxCollider>();
+	tailVertical->owner = this;
+	tailVertical->layer = layerMask::PLAYER;
+	tailVertical->mask = mask::ALL;
+	tailVertical->_box.center = VGet(0.0f, _radius * 1.5f, _height * 0.5f); // ä¸Šå´ã«é…ç½®
+	tailVertical->_box.halfExtents = VGet(_radius * 0.1f, _radius * 0.6f, _height * 0.2f); // å‚ç›´å°¾ç¿¼ã®ã‚µã‚¤ã‚º
+	tailVertical->_box.axisX = VGet(1, 0, 0);
+	tailVertical->_box.axisY = VGet(0, 1, 0);
+	tailVertical->_box.axisZ = VGet(0, 0, 1);
+	tailVertical->UpdateShape();
+	_tailVerticalCollider = tailVertical.get();                     // ç”Ÿãƒã‚¤ãƒ³ã‚¿ã‚’ä¿å­˜ï¼ˆCompoundCollider ãŒæ‰€æœ‰æ¨©ã‚’æŒã¤ï¼‰
+	compound->AddChild(std::move(tailVertical));
+
+	_compoundCollider = std::move(compound);        // CompoundCollider ã‚’ä¿æŒ
+
+	// ç‰©ç†æœ¬ä½“ã®åˆæœŸåŒ–
+	_physicsBody._owner = this;                                     // ç‰©ç†æœ¬ä½“ã®æ‰€æœ‰è€…ã‚’è¨­å®š
+	_physicsBody.Reset();                                           // ç‰©ç†æœ¬ä½“ã‚’ãƒªã‚»ãƒƒãƒˆ
+	_physicsBody._useGravity = false;                               // é‡åŠ›ã®å½±éŸ¿ã‚’å—ã‘ãªã„
+	_physicsBody._isKinematic = false;                              // Kinematic ç„¡åŠ¹åŒ–ï¼ˆç‰©ç†æŒ™å‹•ã‚ã‚Šï¼‰
+	_physicsBody._freezeRotation = true;                            // å›è»¢ã‚’å›ºå®šï¼ˆæ…£æ€§ãƒ†ãƒ³ã‚½ãƒ«ã‚’ç„¡é™å¤§ã«ã—ã¦å›è»¢ã®ç‰©ç†ã‚’ç„¡åŠ¹åŒ–ï¼‰
+	_physicsBody._restitution = 0.0f;                               // åç™ºä¿‚æ•°ã‚’0ã«è¨­å®šï¼ˆå®Œå…¨éå¼¾æ€§ï¼‰
+	_physicsBody._friction = 0.0f;                                  // å‹•æ‘©æ“¦ä¿‚æ•°ã‚’0ã«è¨­å®šï¼ˆç„¡æ‘©æ“¦ï¼‰
+	_physicsBody._material = PhysicsMaterial::Default();            // ç‰©ç†ãƒãƒ†ãƒªã‚¢ãƒ«ã‚’ãƒ‡ãƒ•ã‚©ãƒ«ãƒˆã«è¨­å®š
+	_physicsBody._material.friction = 0.0f;                         // å‹•æ‘©æ“¦ä¿‚æ•°ã‚’0ã«è¨­å®šï¼ˆç„¡æ‘©æ“¦ï¼‰
+	_physicsBody._material.restitution = 0.0f;                      // åç™ºä¿‚æ•°ã‚’0ã«è¨­å®šï¼ˆå®Œå…¨éå¼¾æ€§ï¼‰
+	_physicsBody._maxLinearSpeed = _maxSpeed;                       // æœ€å¤§ç·šå½¢é€Ÿåº¦ã‚’æœ€å¤§é£›è¡Œé€Ÿåº¦ã«è¨­å®š
+	_physicsBody.SetMass(3.0f);
+
+	// åˆæœŸçŠ¶æ…‹ã®ã‚¹ãƒ­ãƒƒãƒˆãƒ«ã¨é€Ÿåº¦ã‚’è¨­å®š
+	_throttle = 0.3f;                                       // åˆæœŸã‚¹ãƒ­ãƒƒãƒˆãƒ«ã‚’0.3ã«è¨­å®š
+	_currentSpeed = Lerp(_minSpeed, _maxSpeed, _throttle);  // åˆæœŸé€Ÿåº¦ã‚’ã‚¹ãƒ­ãƒƒãƒˆãƒ«ã«å¿œã˜ã¦è¨­å®š
+
+	// ãƒ‡ãƒ•ã‚©ãƒ«ãƒˆãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿ã§æ§‹æˆ
+	ConfigureFromParams_(VariantMap{});                      // ãƒ‡ãƒ•ã‚©ãƒ«ãƒˆãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿ã§æ§‹æˆ
+	if (_compoundCollider) _compoundCollider->UpdateShape(); // ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼å½¢çŠ¶ã‚’æ›´æ–°
 }
 
-// PhysicsBody / Collider ‚ğŠeƒ}ƒl[ƒWƒƒ[‚É“o˜^
+// ãƒ‡ã‚¹ãƒˆãƒ©ã‚¯ã‚¿
 FighterAircraft::~FighterAircraft() {
-    UnregisterFromManagers_();
+	UnregisterFromManagers_();
 }
 
-// PhysicsBody / Collider ‚ğŠeƒ}ƒl[ƒWƒƒ[‚É“o˜^
+// ç¾åœ¨ä½¿ç”¨ä¸­ã® Collider å–å¾—
 Collider* FighterAircraft::GetCollider() const noexcept {
-    return _capsuleCollider.get();
+	return _compoundCollider.get();
 }
 
-// PhysicsBody / Collider ‚ğŠeƒ}ƒl[ƒWƒƒ[‚É“o˜^
+// èƒ´ä½“ãƒœãƒƒã‚¯ã‚¹ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ã‚’å–å¾—
+BoxCollider* FighterAircraft::GetBodyCollider() const noexcept {
+	return _bodyCollider;
+}
+
+// å¾Œæ–¹ã‚«ãƒ—ã‚»ãƒ«ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ã‚’å–å¾—
+CapsuleCollider* FighterAircraft::GetAfterCollider() const noexcept {
+	return _afterCollider;
+}
+
+// å·¦ä¸»ç¿¼ãƒœãƒƒã‚¯ã‚¹ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ã‚’å–å¾—
+BoxCollider* FighterAircraft::GetWingLeftCollider() const noexcept {
+	return _wingLeftCollider;
+}
+
+// å³ä¸»ç¿¼ãƒœãƒƒã‚¯ã‚¹ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ã‚’å–å¾—
+BoxCollider* FighterAircraft::GetWingRightCollider() const noexcept {
+	return _wingRightCollider;
+}
+
+// å‚ç›´å°¾ç¿¼ãƒœãƒƒã‚¯ã‚¹ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ã‚’å–å¾—
+BoxCollider* FighterAircraft::GetTailVerticalCollider() const noexcept {
+	return _tailVerticalCollider;
+}
+
+// ç‰©ç†æœ¬ä½“ãƒ»ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ã®ç™»éŒ²
 void FighterAircraft::Start() {
     SetActive(true);
-    if (_capsuleCollider) {
-        _capsuleCollider->UpdateShape();
-    }
+    if (_compoundCollider) _compoundCollider->UpdateShape(); // ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼å½¢çŠ¶ã‚’æ›´æ–°
     RegisterToManagers_();
 }
 
-// PhysicsBody / Collider ‚ğŠeƒ}ƒl[ƒWƒƒ[‚©‚ç“o˜^‰ğœ
+// ç‰©ç†æœ¬ä½“ãƒ»ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ã®ç™»éŒ²è§£é™¤
 void FighterAircraft::Update(float dt) {
-	// ƒAƒNƒeƒBƒuó‘Ô‚Å‚È‚¢ê‡‚â dt ‚ª 0 ˆÈ‰º‚Ìê‡‚Íˆ—‚ğƒXƒLƒbƒv
     if (!IsActive() || dt <= 0.0f) return;
 
-	auto& key = KeyInput::Instance();               // ƒL[“ü—Í‚ÌƒVƒ“ƒOƒ‹ƒgƒ“‚ğæ“¾
-	VECTOR wish = VGet(0.0f, 0.0f, 0.0f);           // ˆÚ“®Šó–]ƒxƒNƒgƒ‹‚ğ‰Šú‰»
-	const VECTOR forward = transform.Forward();     // Transform ‚Ì‘O•ûŒüƒxƒNƒgƒ‹‚ğæ“¾
-	const VECTOR right = transform.Right();         // Transform ‚Ì‰E•ûŒüƒxƒNƒgƒ‹‚ğæ“¾
+	auto& key = KeyInput::Instance();   // ã‚­ãƒ¼ãƒœãƒ¼ãƒ‰å…¥åŠ›ã®ã‚·ãƒ³ã‚°ãƒ«ãƒˆãƒ³ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ã‚’å–å¾—
 
-	// ƒL[“ü—Í‚É‰‚¶‚ÄˆÚ“®Šó–]ƒxƒNƒgƒ‹‚ğŒvZ
-	if (key.IsKeyInputHeld(KEY_INPUT_W)) {
-		wish = VAdd(wish, forward);         // W ƒL[‚Å‘O•ûŒü‚ÉˆÚ“®Šó–]ƒxƒNƒgƒ‹‚ğ‰ÁZ
+    // ã‚¹ãƒ­ãƒƒãƒˆãƒ«åˆ¶å¾¡
+	if (key.IsKeyInputHeld(KEY_INPUT_SPACE))  _throttle += _throttleSpeed * dt; // ã‚¹ãƒ­ãƒƒãƒˆãƒ«ã‚¢ãƒƒãƒ—
+	if (key.IsKeyInputHeld(KEY_INPUT_LSHIFT)) _throttle -= _throttleSpeed * dt; // ã‚¹ãƒ­ãƒƒãƒˆãƒ«ãƒ€ã‚¦ãƒ³
+	_throttle = (std::max)(0.0f, (std::min)(1.0f, _throttle));                  // ã‚¹ãƒ­ãƒƒãƒˆãƒ«ã‚’0ã€œ1ã«ã‚¯ãƒ©ãƒ³ãƒ—
+
+	const float targetSpeed = Lerp(_minSpeed, _maxSpeed, _throttle);                // ç›®æ¨™é€Ÿåº¦ã‚’ã‚¹ãƒ­ãƒƒãƒˆãƒ«ã«å¿œã˜ã¦è¨ˆç®—
+	_currentSpeed = Lerp(_currentSpeed, targetSpeed, (std::min)(dt * 4.0f, 1.0f));  // ç¾åœ¨é€Ÿåº¦ã‚’ç›®æ¨™é€Ÿåº¦ã«å‘ã‹ã£ã¦è£œé–“ï¼ˆæ»‘ã‚‰ã‹ã«å¤‰åŒ–ï¼‰
+
+    // å§¿å‹¢åˆ¶å¾¡
+    Quaternion rot = transform.LocalRotation();
+
+    // ãƒ”ãƒƒãƒ: è‡ªæ©Ÿã® Right è»¸ã¾ã‚ã‚Š
+    if (key.IsKeyInputHeld(KEY_INPUT_W)) {
+        rot = Quaternion::FromAxisAngleRad(rot.RotateVector(VGet(1, 0, 0)),  _pitchSpeed * dt) * rot;
     }
     if (key.IsKeyInputHeld(KEY_INPUT_S)) {
-		wish = VSub(wish, forward);         // S ƒL[‚ÅŒã•ûŒü‚ÉˆÚ“®Šó–]ƒxƒNƒgƒ‹‚ğŒ¸Z
-    } 
+        rot = Quaternion::FromAxisAngleRad(rot.RotateVector(VGet(1, 0, 0)), -_pitchSpeed * dt) * rot;
+    }
+
+    // ãƒ¨ãƒ¼: è‡ªæ©Ÿã® Up è»¸ã¾ã‚ã‚Š
+    if (key.IsKeyInputHeld(KEY_INPUT_E)) {
+        rot = Quaternion::FromAxisAngleRad(rot.RotateVector(VGet(0, 1, 0)),  _yawSpeed * dt) * rot;
+    }
+    if (key.IsKeyInputHeld(KEY_INPUT_Q)) {
+        rot = Quaternion::FromAxisAngleRad(rot.RotateVector(VGet(0, 1, 0)), -_yawSpeed * dt) * rot;
+    }
+
+    // ãƒ­ãƒ¼ãƒ«: è‡ªæ©Ÿã® Forward è»¸ã¾ã‚ã‚Š
     if (key.IsKeyInputHeld(KEY_INPUT_D)) {
-        wish = VAdd(wish, right);           // D ƒL[‚Å‰E•ûŒü‚ÉˆÚ“®Šó–]ƒxƒNƒgƒ‹‚ğ‰ÁZ
+        rot = Quaternion::FromAxisAngleRad(rot.RotateVector(VGet(0, 0, 1)),  _rollSpeed * dt) * rot;
     }
     if (key.IsKeyInputHeld(KEY_INPUT_A)) {
-        wish = VSub(wish, right);           // A ƒL[‚Å¶•ûŒü‚ÉˆÚ“®Šó–]ƒxƒNƒgƒ‹‚ğŒ¸Z
+        rot = Quaternion::FromAxisAngleRad(rot.RotateVector(VGet(0, 0, 1)), -_rollSpeed * dt) * rot;
     }
 
-    if (key.IsKeyInputHeld(KEY_INPUT_SPACE)) {
-		wish = VAdd(wish, VGet(0.0f, 1.0f, 0.0f));  // SPACE ƒL[‚Åã•ûŒü‚ÉˆÚ“®Šó–]ƒxƒNƒgƒ‹‚ğ‰ÁZ
-    }
-    if (key.IsKeyInputHeld(KEY_INPUT_LSHIFT)) {
-		wish = VSub(wish, VGet(0.0f, 1.0f, 0.0f));  // LSHIFT ƒL[‚Å‰º•ûŒü‚ÉˆÚ“®Šó–]ƒxƒNƒgƒ‹‚ğŒ¸Z
-    }
+	// å›è»¢ã‚’æ­£è¦åŒ–ã—ã¦ Transform ã«åæ˜ 
+    transform.SetLocalRotation(rot.Normalized());
 
-	// ˆÚ“®Šó–]ƒxƒNƒgƒ‹‚ğ³‹K‰»i’·‚³‚ª 0 ‚É‹ß‚¢ê‡‚Í forward ‚ğg—pj
-    const VECTOR flatWish = FlattenY(wish);
-    if (flatWish.x != 0.0f || flatWish.y != 0.0f || flatWish.z != 0.0f) {
-		wish = SafeNormalize(wish, forward);        // wish ‚ª 0 ƒxƒNƒgƒ‹‚Ìê‡‚Í forward ‚ğg—p
-    }
+    // å¸¸ã« Forward æ–¹å‘ã¸å‰é€²
+	_physicsBody._velocity = VScale(transform.Forward(), -_currentSpeed);    // Forward æ–¹å‘ã«ç¾åœ¨é€Ÿåº¦ã§ç§»å‹•
+	_physicsBody.WakeUp();                                                  // ç‰©ç†æœ¬ä½“ã‚’ã‚¹ãƒªãƒ¼ãƒ—è§£é™¤ï¼ˆç§»å‹•ä¸­ãªã®ã§ï¼‰
 
-	// PhysicsBody ‚Ì‘¬“x‚ğˆÚ“®Šó–]ƒxƒNƒgƒ‹‚ÉŠî‚Ã‚¢‚Äİ’è
-	VECTOR vel = _physicsBody._velocity;                // Œ»İ‚Ì‘¬“x‚ğæ“¾
-	const VECTOR targetVel = VScale(wish, _moveSpeed);  // ˆÚ“®Šó–]ƒxƒNƒgƒ‹‚ÉˆÚ“®‘¬“x‚ğŠ|‚¯‚Ä–Ú•W‘¬“x‚ğŒvZ
-    vel.x = targetVel.x;
-    vel.z = targetVel.z;
-    vel.y = targetVel.y;
-	_physicsBody._velocity = vel;                       // PhysicsBody ‚Ì‘¬“x‚ğXV
-	_physicsBody.WakeUp();                              // PhysicsBody ‚ğƒXƒŠ[ƒv‰ğœ‚µ‚Ä•¨—‹““®‚ğ—LŒø‰»
+	// ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼å½¢çŠ¶ã‚’æ›´æ–°
+	if (_compoundCollider) _compoundCollider->UpdateShape();
 
-	// ˆÚ“®Šó–]ƒxƒNƒgƒ‹‚Ì•ûŒü‚ÉŒü‚­‚æ‚¤‚É‰ñ“]‚ğİ’è
-    if (flatWish.x != 0.0f || flatWish.z != 0.0f) {
-        const float yaw = std::atan2(flatWish.x, flatWish.z);
-        transform.SetLocalRotation(Quaternion::FromAxisAngleRad(VGet(0.0f, 1.0f, 0.0f), yaw));
-    }
+	// æ©ŸéŠƒï¼šç ²å£ = æ©Ÿä½“å‰æ–¹ï¼ˆãƒãƒ¼ã‚ºå…ˆç«¯ï¼‰ã®ä½ç½®
+	// _afterCollider ã® top æ–¹å‘ãŒå¾Œæ–¹ãªã®ã§ã€Forward ã®é€† = æ©Ÿé¦–æ–¹å‘ãŒ -Forward
+	const VECTOR muzzlePos = VAdd(
+		transform.WorldPosition(),
+		VScale(transform.Forward(), -(_height * 0.5f + _radius * 1.2f)));
+	const VECTOR muzzleDir = VScale(transform.Forward(), -1.0f); // æ©Ÿé¦–æ–¹å‘
+	const bool trigger = GetMouseInput() & MOUSE_INPUT_LEFT;       // å·¦ã‚¯ãƒªãƒƒã‚¯ã§ç™ºå°„
+	_gun.Update(dt, muzzlePos, muzzleDir, trigger);
 
-	// ƒRƒ‰ƒCƒ_[‚ÌŒ`ó‚ğXV
-    if (_capsuleCollider) {
-        _capsuleCollider->UpdateShape();
-    }
+	//  W / S      : ãƒ”ãƒƒãƒï¼ˆæ©Ÿé¦– ä¸Š/ä¸‹ï¼‰
+	//  A / D      : ãƒ¨ãƒ¼ï¼ˆæ©Ÿé¦– å·¦/å³ï¼‰
+	//  Q / E      : ãƒ­ãƒ¼ãƒ«ï¼ˆå·¦/å³ãƒãƒ³ã‚¯ï¼‰
+	//  Space      : ã‚¹ãƒ­ãƒƒãƒˆãƒ«ã‚¢ãƒƒãƒ—
+	//  LShift     : ã‚¹ãƒ­ãƒƒãƒˆãƒ«ãƒ€ã‚¦ãƒ³
+	//  å·¦ã‚¯ãƒªãƒƒã‚¯ : æ©ŸéŠƒç™ºå°„
 }
 
-// •`‰æˆ—
+// æç”»
 void FighterAircraft::Draw() {
-	// ƒfƒoƒbƒO•`‰æ
-    if (_capsuleCollider) {
-        _capsuleCollider->SetDebugColor(GetColor(120, 220, 255));
-        _capsuleCollider->DrawDebug();
-    }
+	if (_bodyCollider) {
+		_bodyCollider->SetDebugColor(GetColor(120, 220, 255));  // èƒ´ä½“ãƒœãƒƒã‚¯ã‚¹ã‚’æ°´è‰²ã§æç”»
+		_bodyCollider->DrawDebug();
+	}
+	if (_afterCollider) {
+		_afterCollider->SetDebugColor(GetColor(255, 200, 80));   // å¾Œæ–¹ã‚«ãƒ—ã‚»ãƒ«ã‚’ã‚ªãƒ¬ãƒ³ã‚¸ã§æç”»
+		_afterCollider->DrawDebug();
+	}
+	if (_wingLeftCollider) {
+		_wingLeftCollider->SetDebugColor(GetColor(255, 100, 100)); // å·¦ä¸»ç¿¼ã‚’èµ¤ã§æç”»
+		_wingLeftCollider->DrawDebug();
+	}
+	if (_wingRightCollider) {
+		_wingRightCollider->SetDebugColor(GetColor(100, 100, 255)); // å³ä¸»ç¿¼ã‚’é’ã§æç”»
+		_wingRightCollider->DrawDebug();
+	}
+	if (_tailVerticalCollider) {
+		_tailVerticalCollider->SetDebugColor(GetColor(255, 255, 0)); // å‚ç›´å°¾ç¿¼ã‚’é»„è‰²ã§æç”»
+		_tailVerticalCollider->DrawDebug();
+	}
+	_gun.Draw(); // å¼¾ã®æç”»
 }
 
-// I—¹ˆ—
+// ç ´æ£„
 void FighterAircraft::End() {
-	UnregisterFromManagers_();  // PhysicsBody / Collider ‚ğŠeƒ}ƒl[ƒWƒƒ[‚©‚ç“o˜^‰ğœ
-	SetActive(false);           // ƒAƒNƒeƒBƒuó‘Ô‚ğ‰ğœ
+	UnregisterFromManagers_();  // ç‰©ç†æœ¬ä½“ãƒ»ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ã®ç™»éŒ²è§£é™¤
+	SetActive(false);           // éã‚¢ã‚¯ãƒ†ã‚£ãƒ–åŒ–
 }
 
-// ƒv[ƒ‹‚©‚çæ“¾‚³‚ê‚½’¼Œã‚Ì‰Šú‰»
+// ãƒ—ãƒ¼ãƒ«ã‹ã‚‰å–å¾—ã•ã‚ŒãŸç›´å¾Œã®åˆæœŸåŒ–
 void FighterAircraft::OnAcquire(const VariantMap& params) {
-	SetActive(true);                // ƒAƒNƒeƒBƒuó‘Ô‚ğ—LŒø‰»
-	ConfigureFromParams_(params);   // ŠO•”ƒpƒ‰ƒ[ƒ^‚©‚çŒ`óE•¨—’l‚ğ\’z
+    SetActive(true);
+    ConfigureFromParams_(params);
+    
+	// åˆæœŸä½ç½®ã‚’ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿ã‹ã‚‰å–å¾—ï¼ˆæŒ‡å®šãŒãªã‘ã‚Œã°åŸç‚¹ï¼‰
+    const VECTOR pos = ParseVector3(params, "position", VGet(0.0f, 0.0f, 0.0f));
+    transform.SetLocalPosition(pos);
+    transform.SetLocalRotation(Quaternion::Identity());
+    transform.SetLocalScale(VGet(1.0f, 1.0f, 1.0f));
+    _throttle     = 0.3f;
+    _currentSpeed = Lerp(_minSpeed, _maxSpeed, _throttle);
+    _physicsBody._velocity        = VGet(0.0f, 0.0f, 0.0f);
+    _physicsBody._angularVelocity = VGet(0.0f, 0.0f, 0.0f);
+    _physicsBody.WakeUp();
 
-	// ‰ŠúˆÊ’u‚ğİ’è
-	const VECTOR position = ParseVector3(params, "position", VGet(0.0f, 0.0f, 0.0f));   // "position" ƒpƒ‰ƒ[ƒ^‚ª‘¶İ‚µ‚È‚¢ê‡‚ÍƒfƒtƒHƒ‹ƒgˆÊ’u‚ğg—p
-	transform.SetLocalPosition(position);                                               // Transform ‚Ìƒ[ƒJƒ‹ˆÊ’u‚ğİ’è
-	transform.SetLocalRotation(Quaternion::Identity());                                 // Transform ‚Ìƒ[ƒJƒ‹‰ñ“]‚ğ‰Šú‰»i’PˆÊƒNƒH[ƒ^ƒjƒIƒ“j
-	transform.SetLocalScale(VGet(1.0f, 1.0f, 1.0f));                                    // Transform ‚Ìƒ[ƒJƒ‹ƒXƒP[ƒ‹‚ğ‰Šú‰»i1.0, 1.0, 1.0j
-	_physicsBody._velocity = VGet(0.0f, 0.0f, 0.0f);                                    // PhysicsBody ‚ÌüŒ`‘¬“x‚ğ‰Šú‰»
-	_physicsBody._angularVelocity = VGet(0.0f, 0.0f, 0.0f);                             // PhysicsBody ‚ÌŠp‘¬“x‚ğ‰Šú‰»
-	_physicsBody.WakeUp();                                                              // PhysicsBody ‚ğƒXƒŠ[ƒv‰ğœ‚µ‚Ä•¨—‹““®‚ğ—LŒø‰»
-
-	// PhysicsBody / Collider ‚ğŠeƒ}ƒl[ƒWƒƒ[‚É“o˜^
-    if (_capsuleCollider) {
-		_capsuleCollider->UpdateShape();    // ƒRƒ‰ƒCƒ_[‚ÌŒ`ó‚ğXV
-    }
+	// ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼å½¢çŠ¶ã‚’æ›´æ–°ã—ã¦ãƒãƒãƒ¼ã‚¸ãƒ£ãƒ¼ã«ç™»éŒ²
+	if (_compoundCollider) _compoundCollider->UpdateShape();
 	RegisterToManagers_();
 }
 
-// ƒv[ƒ‹‚É•Ô‹p‚³‚ê‚é’¼‘O‚ÌŒã•Ğ•t‚¯
+// ãƒ—ãƒ¼ãƒ«ã«è¿”å´ã•ã‚Œã‚‹ç›´å‰ã®å¾Œç‰‡ä»˜ã‘
 void FighterAircraft::OnRelease() {
-    UnregisterFromManagers_();  // PhysicsBody / Collider ‚ğŠeƒ}ƒl[ƒWƒƒ[‚©‚ç“o˜^‰ğœ
-    SetActive(false);           // ƒAƒNƒeƒBƒuó‘Ô‚ğ‰ğœ
-    _physicsBody._velocity = VGet(0.0f, 0.0f, 0.0f);            // PhysicsBody ‚ÌüŒ`‘¬“x‚ğ‰Šú‰»
-    _physicsBody._angularVelocity = VGet(0.0f, 0.0f, 0.0f);     // PhysicsBody ‚ÌŠp‘¬“x‚ğ‰Šú‰»
+    UnregisterFromManagers_();
+    SetActive(false);
+    _physicsBody._velocity        = VGet(0.0f, 0.0f, 0.0f);
+    _physicsBody._angularVelocity = VGet(0.0f, 0.0f, 0.0f);
 }
 
-// ŠO•”ƒpƒ‰ƒ[ƒ^‚©‚çŒ`óE•¨—’l‚ğ\’z
+// å¤–éƒ¨ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿ã‹ã‚‰å½¢çŠ¶ãƒ»ç‰©ç†å€¤ã‚’æ§‹ç¯‰
 void FighterAircraft::ConfigureFromParams_(const VariantMap& params) {
-	_radius = (std::max)(ParseFloat(params, "radius", _radius), 0.01f);                                 // ƒRƒ‰ƒCƒ_[”¼Œa‚ğİ’èiÅ¬’l 0.01fj
-	_height = (std::max)(ParseFloat(params, "height", _height), 0.05f);                                 // ƒRƒ‰ƒCƒ_[‚‚³‚ğİ’èiÅ¬’l 0.05fj
-	_moveSpeed = (std::max)(ParseFloat(params, "moveSpeed", _moveSpeed), 0.1f);                         // ˆÚ“®‘¬“x‚ğİ’èiÅ¬’l 0.1fj
-	_turnSpeed = (std::max)(ParseFloat(params, "turnSpeed", _turnSpeed), 0.1f);                         // ‰ñ“]‘¬“x‚ğİ’èiÅ¬’l 0.1fj
-	const float mass = (std::max)(ParseFloat(params, "mass", 1.5f), 0.1f);                              // ¿—Ê‚ğİ’èiÅ¬’l 0.1fj
-	const float gravityScale = ParseFloat(params, "gravityScale", _physicsBody._gravityScale);          // d—ÍƒXƒP[ƒ‹‚ğİ’è
-	const float maxLinearSpeed = ParseFloat(params, "maxLinearSpeed", _physicsBody._maxLinearSpeed);    // Å‘åüŒ`‘¬“x‚ğİ’è
+	// ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿ã‚’å–å¾—ã—ã€æœ€å°å€¤ã‚’ä¿è¨¼
+    _radius        = (std::max)(ParseFloat(params, "radius",        _radius),        0.01f);
+    _height        = (std::max)(ParseFloat(params, "height",        _height),        0.05f);
+    _minSpeed      = (std::max)(ParseFloat(params, "minSpeed",      _minSpeed),      0.1f);
+    _maxSpeed      = (std::max)(ParseFloat(params, "maxSpeed",      _maxSpeed),      _minSpeed + 0.1f);
+    _pitchSpeed    = (std::max)(ParseFloat(params, "pitchSpeed",    _pitchSpeed),    0.1f);
+    _yawSpeed      = (std::max)(ParseFloat(params, "yawSpeed",      _yawSpeed),      0.1f);
+    _rollSpeed     = (std::max)(ParseFloat(params, "rollSpeed",     _rollSpeed),     0.1f);
+    _throttleSpeed = (std::max)(ParseFloat(params, "throttleSpeed", _throttleSpeed), 0.01f);
+    const float mass = (std::max)(ParseFloat(params, "mass", 3.0f), 0.1f);
 
-	// ƒRƒ‰ƒCƒ_[‚ÌŒ`ó‚ğXV
-    if (_capsuleCollider) {
-        _capsuleCollider->owner = this;
-        _capsuleCollider->layer = layerMask::PLAYER;
-        _capsuleCollider->mask = mask::ALL;
-        _capsuleCollider->_cap.radius = _radius;
-        const float halfHeight = (std::max)((_height * 0.5f) - _radius, 0.01f);
-        _capsuleCollider->_cap.bottom = VGet(0.0f, -halfHeight, 0.0f);
-        _capsuleCollider->_cap.top = VGet(0.0f, halfHeight, 0.0f);
-        _capsuleCollider->UpdateShape();
-    }
+	// ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼å½¢çŠ¶ã‚’æ›´æ–°
+	if (_bodyCollider) {
+		_bodyCollider->_box.center      = VGet(0.0f, 0.0f, 0.0f);
+		_bodyCollider->_box.halfExtents = VGet(_radius, _radius * 0.6f, _height * 0.5f); // å¹…ãƒ»é«˜ã•ãƒ»å‰å¾Œé•·
+		_bodyCollider->UpdateShape();
+	}
+	if (_afterCollider) {
+		_afterCollider->_cap.radius = _radius;                           // ãƒãƒ¼ã‚ºã®åŠå¾„
+		_afterCollider->_cap.bottom = VGet(0.0f, 0.0f, _height * 0.5f); // èƒ´ä½“å‰ç«¯
+		_afterCollider->_cap.top    = VGet(0.0f, 0.0f, _height * 0.5f + _radius * 1.5f); // å…ˆç«¯
+		_afterCollider->UpdateShape();
+	}
+	if (_compoundCollider) {
+		_compoundCollider->owner = this;
+		_compoundCollider->layer = layerMask::PLAYER;
+		_compoundCollider->mask  = mask::ALL;
+		_compoundCollider->UpdateShape();
+	}
 
-	// PhysicsBody ‚Ìƒpƒ‰ƒ[ƒ^‚ğXV
-	_physicsBody._owner = this;                             // PhysicsBody ‚ÌŠ—LÒ‚ğİ’è
-	_physicsBody._gravityScale = gravityScale;              // d—ÍƒXƒP[ƒ‹‚ğİ’è
-	_physicsBody._maxLinearSpeed = maxLinearSpeed;          // Å‘åüŒ`‘¬“x‚ğİ’è
-	_physicsBody._useGravity = true;                        // d—Í‚ğ—LŒø‰»
-	_physicsBody._freezeRotation = true;                    // ‰ñ“]‚ğŒÅ’è
-	_physicsBody._material = PhysicsMaterial::Default();    // •¨—ƒ}ƒeƒŠƒAƒ‹‚ğƒfƒtƒHƒ‹ƒg‚Éİ’è
-	_physicsBody._material.friction = 0.15f;                // •¨—ƒ}ƒeƒŠƒAƒ‹‚Ì–€CŒW”‚ğİ’è
-	_physicsBody._material.staticFriction = 0.2f;           // •¨—ƒ}ƒeƒŠƒAƒ‹‚ÌÃ~–€CŒW”‚ğİ’è
-	_physicsBody._material.restitution = 0.0f;              // •¨—ƒ}ƒeƒŠƒAƒ‹‚Ì”½”­ŒW”‚ğİ’è
-	_physicsBody.SetMass(mass);                             // ¿—Ê‚ğİ’èi0.1f ˆÈã‚É§ŒÀj
-    if (_capsuleCollider) {
-        _physicsBody.ComputeInertia(_capsuleCollider.get()); // Šµ«ƒeƒ“ƒ\ƒ‹‚ğŒvZ
-    }
-
-	// ¦‚±‚ÌŠÖ”‚Ìg—p—á
-	// ConfigureFromParams_({radius=0.5, height=1.5, moveSpeed=15.0, turnSpeed=4.0, mass=2.0, gravityScale=0.5, maxLinearSpeed=50.0});
-	// (”¼Œa0.5A‚‚³1.5AˆÚ“®‘¬“x15.0A‰ñ“]‘¬“x4.0A¿—Ê2.0Ad—ÍƒXƒP[ƒ‹0.5AÅ‘åüŒ`‘¬“x50.0)
+	// ç‰©ç†æœ¬ä½“ã®ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿ã‚’æ›´æ–°
+	_physicsBody._owner          = this;
+	_physicsBody._useGravity     = false;   // é‡åŠ›ä¸ä½¿ç”¨ï¼ˆé£›è¡Œæ©Ÿã¯æšåŠ›ã§æµ®ãï¼‰
+	_physicsBody._isKinematic    = false;   // Dynamic ã«ã—ã¦ velocity ã§ç§»å‹•ã•ã›ã‚‹
+	_physicsBody._freezeRotation = true;
+	_physicsBody._linearDamping  = 0.0f;   // æ¸›è¡°ãªã—
+	_physicsBody._maxLinearSpeed = _maxSpeed;
+	_physicsBody._material       = PhysicsMaterial::Default();
+	_physicsBody._material.friction    = 0.0f;
+	_physicsBody._material.restitution = 0.0f;
+	_physicsBody.SetMass(mass);
+	if (_compoundCollider) _physicsBody.ComputeInertia(_compoundCollider.get());
 }
 
-// PhysicsBody / Collider ‚ğŠeƒ}ƒl[ƒWƒƒ[‚É“o˜^
+// ç‰©ç†æœ¬ä½“ãƒ»ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ã®ç™»éŒ²
 void FighterAircraft::RegisterToManagers_() {
     if (_registered) return;
-    if (_capsuleCollider) {
-		ColliderManager::Instance().RegisterCollider(_capsuleCollider.get());   // ƒRƒ‰ƒCƒ_[‚ğ ColliderManager ‚É“o˜^
-    }
-	PhysicsManager::Instance().RegisterBody(&_physicsBody); // PhysicsBody ‚ğ PhysicsManager ‚É“o˜^
-	_registered = true;		// “o˜^ó‘Ô‚ğXV
+    if (_compoundCollider) ColliderManager::Instance().RegisterCollider(_compoundCollider.get()); // CompoundCollider ã‚’ç™»éŒ²
+    PhysicsManager::Instance().RegisterBody(&_physicsBody);
+    _registered = true;
 }
 
-// PhysicsBody / Collider ‚ğŠeƒ}ƒl[ƒWƒƒ[‚©‚ç“o˜^‰ğœ
+// ç‰©ç†æœ¬ä½“ãƒ»ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ã®ç™»éŒ²è§£é™¤
 void FighterAircraft::UnregisterFromManagers_() {
     if (!_registered) return;
-    if (_capsuleCollider) {
-		ColliderManager::Instance().UnregisterCollider(_capsuleCollider.get()); // ƒRƒ‰ƒCƒ_[‚ğ ColliderManager ‚©‚ç“o˜^‰ğœ
-    }
-	PhysicsManager::Instance().UnregisterBody(&_physicsBody);   // PhysicsBody ‚ğ PhysicsManager ‚©‚ç“o˜^‰ğœ
-	_registered = false;    // “o˜^ó‘Ô‚ğ‰ğœ
+    if (_compoundCollider) ColliderManager::Instance().UnregisterCollider(_compoundCollider.get()); // CompoundCollider ã‚’è§£é™¤
+    PhysicsManager::Instance().UnregisterBody(&_physicsBody);
+    _registered = false;
 }

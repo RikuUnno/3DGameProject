@@ -13,9 +13,11 @@ class GameObject;
 // - 親子関係を持ち、local/world を分離して dirty でキャッシュ
 class Transform {
 public:
+	// コンストラクタ・デストラクタ
 	Transform();
 	~Transform();
 
+	// 所有者の取得・設定
 	void SetOwner(GameObject* owner) noexcept { _owner = owner; }
 	GameObject* Owner() const noexcept { return _owner; }
 
@@ -30,47 +32,65 @@ public:
 	const Quaternion& LocalRotation() const noexcept { return _localRotation; }
 	void SetLocalRotation(const Quaternion& q) noexcept;
 
+	// スケールは VECTOR で保持
 	const VECTOR& LocalScale() const noexcept { return _localScale; }
 
+	// ローカル変換要素の設定
 	void SetLocalPosition(const VECTOR& p) noexcept;
 	void SetLocalScale(const VECTOR& s) noexcept;
+
+	// Unity の Transform.Translate に相当する移動
+	void Translate(const VECTOR& delta) noexcept;		// ローカル軸方向に delta だけ移動（親回転込み）
+	void TranslateWorld(const VECTOR& delta) noexcept;	// ワールド軸方向に delta だけ移動（親回転を無視）
 
 	// 親子関係
 	Transform* Parent() const noexcept { return _parent; }
 	void SetParent(Transform* parent) noexcept;
 
-	// 行列
+	// local/world 行列の取得
 	const MATRIX& LocalMatrix() const;
 	const MATRIX& WorldMatrix() const;
 
+	// ワールド変換要素の取得（親込み）
 	VECTOR WorldPosition() const;
 	VECTOR WorldScale() const noexcept;           // 親スケールを含んだワールドスケール
+	Quaternion WorldRotation() const noexcept;    // 親回転を含んだワールド回転（Quaternion）
 	VECTOR TransformPoint(const VECTOR& localPoint) const noexcept;   // ローカル点を親込みでワールドへ変換
 	VECTOR TransformVector(const VECTOR& localVector) const noexcept; // ローカル方向ベクトルを親込みでワールドへ変換
 
-	// --- direction helpers (local axes in world space) ---
-	VECTOR Forward() const noexcept;
-	VECTOR Right() const noexcept;
-	VECTOR Up() const noexcept;
+	// ワールド軸での方向ベクトル取得（親回転込み）
+	VECTOR WForward() const noexcept;
+	VECTOR WRight()   const noexcept;
+	VECTOR WUp()      const noexcept;
+
+	// エイリアス（W なし = ワールド軸と同義。Unity の transform.forward 相当）
+	VECTOR Forward() const noexcept { return WForward(); }
+	VECTOR Right()   const noexcept { return WRight(); }
+	VECTOR Up()      const noexcept { return WUp(); }
 
 	// 状態を dirty にする
 	void MarkDirty() noexcept;
+	// dirty: 行列キャッシュが古くなった状態
 
 private:
-	void AddChild(Transform* child) noexcept;
-	void RemoveChild(Transform* child) noexcept;
-	void PropagateDirtyToChildren() noexcept;
+	// 親子関係の管理
+	void AddChild(Transform* child) noexcept;		// 親の子リストに追加
+	void RemoveChild(Transform* child) noexcept;	// 親の子リストから削除
+	void PropagateDirtyToChildren() noexcept;		// dirty を子へ伝播
 
-	GameObject* _owner = nullptr;
-	VECTOR _localPosition{};
-	Quaternion _localRotation{}; // 回転（内部表現）
-	VECTOR _localScale{};
+	// 所有者の GameObject
+	GameObject* _owner = nullptr;	// 所有者の GameObject（Transform は GameObject に必ず1つ存在する）
+	VECTOR _localPosition{};		// 位置
+	Quaternion _localRotation{};	// 回転（内部表現）
+	VECTOR _localScale{};			// スケール
 
-	Transform* _parent = nullptr;
-	std::vector<Transform*> _children;
+	// 親子関係
+	Transform* _parent = nullptr;		// 親の Transform
+	std::vector<Transform*> _children;	// 子の Transform リスト
 
-	mutable bool _localDirty = true;
-	mutable bool _worldDirty = true;
-	mutable MATRIX _localMatrix{};
-	mutable MATRIX _worldMatrix{};
+	// 行列キャッシュ
+	mutable bool _localDirty = true;	// ローカル行列が古くなった状態
+	mutable bool _worldDirty = true;	// ワールド行列が古くなった状態
+	mutable MATRIX _localMatrix{};		// ローカル行列キャッシュ
+	mutable MATRIX _worldMatrix{};		// ワールド行列キャッシュ
 };

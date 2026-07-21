@@ -143,6 +143,7 @@
     <ClCompile Include="Bgm.cpp" />
     <ClCompile Include="BgmManager.cpp" />
     <ClCompile Include="BoxCollider.cpp" />
+    <ClCompile Include="Bullet.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="CameraController.cpp" />
     <ClCompile Include="CameraManager.cpp" />
@@ -153,6 +154,7 @@
     <ClCompile Include="Debug Class.cpp" />
     <ClCompile Include="DynamicAABBTree.cpp" />
     <ClCompile Include="FighterAircraft.cpp" />
+    <ClCompile Include="GunSystem.cpp" />
     <ClCompile Include="HalfPlaneCollider.cpp" />
     <ClCompile Include="Math\Quaternion.cpp" />
     <ClCompile Include="MiniGame_1_MenuScene.cpp" />
@@ -176,7 +178,6 @@
     <ClCompile Include="PhysicsMonitor.cpp" />
     <ClCompile Include="PhysicsSolver.cpp" />
     <ClCompile Include="PhysicsScene.cpp" />
-    <ClCompile Include="Player.cpp" />
     <ClCompile Include="Raycast.cpp" />
     <ClCompile Include="SceneManager.cpp" />
     <ClCompile Include="SceneTransition.cpp" />
@@ -184,6 +185,7 @@
     <ClCompile Include="SeManager.cpp" />
     <ClCompile Include="SkyBox.cpp" />
     <ClCompile Include="SphereCollider.cpp" />
+    <ClCompile Include="MiniGame_1_StageScene.cpp" />
     <ClCompile Include="Time.cpp" />
     <ClCompile Include="TitleScene.cpp" />
     <ClCompile Include="Transform.cpp" />
@@ -195,6 +197,7 @@
     <ClInclude Include="BgmManager.h" />
     <ClInclude Include="BgmPool.h" />
     <ClInclude Include="BoxCollider.h" />
+    <ClInclude Include="Bullet.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="CameraController.h" />
     <ClInclude Include="CameraDebugClass.h" />
@@ -213,13 +216,13 @@
     <ClInclude Include="Debug Class.h" />
     <ClInclude Include="DynamicAABBTree.h" />
     <ClInclude Include="FighterAircraft.h" />
+    <ClInclude Include="GunSystem.h" />
     <ClInclude Include="HalfPlaneCollider.h" />
     <ClInclude Include="IModel.h" />
     <ClInclude Include="MeshCollider.h" />
     <ClInclude Include="LayerMask.h" />
     <ClInclude Include="Manager.h" />
     <ClInclude Include="Math\Quaternion.h" />
-    <ClInclude Include="MeshDemoScene.h" />
     <ClInclude Include="MiniGame_1_MenuScene.h" />
     <ClInclude Include="ModelManager.h" />
     <ClInclude Include="ModelPool.h" />
@@ -242,7 +245,6 @@
     <ClInclude Include="PhysicsMaterial.h" />
     <ClInclude Include="PhysicsMonitor.h" />
     <ClInclude Include="PhysicsScene.h" />
-    <ClInclude Include="Player.h" />
     <ClInclude Include="Pool.h" />
     <ClInclude Include="Ray.h" />
     <ClInclude Include="Raycast.h" />
@@ -255,6 +257,7 @@
     <ClInclude Include="SkyBox.h" />
     <ClInclude Include="SkyBoxScene.h" />
     <ClInclude Include="SphereCollider.h" />
+    <ClInclude Include="MiniGame_1_StageScene.h" />
     <ClInclude Include="ThreadPool.h" />
     <ClInclude Include="Time.h" />
     <ClInclude Include="TitleScene.h" />

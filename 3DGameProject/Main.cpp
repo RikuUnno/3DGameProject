@@ -71,7 +71,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	double poolTrimAccumSec = 0.0;				// トリム間隔の累積時間
 
 	// メインループ
-	while (ProcessMessage() ==0 && CheckHitKey(KEY_INPUT_ESCAPE) ==0)
+	while (ProcessMessage() ==0)
 	{
 		Time::Instance().Update();
 		const float dt = static_cast<float>(Time::Instance().GetDeltaTime());

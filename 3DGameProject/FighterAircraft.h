@@ -1,56 +1,83 @@
-#pragma once
+ï»¿#pragma once
 #include <memory>
 
 #include "GameObject.h"
 #include "PhysicsBody.h"
+#include "BoxCollider.h"
 #include "CapsuleCollider.h"
+#include "CompoundCollider.h"
+#include "GunSystem.h"
 
 
-// MiniGame1‚ÌƒvƒŒƒCƒ„[‹@‘ÌƒNƒ‰ƒX
+// MiniGame1ã®ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼æ©Ÿä½“ã‚¯ãƒ©ã‚¹
 class FighterAircraft : public GameObject
 {
 public:
-	// ƒRƒ“ƒXƒgƒ‰ƒNƒ^/ƒfƒXƒgƒ‰ƒNƒ^
+	// ã‚³ãƒ³ã‚¹ãƒˆãƒ©ã‚¯ã‚¿/ãƒ‡ã‚¹ãƒˆãƒ©ã‚¯ã‚¿
 	FighterAircraft();
 	virtual ~FighterAircraft() override;
 
-	// ƒRƒs[‹Ö~
+	// ã‚³ãƒ”ãƒ¼ç¦æ­¢
 	FighterAircraft(const FighterAircraft&) = delete;
 	
 
-	void Start() override;				// ‰Šú‰»iAwake ŒãAÅ‰‚Ì Update ‘O‚ÉŒÄ‚Î‚ê‚éj
-	void Update(float dt) override;		// XVi–ˆƒtƒŒ[ƒ€ŒÄ‚Î‚ê‚éj
-	void Draw() override;				// •`‰æi–ˆƒtƒŒ[ƒ€ŒÄ‚Î‚ê‚éj
-	void End() override;				// I—¹i”jŠü‘O‚ÉŒÄ‚Î‚ê‚éj
+	void Start() override;				// åˆæœŸåŒ–ï¼ˆAwake å¾Œã€æœ€åˆã® Update å‰ã«å‘¼ã°ã‚Œã‚‹ï¼‰
+	void Update(float dt) override;		// æ›´æ–°ï¼ˆæ¯ãƒ•ãƒ¬ãƒ¼ãƒ å‘¼ã°ã‚Œã‚‹ï¼‰
+	void Draw() override;				// æç”»ï¼ˆæ¯ãƒ•ãƒ¬ãƒ¼ãƒ å‘¼ã°ã‚Œã‚‹ï¼‰
+	void End() override;				// çµ‚äº†ï¼ˆç ´æ£„å‰ã«å‘¼ã°ã‚Œã‚‹ï¼‰
 
-	// Pool ‚©‚çæ“¾/•Ô‹p‚³‚ê‚é‚Ì‰Šú‰»EŒã•Ğ•t‚¯
+	// Pool ã‹ã‚‰å–å¾—/è¿”å´ã•ã‚Œã‚‹æ™‚ã®åˆæœŸåŒ–ãƒ»å¾Œç‰‡ä»˜ã‘
 	void OnAcquire(const VariantMap& params) override;
 	void OnRelease() override;
 
-	// Œ»İg—p’†‚Ì Collider / PhysicsBody æ“¾
-	Collider* GetCollider() const noexcept;									// ƒRƒ‰ƒCƒ_[‚Ìæ“¾
-	PhysicsBody* GetPhysicsBody() noexcept { return &_physicsBody; }			// •¨—–{‘Ì‚Ìæ“¾
-	const PhysicsBody* GetPhysicsBody() const noexcept { return &_physicsBody; }	// •¨—–{‘Ì‚Ìæ“¾
+	// ç¾åœ¨ä½¿ç”¨ä¸­ã® Collider / PhysicsBody å–å¾—
+	Collider* GetCollider() const noexcept;											// ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ã®å–å¾—ï¼ˆCompoundColliderï¼‰
+	CapsuleCollider* GetAfterCollider() const noexcept;								// å¾Œæ–¹ã‚«ãƒ—ã‚»ãƒ«ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ã®å–å¾—
+	BoxCollider* GetBodyCollider() const noexcept;									// èƒ´ä½“ãƒœãƒƒã‚¯ã‚¹ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ã®å–å¾—
+	BoxCollider* GetWingLeftCollider() const noexcept;								// å·¦ä¸»ç¿¼ãƒœãƒƒã‚¯ã‚¹ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ã®å–å¾—
+	BoxCollider* GetWingRightCollider() const noexcept;								// å³ä¸»ç¿¼ãƒœãƒƒã‚¯ã‚¹ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ã®å–å¾—
+	BoxCollider* GetTailVerticalCollider() const noexcept;							// å‚ç›´å°¾ç¿¼ãƒœãƒƒã‚¯ã‚¹ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ã®å–å¾—S
 
-	// ŠO•”ƒpƒ‰ƒ[ƒ^‚©‚çŒ`óE•¨—’l‚ğ\’z
-	void ConfigureFromParams_(const VariantMap& params);	// •¨—ƒpƒ‰ƒ[ƒ^‚Ì\’z
+	PhysicsBody* GetPhysicsBody() noexcept { return &_physicsBody; }				// ç‰©ç†æœ¬ä½“ã®å–å¾—
+	const PhysicsBody* GetPhysicsBody() const noexcept { return &_physicsBody; }	// ç‰©ç†æœ¬ä½“ã®å–å¾—
+
+	// å¤–éƒ¨ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿ã‹ã‚‰å½¢çŠ¶ãƒ»ç‰©ç†å€¤ã‚’æ§‹ç¯‰
+	void ConfigureFromParams_(const VariantMap& params);	// ç‰©ç†ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿ã®æ§‹ç¯‰
 
 private:
-	// •¨—–{‘ÌEƒRƒ‰ƒCƒ_[‚Ì“o˜^/“o˜^‰ğœ
-	void RegisterToManagers_();		// PhysicsBody / Collider ‚ğŠeƒ}ƒl[ƒWƒƒ[‚É“o˜^
-	void UnregisterFromManagers_();	// PhysicsBody / Collider ‚ğŠeƒ}ƒl[ƒWƒƒ[‚©‚ç“o˜^‰ğœ	
+	// ç‰©ç†æœ¬ä½“ãƒ»ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ã®ç™»éŒ²/ç™»éŒ²è§£é™¤
+	void RegisterToManagers_();		// PhysicsBody / Collider ã‚’å„ãƒãƒãƒ¼ã‚¸ãƒ£ãƒ¼ã«ç™»éŒ²
+	void UnregisterFromManagers_();	// PhysicsBody / Collider ã‚’å„ãƒãƒãƒ¼ã‚¸ãƒ£ãƒ¼ã‹ã‚‰ç™»éŒ²è§£é™¤	
 
 private:
-	// •¨—–{‘Ì
+	// ç‰©ç†æœ¬ä½“
 	PhysicsBody _physicsBody{};
 
-	// ƒRƒ‰ƒCƒ_[–{‘Ì
-	std::unique_ptr<CapsuleCollider> _capsuleCollider;	// ƒJƒvƒZƒ‹ƒRƒ‰ƒCƒ_[
+	// ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼æœ¬ä½“
+	std::unique_ptr<CompoundCollider> _compoundCollider;	// è¤‡åˆã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ï¼ˆèƒ´ä½“Box + å…ˆé ­Capsuleï¼‰
+	BoxCollider*     _bodyCollider = nullptr;				// èƒ´ä½“ãƒœãƒƒã‚¯ã‚¹ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ï¼ˆCompoundCollider ã®å­ï¼‰
+	CapsuleCollider* _afterCollider = nullptr;				// å¾Œæ–¹ã‚«ãƒ—ã‚»ãƒ«ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ï¼ˆCompoundCollider ã®å­ï¼‰
+	BoxCollider*	 _wingLeftCollider = nullptr;			// å·¦ä¸»ç¿¼ãƒœãƒƒã‚¯ã‚¹ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ï¼ˆCompoundCollider ã®å­ï¼‰
+	BoxCollider*	 _wingRightCollider = nullptr;			// å³ä¸»ç¿¼ãƒœãƒƒã‚¯ã‚¹ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ï¼ˆCompoundCollider ã®å­ï¼‰
+	BoxCollider*	_tailVerticalCollider = nullptr;		// å‚ç›´å°¾ç¿¼ãƒœãƒƒã‚¯ã‚¹ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼ï¼ˆCompoundCollider ã®å­ï¼‰
+		
 
-	// ”òs‹@‚ÌŠî–{ƒpƒ‰ƒ[ƒ^
-	float _radius = 0.35f;		// ƒRƒ‰ƒCƒ_[”¼Œa
-	float _height = 1.2f;		// ƒRƒ‰ƒCƒ_[‚‚³
-	float _moveSpeed = 12.0f;	// ˆÚ“®‘¬“x
-	float _turnSpeed = 3.2f;	// ‰ñ“]‘¬“xiƒ‰ƒWƒAƒ“/•bj
-	bool _registered = false;	// PhysicsBody / Collider ‚ªƒ}ƒl[ƒWƒƒ[‚É“o˜^Ï‚İ‚©
+	// é£›è¡Œæ©Ÿã®åŸºæœ¬ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿
+	float _radius = 0.525f;			// ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼åŠå¾„ï¼ˆãƒãƒ¼ã‚ºã‚«ãƒ—ã‚»ãƒ«ãƒ»èƒ´ä½“Boxå…±é€šã®åŸºæº–ï¼‰
+	float _height = 1.8f;			// ã‚³ãƒ©ã‚¤ãƒ€ãƒ¼é«˜ã•ï¼ˆèƒ´ä½“Box ã®å‰å¾Œé•·ï¼‰
+	float _minSpeed = 8.0f;			// æœ€ä½é£›è¡Œé€Ÿåº¦ï¼ˆã‚¹ãƒ­ãƒƒãƒˆãƒ«0æ™‚ï¼‰
+	float _maxSpeed = 40.0f;		// æœ€å¤§é£›è¡Œé€Ÿåº¦ï¼ˆã‚¹ãƒ­ãƒƒãƒˆãƒ«1æ™‚ï¼‰
+	float _pitchSpeed = 1.4f;		// ãƒ”ãƒƒãƒé€Ÿåº¦ï¼ˆãƒ©ã‚¸ã‚¢ãƒ³/ç§’ï¼‰
+	float _yawSpeed = 1.0f;			// ãƒ¨ãƒ¼é€Ÿåº¦ï¼ˆãƒ©ã‚¸ã‚¢ãƒ³/ç§’ï¼‰
+	float _rollSpeed = 2.0f;		// ãƒ­ãƒ¼ãƒ«é€Ÿåº¦ï¼ˆãƒ©ã‚¸ã‚¢ãƒ³/ç§’ï¼‰
+	float _throttleSpeed = 0.6f;	// ã‚¹ãƒ­ãƒƒãƒˆãƒ«å¤‰åŒ–é€Ÿåº¦ï¼ˆ0ã€œ1/ç§’ï¼‰
+	float _turnSpeed = 3.2f;		// ï¼ˆConfigureFromParams_ äº’æ›ç”¨ï¼‰
+
+	// å®Ÿè¡Œæ™‚çŠ¶æ…‹
+	float _throttle = 0.3f;			// ç¾åœ¨ã®ã‚¹ãƒ­ãƒƒãƒˆãƒ«ï¼ˆ0=æœ€ä½é€Ÿã€1=æœ€å¤§é€Ÿï¼‰
+	float _currentSpeed = 0.0f;		// ç¾åœ¨ã®é£›è¡Œé€Ÿåº¦
+	bool _registered = false;		// ãƒãƒãƒ¼ã‚¸ãƒ£ãƒ¼ç™»éŒ²æ¸ˆã¿ã‹
+
+	// æ­¦å™¨ã‚·ã‚¹ãƒ†ãƒ 
+	GunSystem _gun;                 // æ©ŸéŠƒã‚·ã‚¹ãƒ†ãƒ ï¼ˆãƒ‡ãƒ•ã‚©ãƒ«ãƒˆ 600rpm / 30ç™º / ãƒªãƒ­ãƒ¼ãƒ‰1.5ç§’ï¼‰
 };

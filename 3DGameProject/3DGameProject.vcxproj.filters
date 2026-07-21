@@ -463,9 +463,6 @@
     <Filter Include="ソース ファイル\MiniGame\MiniGame1\Object">
       <UniqueIdentifier>{684a6c0c-646a-41b9-be40-4458e1c9f650}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ソース ファイル\MiniGame\MiniGame1\Stage">
-      <UniqueIdentifier>{0c0d5e1e-60e5-4127-ba71-a604036fe902}</UniqueIdentifier>
-    </Filter>
     <Filter Include="ソース ファイル\MiniGame\MiniGame1\Object\Player">
       <UniqueIdentifier>{b156a7a9-52ce-4afd-a7ab-6a00b2aeda5f}</UniqueIdentifier>
     </Filter>
@@ -475,20 +472,47 @@
     <Filter Include="ヘッダー ファイル\MiniGame\MiniGame1">
       <UniqueIdentifier>{be7d3bd4-2296-49b6-9ac1-97102549162e}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ヘッダー ファイル\MiniGame\MiniGame1\Stage">
-      <UniqueIdentifier>{1deb461a-d2e4-47a6-b5e3-7e413106ceb1}</UniqueIdentifier>
-    </Filter>
     <Filter Include="ヘッダー ファイル\MiniGame\MiniGame1\Object">
       <UniqueIdentifier>{019908f5-0cb1-41aa-8149-0e5c7b77895a}</UniqueIdentifier>
     </Filter>
     <Filter Include="ヘッダー ファイル\MiniGame\MiniGame1\Object\Player">
       <UniqueIdentifier>{5ce6a746-993e-48ce-9332-bd6801052e6c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ヘッダー ファイル\MiniGame\MiniGame1\Scene">
+      <UniqueIdentifier>{369ce6ef-8299-4673-a4ce-950c7ebbec32}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\MiniGame\MiniGame1\Scene\Menu">
+      <UniqueIdentifier>{c69a0258-85fb-4484-b6a6-1ebf8f87a78b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\MiniGame\MiniGame1\Scene">
+      <UniqueIdentifier>{271ce988-50d5-492c-a6e8-738df93ce5e2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\MiniGame\MiniGame1\Scene\Menu">
+      <UniqueIdentifier>{3f7af9e8-bb1f-477b-ab49-a0c10cb4248c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Main">
+      <UniqueIdentifier>{ead7efd8-2253-40d6-a0e0-5542923c5269}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\MiniGame\MiniGame1\Scene\Stage">
+      <UniqueIdentifier>{0c0d5e1e-60e5-4127-ba71-a604036fe902}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\MiniGame\MiniGame1\Scene\Stage">
+      <UniqueIdentifier>{1deb461a-d2e4-47a6-b5e3-7e413106ceb1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\MiniGame\MiniGame1\Object\Player\GunSystem">
+      <UniqueIdentifier>{fe935349-00e9-48b1-a6fb-0987a253b5c5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\MiniGame\MiniGame1\Object\Player\Bullet">
+      <UniqueIdentifier>{d1b7f0ea-d718-4b66-aab6-9cc6c278060f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\MiniGame\MiniGame1\Object\Player\GunSystem">
+      <UniqueIdentifier>{deba10ab-68e3-4003-a242-056b80591ba1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\MiniGame\MiniGame1\Object\Player\Bullet">
+      <UniqueIdentifier>{0177e19e-4060-44d0-8e36-4b2f07683fb6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Main.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
     <ClCompile Include="Assert.cpp">
       <Filter>ソース ファイル\System\Assert</Filter>
     </ClCompile>
@@ -499,9 +523,6 @@
       <Filter>ソース ファイル\Scene\Manager</Filter>
     </ClCompile>
     <ClCompile Include="TitleScene.cpp">
-      <Filter>ソース ファイル\Scene\Scenes</Filter>
-    </ClCompile>
-    <ClCompile Include="MenuScene.cpp">
       <Filter>ソース ファイル\Scene\Scenes</Filter>
     </ClCompile>
     <ClCompile Include="KeyInput.cpp">
@@ -624,11 +645,23 @@
     <ClCompile Include="Mv1Model.cpp">
       <Filter>ソース ファイル\System\Model\Mv1</Filter>
     </ClCompile>
-    <ClCompile Include="Player.cpp">
-      <Filter>ソース ファイル</Filter>
+    <ClCompile Include="MiniGame_1_MenuScene.cpp">
+      <Filter>ソース ファイル\MiniGame\MiniGame1\Scene\Menu</Filter>
+    </ClCompile>
+    <ClCompile Include="Main.cpp">
+      <Filter>ソース ファイル\Main</Filter>
     </ClCompile>
     <ClCompile Include="FighterAircraft.cpp">
-      <Filter>ヘッダー ファイル\MiniGame\MiniGame1\Object\Player</Filter>
+      <Filter>ソース ファイル\MiniGame\MiniGame1\Object\Player</Filter>
+    </ClCompile>
+    <ClCompile Include="MiniGame_1_StageScene.cpp">
+      <Filter>ソース ファイル\MiniGame\MiniGame1\Scene\Stage</Filter>
+    </ClCompile>
+    <ClCompile Include="GunSystem.cpp">
+      <Filter>ソース ファイル\MiniGame\MiniGame1\Object\Player\GunSystem</Filter>
+    </ClCompile>
+    <ClCompile Include="Bullet.cpp">
+      <Filter>ソース ファイル\MiniGame\MiniGame1\Object\Player\Bullet</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -645,9 +678,6 @@
       <Filter>ヘッダー ファイル\Scene</Filter>
     </ClInclude>
     <ClInclude Include="TitleScene.h">
-      <Filter>ヘッダー ファイル\Scene\Scenes</Filter>
-    </ClInclude>
-    <ClInclude Include="MenuScene.h">
       <Filter>ヘッダー ファイル\Scene\Scenes</Filter>
     </ClInclude>
     <ClInclude Include="KeyInput.h">
@@ -836,17 +866,23 @@
     <ClInclude Include="SkyBox.h">
       <Filter>ヘッダー ファイル\System\SkyBox\SkyBox</Filter>
     </ClInclude>
-    <ClInclude Include="MeshDemoScene.h">
-      <Filter>ヘッダー ファイル\Debug\Mesh</Filter>
-    </ClInclude>
     <ClInclude Include="SkyBoxScene.h">
       <Filter>ヘッダー ファイル\Debug\SkyBox</Filter>
     </ClInclude>
-    <ClInclude Include="Player.h">
-      <Filter>ヘッダー ファイル</Filter>
+    <ClInclude Include="MiniGame_1_MenuScene.h">
+      <Filter>ヘッダー ファイル\MiniGame\MiniGame1\Scene\Menu</Filter>
     </ClInclude>
     <ClInclude Include="FighterAircraft.h">
-      <Filter>ソース ファイル\MiniGame\MiniGame1\Object\Player</Filter>
+      <Filter>ヘッダー ファイル\MiniGame\MiniGame1\Object\Player</Filter>
+    </ClInclude>
+    <ClInclude Include="MiniGame_1_StageScene.h">
+      <Filter>ヘッダー ファイル\MiniGame\MiniGame1\Scene\Stage</Filter>
+    </ClInclude>
+    <ClInclude Include="GunSystem.h">
+      <Filter>ヘッダー ファイル\MiniGame\MiniGame1\Object\Player\GunSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="Bullet.h">
+      <Filter>ヘッダー ファイル\MiniGame\MiniGame1\Object\Player\Bullet</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -176,6 +176,8 @@
     <ClCompile Include="ObjectManager.cpp" />
     <ClCompile Include="ObjectPool.cpp" />
     <ClCompile Include="ObjectPoolScene.cpp" />
+    <ClCompile Include="PachinkoField.cpp" />
+    <ClCompile Include="PachinkoFieldTpl.cpp" />
     <ClCompile Include="PerformanceMonitor.cpp" />
     <ClCompile Include="PhysicsBody.cpp" />
     <ClCompile Include="PhysicsCcd.cpp" />
@@ -253,6 +255,8 @@
     <ClInclude Include="ObjectPool.h" />
     <ClInclude Include="ObjectPoolDebugClass.h" />
     <ClInclude Include="ObjectPoolScene.h" />
+    <ClInclude Include="PachinkoField.h" />
+    <ClInclude Include="PachinkoFieldTpl.h" />
     <ClInclude Include="PerformanceMonitor.h" />
     <ClInclude Include="PhysicsBody.h" />
     <ClInclude Include="PhysicsCcd.h" />

@@ -181,12 +181,6 @@
     <Filter Include="ヘッダー ファイル\System\Template\ManagerTpl">
       <UniqueIdentifier>{e24bc90b-3186-4a5a-bde6-49670e893727}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ソース ファイル\Debug">
-      <UniqueIdentifier>{9c8679e1-4659-4062-addd-b501f77e220a}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\Debug">
-      <UniqueIdentifier>{7e78d1c6-15fc-4bf0-9ff6-dadeff31049c}</UniqueIdentifier>
-    </Filter>
     <Filter Include="ヘッダー ファイル\System\Template\PoolTpl">
       <UniqueIdentifier>{d01f3a63-9af3-4390-9b42-ffe3a46a1194}</UniqueIdentifier>
     </Filter>
@@ -249,24 +243,6 @@
     </Filter>
     <Filter Include="ヘッダー ファイル\System\Physics\Manager">
       <UniqueIdentifier>{d5726ec0-9358-49c5-ab35-47c608226a3a}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\Debug\Camera">
-      <UniqueIdentifier>{650d5627-6884-41ae-9af5-993c35f94c1f}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\Debug\Collision">
-      <UniqueIdentifier>{90c5d789-0a9b-4a4a-a511-314b8898ccfb}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\Debug\ObjectPool">
-      <UniqueIdentifier>{98debd39-5170-459e-bf93-f294c0eb17da}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\Debug\Physics">
-      <UniqueIdentifier>{26dbeffc-d1d2-4895-bfaf-98b4c6047e96}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソース ファイル\Debug\Physics">
-      <UniqueIdentifier>{22b25790-46bc-4850-a93b-5bd5c6281021}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\Debug\Transform">
-      <UniqueIdentifier>{3febb48f-87f6-46bb-9ff9-b69d9dfcf0e1}</UniqueIdentifier>
     </Filter>
     <Filter Include="ヘッダー ファイル\System\Ray">
       <UniqueIdentifier>{cab3f7ac-08a2-48aa-af02-1f7776971669}</UniqueIdentifier>
@@ -397,131 +373,8 @@
     <Filter Include="ヘッダー ファイル\System\SkyBox\SkyBox">
       <UniqueIdentifier>{d6328875-30ac-4152-9919-228e3ae9f833}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ヘッダー ファイル\Debug\SkyBox">
-      <UniqueIdentifier>{1d6f152f-416b-4788-a814-02bd31ae7c0c}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソース ファイル\MiniGame">
-      <UniqueIdentifier>{c15b0963-27e5-427f-8a93-537562d7c34c}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソース ファイル\MiniGame\MiniGame1">
-      <UniqueIdentifier>{b9c23854-4fb6-41b2-b504-c7262933774b}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソース ファイル\MiniGame\MiniGame1\Object">
-      <UniqueIdentifier>{684a6c0c-646a-41b9-be40-4458e1c9f650}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソース ファイル\MiniGame\MiniGame1\Object\Player">
-      <UniqueIdentifier>{b156a7a9-52ce-4afd-a7ab-6a00b2aeda5f}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\MiniGame">
-      <UniqueIdentifier>{02f9a017-ac15-4255-bf2b-d863a762d647}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\MiniGame\MiniGame1">
-      <UniqueIdentifier>{be7d3bd4-2296-49b6-9ac1-97102549162e}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\MiniGame\MiniGame1\Object">
-      <UniqueIdentifier>{019908f5-0cb1-41aa-8149-0e5c7b77895a}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\MiniGame\MiniGame1\Object\Player">
-      <UniqueIdentifier>{5ce6a746-993e-48ce-9332-bd6801052e6c}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\MiniGame\MiniGame1\Scene">
-      <UniqueIdentifier>{369ce6ef-8299-4673-a4ce-950c7ebbec32}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\MiniGame\MiniGame1\Scene\Menu">
-      <UniqueIdentifier>{c69a0258-85fb-4484-b6a6-1ebf8f87a78b}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソース ファイル\MiniGame\MiniGame1\Scene">
-      <UniqueIdentifier>{271ce988-50d5-492c-a6e8-738df93ce5e2}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソース ファイル\MiniGame\MiniGame1\Scene\Menu">
-      <UniqueIdentifier>{3f7af9e8-bb1f-477b-ab49-a0c10cb4248c}</UniqueIdentifier>
-    </Filter>
     <Filter Include="ソース ファイル\Main">
       <UniqueIdentifier>{ead7efd8-2253-40d6-a0e0-5542923c5269}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソース ファイル\MiniGame\MiniGame1\Scene\Stage">
-      <UniqueIdentifier>{0c0d5e1e-60e5-4127-ba71-a604036fe902}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\MiniGame\MiniGame1\Scene\Stage">
-      <UniqueIdentifier>{1deb461a-d2e4-47a6-b5e3-7e413106ceb1}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソース ファイル\MiniGame\MiniGame1\Object\Player\GunSystem">
-      <UniqueIdentifier>{fe935349-00e9-48b1-a6fb-0987a253b5c5}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソース ファイル\MiniGame\MiniGame1\Object\Player\Bullet">
-      <UniqueIdentifier>{d1b7f0ea-d718-4b66-aab6-9cc6c278060f}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\MiniGame\MiniGame1\Object\Player\GunSystem">
-      <UniqueIdentifier>{deba10ab-68e3-4003-a242-056b80591ba1}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\MiniGame\MiniGame1\Object\Player\Bullet">
-      <UniqueIdentifier>{0177e19e-4060-44d0-8e36-4b2f07683fb6}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソース ファイル\Debug\Camera">
-      <UniqueIdentifier>{20b4289e-f04c-4318-8463-762cdb72d248}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソース ファイル\Debug\Camera\Object">
-      <UniqueIdentifier>{cb7ea170-7d69-458d-b413-75f0f084807d}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソース ファイル\Debug\Collision">
-      <UniqueIdentifier>{44b6cfb6-44ca-4b34-8586-8db86685f234}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソース ファイル\Debug\ObjectPool">
-      <UniqueIdentifier>{5395bc22-3e22-4c44-853b-18020698d0dc}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソース ファイル\Debug\SkyBox">
-      <UniqueIdentifier>{93391c0f-e1a3-4446-b539-93d8c3e6a913}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソース ファイル\Debug\Transform.">
-      <UniqueIdentifier>{2f1e16e4-50d0-4c99-86e5-c96646af755a}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\Debug\Transform\Object">
-      <UniqueIdentifier>{6d275b5d-6767-4fad-aa94-6e4354092ec3}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\Debug\Physics\Object">
-      <UniqueIdentifier>{5031bed5-73c8-44b5-8d9a-067247980cf9}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\Debug\ObjectPool\Object">
-      <UniqueIdentifier>{bed4a462-d7e3-465c-bcbb-b72b52cc422e}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\Debug\Collision\Object">
-      <UniqueIdentifier>{e87de81e-7264-4625-9ab1-b59d342fb349}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\Debug\Camera\Object">
-      <UniqueIdentifier>{ada5bba5-f0c4-4a80-9169-f01fbd43d2a3}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\Debug\PublicObject">
-      <UniqueIdentifier>{bcb9f486-2b92-4d60-809b-6ff995dda8df}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソース ファイル\Debug\Transform.\Scene">
-      <UniqueIdentifier>{d8b31497-4667-442f-a744-a900f93000e2}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソース ファイル\Debug\SkyBox\Scene">
-      <UniqueIdentifier>{d8ee3b3f-cde9-48dd-baa5-b43237e7d815}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソース ファイル\Debug\Physics\Scene">
-      <UniqueIdentifier>{7506ac4b-0822-40d3-ae4a-969df55a85d9}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソース ファイル\Debug\ObjectPool\Scene">
-      <UniqueIdentifier>{98f254fb-2879-4b5f-a22f-497d50246af0}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソース ファイル\Debug\Ccd">
-      <UniqueIdentifier>{d190c951-ef3b-4d05-9733-28aeb358706d}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソース ファイル\Debug\Ccd\Scene">
-      <UniqueIdentifier>{d73b2785-29c1-423e-b876-33c0bb5c6ca9}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソース ファイル\Debug\Collision\Scene">
-      <UniqueIdentifier>{437558b0-cc1e-49ab-9dc9-ee206b065efa}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソース ファイル\Debug\Camera\Scene">
-      <UniqueIdentifier>{a22677ca-1f3b-4192-bff3-c5c520ea1534}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\Debug\Ccd">
-      <UniqueIdentifier>{e19c67a0-5558-4507-882b-6b63767c3fc3}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソース ファイル\Debug\Physics\Object">
-      <UniqueIdentifier>{5dfc4e8f-a2c0-4be9-9d83-c5359354ece4}</UniqueIdentifier>
     </Filter>
     <Filter Include="ソース ファイル\Main\TitleScene">
       <UniqueIdentifier>{0bc36268-3e47-45b7-a6a4-2fde3702c1f8}</UniqueIdentifier>
@@ -535,33 +388,6 @@
     <Filter Include="ソース ファイル\System\Scene\Transition">
       <UniqueIdentifier>{5b832177-3ea6-4181-bd18-ce7eefa94ce3}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ヘッダー ファイル\Debug\SkyBox\Scene">
-      <UniqueIdentifier>{caf7d2d6-dc76-4e40-b5e9-c26293df7263}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\Debug\Transform\Scene">
-      <UniqueIdentifier>{3f30d1b9-58ba-4f76-986e-4b771c76b8f7}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\Debug\Physics\Scene">
-      <UniqueIdentifier>{4c30b1e0-b584-4b2a-b141-eca6d4522356}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\Debug\ObjectPool\Scene">
-      <UniqueIdentifier>{2f373b4a-e290-413f-bef7-eecd50efb1a8}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\Debug\Ccd\Scene">
-      <UniqueIdentifier>{cef58c51-b66f-4826-86d5-fd5ab18f405b}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\Debug\Collision\Scene">
-      <UniqueIdentifier>{fc7dd07c-76ea-4d41-ba55-5ca514a43dde}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\Debug\Camera\Scene">
-      <UniqueIdentifier>{7780b9d6-e5a0-4cd9-a4e5-e41b3a0cd673}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\Main">
-      <UniqueIdentifier>{2d00cc22-551d-4b2d-be07-6ffd743e9ac1}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\Main\Title">
-      <UniqueIdentifier>{6de5a99c-535d-4c89-a868-62bc0114961b}</UniqueIdentifier>
-    </Filter>
     <Filter Include="ヘッダー ファイル\System\Scene">
       <UniqueIdentifier>{ce37ff07-9a41-4655-89ae-af009e9f6b17}</UniqueIdentifier>
     </Filter>
@@ -571,32 +397,284 @@
     <Filter Include="ヘッダー ファイル\System\Scene\Transition">
       <UniqueIdentifier>{1321e9dc-b635-402a-8da3-b54aea79c080}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ソース ファイル\Debug\PublicObject">
-      <UniqueIdentifier>{cebb61a5-784d-4c49-b6d6-0b2465205c28}</UniqueIdentifier>
+    <Filter Include="ヘッダー ファイル\Scene">
+      <UniqueIdentifier>{92342e2d-8a88-435d-87bf-01fa70e44d48}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ソース ファイル\MiniGame\MiniGame1\Object\Enemy">
-      <UniqueIdentifier>{105dd0e2-a507-475b-ad4f-bdb4deca429f}</UniqueIdentifier>
+    <Filter Include="ヘッダー ファイル\Scene\Game">
+      <UniqueIdentifier>{cc7da99e-a4fa-4e5b-b044-014f32f0593a}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ソース ファイル\MiniGame\MiniGame1\UI">
-      <UniqueIdentifier>{629b7eaa-7a59-4c87-a28d-b924105def30}</UniqueIdentifier>
+    <Filter Include="ヘッダー ファイル\Scene\Demo">
+      <UniqueIdentifier>{84989092-935c-449b-bea9-79f52ba89fcd}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ソース ファイル\MiniGame\MiniGame1\UI\Hub">
-      <UniqueIdentifier>{38cc9152-0fee-4d69-b162-17527655dc28}</UniqueIdentifier>
+    <Filter Include="ヘッダー ファイル\Main">
+      <UniqueIdentifier>{2d00cc22-551d-4b2d-be07-6ffd743e9ac1}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ヘッダー ファイル\MiniGame\MiniGame1\UI">
-      <UniqueIdentifier>{a413f8d5-e6ad-4f2d-9d19-33fce261193f}</UniqueIdentifier>
+    <Filter Include="ヘッダー ファイル\Main\Title">
+      <UniqueIdentifier>{6de5a99c-535d-4c89-a868-62bc0114961b}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ヘッダー ファイル\MiniGame\MiniGame1\UI\Hub">
-      <UniqueIdentifier>{297f253c-8db2-44a6-8d7d-fcd18d0501e3}</UniqueIdentifier>
+    <Filter Include="ヘッダー ファイル\Scene\Game\MiniGame">
+      <UniqueIdentifier>{02f9a017-ac15-4255-bf2b-d863a762d647}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ヘッダー ファイル\MiniGame\MiniGame1\Object\Enemy">
+    <Filter Include="ヘッダー ファイル\Scene\Game\MiniGame\MiniGame1">
+      <UniqueIdentifier>{be7d3bd4-2296-49b6-9ac1-97102549162e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Game\MiniGame\MiniGame1\Object">
+      <UniqueIdentifier>{019908f5-0cb1-41aa-8149-0e5c7b77895a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Game\MiniGame\MiniGame1\Object\Player">
+      <UniqueIdentifier>{5ce6a746-993e-48ce-9332-bd6801052e6c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Game\MiniGame\MiniGame1\Object\Player\GunSystem">
+      <UniqueIdentifier>{deba10ab-68e3-4003-a242-056b80591ba1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Game\MiniGame\MiniGame1\Object\Player\Bullet">
+      <UniqueIdentifier>{0177e19e-4060-44d0-8e36-4b2f07683fb6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Game\MiniGame\MiniGame1\Object\Enemy">
       <UniqueIdentifier>{217a29ed-c4ff-4414-8374-fec50031e775}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ヘッダー ファイル\MiniGame\MiniGame1\Object\Enemy\Difficulty">
+    <Filter Include="ヘッダー ファイル\Scene\Game\MiniGame\MiniGame1\Object\Enemy\Difficulty">
       <UniqueIdentifier>{b99f52ad-07b6-4313-b406-7da92fe9048d}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ヘッダー ファイル\MiniGame\MiniGame1\Object\Interface">
+    <Filter Include="ヘッダー ファイル\Scene\Game\MiniGame\MiniGame1\Object\Interface">
       <UniqueIdentifier>{bd53f1ca-9427-455f-9ad6-c0b3a5225efc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Game\MiniGame\MiniGame1\Scene">
+      <UniqueIdentifier>{369ce6ef-8299-4673-a4ce-950c7ebbec32}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Game\MiniGame\MiniGame1\Scene\Menu">
+      <UniqueIdentifier>{c69a0258-85fb-4484-b6a6-1ebf8f87a78b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Game\MiniGame\MiniGame1\Scene\Stage">
+      <UniqueIdentifier>{1deb461a-d2e4-47a6-b5e3-7e413106ceb1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Game\MiniGame\MiniGame1\UI">
+      <UniqueIdentifier>{a413f8d5-e6ad-4f2d-9d19-33fce261193f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Game\MiniGame\MiniGame1\UI\Hub">
+      <UniqueIdentifier>{297f253c-8db2-44a6-8d7d-fcd18d0501e3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Demo\Debug">
+      <UniqueIdentifier>{7e78d1c6-15fc-4bf0-9ff6-dadeff31049c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Demo\Debug\Camera">
+      <UniqueIdentifier>{650d5627-6884-41ae-9af5-993c35f94c1f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Demo\Debug\Camera\Object">
+      <UniqueIdentifier>{ada5bba5-f0c4-4a80-9169-f01fbd43d2a3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Demo\Debug\Camera\Scene">
+      <UniqueIdentifier>{7780b9d6-e5a0-4cd9-a4e5-e41b3a0cd673}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Demo\Debug\Collision">
+      <UniqueIdentifier>{90c5d789-0a9b-4a4a-a511-314b8898ccfb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Demo\Debug\Collision\Object">
+      <UniqueIdentifier>{e87de81e-7264-4625-9ab1-b59d342fb349}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Demo\Debug\Collision\Scene">
+      <UniqueIdentifier>{fc7dd07c-76ea-4d41-ba55-5ca514a43dde}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Demo\Debug\ObjectPool">
+      <UniqueIdentifier>{98debd39-5170-459e-bf93-f294c0eb17da}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Demo\Debug\ObjectPool\Object">
+      <UniqueIdentifier>{bed4a462-d7e3-465c-bcbb-b72b52cc422e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Demo\Debug\ObjectPool\Scene">
+      <UniqueIdentifier>{2f373b4a-e290-413f-bef7-eecd50efb1a8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Demo\Debug\Physics">
+      <UniqueIdentifier>{26dbeffc-d1d2-4895-bfaf-98b4c6047e96}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Demo\Debug\Physics\Object">
+      <UniqueIdentifier>{5031bed5-73c8-44b5-8d9a-067247980cf9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Demo\Debug\Physics\Scene">
+      <UniqueIdentifier>{4c30b1e0-b584-4b2a-b141-eca6d4522356}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Demo\Debug\Transform">
+      <UniqueIdentifier>{3febb48f-87f6-46bb-9ff9-b69d9dfcf0e1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Demo\Debug\Transform\Object">
+      <UniqueIdentifier>{6d275b5d-6767-4fad-aa94-6e4354092ec3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Demo\Debug\Transform\Scene">
+      <UniqueIdentifier>{3f30d1b9-58ba-4f76-986e-4b771c76b8f7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Demo\Debug\SkyBox">
+      <UniqueIdentifier>{1d6f152f-416b-4788-a814-02bd31ae7c0c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Demo\Debug\SkyBox\Scene">
+      <UniqueIdentifier>{caf7d2d6-dc76-4e40-b5e9-c26293df7263}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Demo\Debug\PublicObject">
+      <UniqueIdentifier>{bcb9f486-2b92-4d60-809b-6ff995dda8df}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Demo\Debug\Ccd">
+      <UniqueIdentifier>{e19c67a0-5558-4507-882b-6b63767c3fc3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Demo\Debug\Ccd\Scene">
+      <UniqueIdentifier>{cef58c51-b66f-4826-86d5-fd5ab18f405b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene">
+      <UniqueIdentifier>{ba3a94ff-e165-4b76-b345-60726d4ec976}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Demo">
+      <UniqueIdentifier>{e7a1ae21-3337-4956-848d-7589eb3b0990}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Game">
+      <UniqueIdentifier>{044366a2-b2aa-4435-ba95-207548f5e846}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Game\MiniGame">
+      <UniqueIdentifier>{c15b0963-27e5-427f-8a93-537562d7c34c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Game\MiniGame\MiniGame1">
+      <UniqueIdentifier>{b9c23854-4fb6-41b2-b504-c7262933774b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Game\MiniGame\MiniGame1\Object">
+      <UniqueIdentifier>{684a6c0c-646a-41b9-be40-4458e1c9f650}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Game\MiniGame\MiniGame1\Object\Player">
+      <UniqueIdentifier>{b156a7a9-52ce-4afd-a7ab-6a00b2aeda5f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Game\MiniGame\MiniGame1\Object\Player\GunSystem">
+      <UniqueIdentifier>{fe935349-00e9-48b1-a6fb-0987a253b5c5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Game\MiniGame\MiniGame1\Object\Player\Bullet">
+      <UniqueIdentifier>{d1b7f0ea-d718-4b66-aab6-9cc6c278060f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Game\MiniGame\MiniGame1\Object\Enemy">
+      <UniqueIdentifier>{105dd0e2-a507-475b-ad4f-bdb4deca429f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Game\MiniGame\MiniGame1\Scene">
+      <UniqueIdentifier>{271ce988-50d5-492c-a6e8-738df93ce5e2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Game\MiniGame\MiniGame1\Scene\Menu">
+      <UniqueIdentifier>{3f7af9e8-bb1f-477b-ab49-a0c10cb4248c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Game\MiniGame\MiniGame1\Scene\Stage">
+      <UniqueIdentifier>{0c0d5e1e-60e5-4127-ba71-a604036fe902}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Game\MiniGame\MiniGame1\UI">
+      <UniqueIdentifier>{629b7eaa-7a59-4c87-a28d-b924105def30}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Game\MiniGame\MiniGame1\UI\Hub">
+      <UniqueIdentifier>{38cc9152-0fee-4d69-b162-17527655dc28}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Demo\Debug">
+      <UniqueIdentifier>{9c8679e1-4659-4062-addd-b501f77e220a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Demo\Debug\Physics">
+      <UniqueIdentifier>{22b25790-46bc-4850-a93b-5bd5c6281021}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Demo\Debug\Physics\Scene">
+      <UniqueIdentifier>{7506ac4b-0822-40d3-ae4a-969df55a85d9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Demo\Debug\Physics\Object">
+      <UniqueIdentifier>{5dfc4e8f-a2c0-4be9-9d83-c5359354ece4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Demo\Debug\Camera">
+      <UniqueIdentifier>{20b4289e-f04c-4318-8463-762cdb72d248}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Demo\Debug\Camera\Object">
+      <UniqueIdentifier>{cb7ea170-7d69-458d-b413-75f0f084807d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Demo\Debug\Camera\Scene">
+      <UniqueIdentifier>{a22677ca-1f3b-4192-bff3-c5c520ea1534}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Demo\Debug\Collision">
+      <UniqueIdentifier>{44b6cfb6-44ca-4b34-8586-8db86685f234}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Demo\Debug\Collision\Scene">
+      <UniqueIdentifier>{437558b0-cc1e-49ab-9dc9-ee206b065efa}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Demo\Debug\ObjectPool">
+      <UniqueIdentifier>{5395bc22-3e22-4c44-853b-18020698d0dc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Demo\Debug\ObjectPool\Scene">
+      <UniqueIdentifier>{98f254fb-2879-4b5f-a22f-497d50246af0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Demo\Debug\SkyBox">
+      <UniqueIdentifier>{93391c0f-e1a3-4446-b539-93d8c3e6a913}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Demo\Debug\SkyBox\Scene">
+      <UniqueIdentifier>{d8ee3b3f-cde9-48dd-baa5-b43237e7d815}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Demo\Debug\Transform.">
+      <UniqueIdentifier>{2f1e16e4-50d0-4c99-86e5-c96646af755a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Demo\Debug\Transform.\Scene">
+      <UniqueIdentifier>{d8b31497-4667-442f-a744-a900f93000e2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Demo\Debug\Ccd">
+      <UniqueIdentifier>{d190c951-ef3b-4d05-9733-28aeb358706d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Demo\Debug\Ccd\Scene">
+      <UniqueIdentifier>{d73b2785-29c1-423e-b876-33c0bb5c6ca9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Demo\Debug\PublicObject">
+      <UniqueIdentifier>{cebb61a5-784d-4c49-b6d6-0b2465205c28}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Game">
+      <UniqueIdentifier>{74a078af-78ad-4a68-af17-9023075e51a7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Game\PachinkoGame">
+      <UniqueIdentifier>{e1529b52-3d0b-47db-b18d-3b8239851067}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Game\PachinkoGame\Scene">
+      <UniqueIdentifier>{00b61437-9f2a-4893-b376-9b335b523fdc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Game\PachinkoGame\Object">
+      <UniqueIdentifier>{8f68c192-eb5b-431b-9289-4f194822d6b7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Game\PachinkoGame\System">
+      <UniqueIdentifier>{338efbbb-97b5-4c4e-884f-0b6dae114d10}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Game\PachinkoGame\Object\Field">
+      <UniqueIdentifier>{9a0db1cf-fc0d-499c-b5c5-f4df02bd5ccf}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Game\PachinkoGame\Object\Ball">
+      <UniqueIdentifier>{9456a192-93f9-4eab-afa5-b4e954bb2825}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Game\PachinkoGame\Object\Nail">
+      <UniqueIdentifier>{3bb6a412-3cc1-4a93-aa70-67e2e524dca9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Game">
+      <UniqueIdentifier>{daa66e5f-429d-4791-bd1f-4e6713e8d27c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Game\PachinkoGame">
+      <UniqueIdentifier>{93857b37-dc48-428b-91dd-b6ac3ca1eb41}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Game\PachinkoGame\System">
+      <UniqueIdentifier>{e508b043-33d0-4432-81e9-82034ee7552f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Game\PachinkoGame\Object">
+      <UniqueIdentifier>{7dd12c61-75d3-44ec-9d31-ff608a299bd9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Game\PachinkoGame\Scene">
+      <UniqueIdentifier>{e24448a7-4b77-4963-b41a-2855da1d2d03}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Game\PachinkoGame\Object\Field">
+      <UniqueIdentifier>{3d07a37a-6189-4f65-ac27-b502bb199b8e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Game\PachinkoGame\Object\Ball">
+      <UniqueIdentifier>{d67e70fb-85a4-4e0a-85e1-c6641c5b276e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Game\PachinkoGame\Object\Nail">
+      <UniqueIdentifier>{12b61d85-9227-433b-99cb-4581eab013b0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Game\PachinkoGame\System\MainSystem">
+      <UniqueIdentifier>{415b6bfd-81f6-42ab-b7c1-72c3e5e3844f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Game\PachinkoGame\System\SubSystem">
+      <UniqueIdentifier>{14908069-0e2c-48bf-93b6-56eb38d57bb7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Game\PachinkoGame\System\MainSystem">
+      <UniqueIdentifier>{4e862e0b-7c3c-4641-a1c5-7a9e5de4b127}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Game\PachinkoGame\System\SubSystem">
+      <UniqueIdentifier>{562bd58c-5fbd-4cb9-8d90-73b209933ab5}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -721,67 +799,73 @@
       <Filter>ソース ファイル\System\Model\Mv1</Filter>
     </ClCompile>
     <ClCompile Include="MiniGame_1_MenuScene.cpp">
-      <Filter>ソース ファイル\MiniGame\MiniGame1\Scene\Menu</Filter>
+      <Filter>ソース ファイル\Scene\Game\MiniGame\MiniGame1\Scene\Menu</Filter>
     </ClCompile>
     <ClCompile Include="Main.cpp">
       <Filter>ソース ファイル\Main</Filter>
     </ClCompile>
     <ClCompile Include="FighterAircraft.cpp">
-      <Filter>ソース ファイル\MiniGame\MiniGame1\Object\Player</Filter>
+      <Filter>ソース ファイル\Scene\Game\MiniGame\MiniGame1\Object\Player</Filter>
     </ClCompile>
     <ClCompile Include="MiniGame_1_StageScene.cpp">
-      <Filter>ソース ファイル\MiniGame\MiniGame1\Scene\Stage</Filter>
+      <Filter>ソース ファイル\Scene\Game\MiniGame\MiniGame1\Scene\Stage</Filter>
     </ClCompile>
     <ClCompile Include="GunSystem.cpp">
-      <Filter>ソース ファイル\MiniGame\MiniGame1\Object\Player\GunSystem</Filter>
+      <Filter>ソース ファイル\Scene\Game\MiniGame\MiniGame1\Object\Player\GunSystem</Filter>
     </ClCompile>
     <ClCompile Include="Bullet.cpp">
-      <Filter>ソース ファイル\MiniGame\MiniGame1\Object\Player\Bullet</Filter>
+      <Filter>ソース ファイル\Scene\Game\MiniGame\MiniGame1\Object\Player\Bullet</Filter>
     </ClCompile>
     <ClCompile Include="CameraModelObject.cpp">
-      <Filter>ソース ファイル\Debug\Camera\Object</Filter>
+      <Filter>ソース ファイル\Scene\Demo\Debug\Camera\Object</Filter>
     </ClCompile>
     <ClCompile Include="TransformScene.cpp">
-      <Filter>ソース ファイル\Debug\Transform.\Scene</Filter>
+      <Filter>ソース ファイル\Scene\Demo\Debug\Transform.\Scene</Filter>
     </ClCompile>
     <ClCompile Include="SkyBoxScene.cpp">
-      <Filter>ソース ファイル\Debug\SkyBox\Scene</Filter>
+      <Filter>ソース ファイル\Scene\Demo\Debug\SkyBox\Scene</Filter>
     </ClCompile>
     <ClCompile Include="ObjectPoolScene.cpp">
-      <Filter>ソース ファイル\Debug\ObjectPool\Scene</Filter>
+      <Filter>ソース ファイル\Scene\Demo\Debug\ObjectPool\Scene</Filter>
     </ClCompile>
     <ClCompile Include="CcdScene.cpp">
-      <Filter>ソース ファイル\Debug\Ccd\Scene</Filter>
+      <Filter>ソース ファイル\Scene\Demo\Debug\Ccd\Scene</Filter>
     </ClCompile>
     <ClCompile Include="CollisionScene.cpp">
-      <Filter>ソース ファイル\Debug\Collision\Scene</Filter>
+      <Filter>ソース ファイル\Scene\Demo\Debug\Collision\Scene</Filter>
     </ClCompile>
     <ClCompile Include="CameraScene.cpp">
-      <Filter>ソース ファイル\Debug\Camera\Scene</Filter>
+      <Filter>ソース ファイル\Scene\Demo\Debug\Camera\Scene</Filter>
     </ClCompile>
     <ClCompile Include="PhysicsDebugClass.cpp">
-      <Filter>ソース ファイル\Debug\Physics\Object</Filter>
+      <Filter>ソース ファイル\Scene\Demo\Debug\Physics\Object</Filter>
     </ClCompile>
     <ClCompile Include="PhysicsScene.cpp">
-      <Filter>ソース ファイル\Debug\Physics\Scene</Filter>
+      <Filter>ソース ファイル\Scene\Demo\Debug\Physics\Scene</Filter>
     </ClCompile>
     <ClCompile Include="TitleScene.cpp">
       <Filter>ソース ファイル\Main\TitleScene</Filter>
     </ClCompile>
     <ClCompile Include="Debug Class.cpp">
-      <Filter>ソース ファイル\Debug\PublicObject</Filter>
+      <Filter>ソース ファイル\Scene\Demo\Debug\PublicObject</Filter>
     </ClCompile>
     <ClCompile Include="EnemyAircraft.cpp">
-      <Filter>ソース ファイル\MiniGame\MiniGame1\Object\Enemy</Filter>
+      <Filter>ソース ファイル\Scene\Game\MiniGame\MiniGame1\Object\Enemy</Filter>
     </ClCompile>
     <ClCompile Include="HudDisplay.cpp">
-      <Filter>ソース ファイル\MiniGame\MiniGame1\UI\Hub</Filter>
-    </ClCompile>
-    <ClCompile Include="GameMenuScene.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>ソース ファイル\Scene\Game\MiniGame\MiniGame1\UI\Hub</Filter>
     </ClCompile>
     <ClCompile Include="DemoMenuScene.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>ソース ファイル\Scene\Demo</Filter>
+    </ClCompile>
+    <ClCompile Include="GameMenuScene.cpp">
+      <Filter>ソース ファイル\Scene\Game</Filter>
+    </ClCompile>
+    <ClCompile Include="PachinkoField.cpp">
+      <Filter>ソース ファイル\Game\PachinkoGame\Object\Field</Filter>
+    </ClCompile>
+    <ClCompile Include="PachinkoFieldTpl.cpp">
+      <Filter>ソース ファイル\Game\PachinkoGame\Object\Field</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -948,79 +1032,85 @@
       <Filter>ヘッダー ファイル\System\SkyBox\SkyBox</Filter>
     </ClInclude>
     <ClInclude Include="MiniGame_1_MenuScene.h">
-      <Filter>ヘッダー ファイル\MiniGame\MiniGame1\Scene\Menu</Filter>
+      <Filter>ヘッダー ファイル\Scene\Game\MiniGame\MiniGame1\Scene\Menu</Filter>
     </ClInclude>
     <ClInclude Include="FighterAircraft.h">
-      <Filter>ヘッダー ファイル\MiniGame\MiniGame1\Object\Player</Filter>
+      <Filter>ヘッダー ファイル\Scene\Game\MiniGame\MiniGame1\Object\Player</Filter>
     </ClInclude>
     <ClInclude Include="MiniGame_1_StageScene.h">
-      <Filter>ヘッダー ファイル\MiniGame\MiniGame1\Scene\Stage</Filter>
+      <Filter>ヘッダー ファイル\Scene\Game\MiniGame\MiniGame1\Scene\Stage</Filter>
     </ClInclude>
     <ClInclude Include="GunSystem.h">
-      <Filter>ヘッダー ファイル\MiniGame\MiniGame1\Object\Player\GunSystem</Filter>
+      <Filter>ヘッダー ファイル\Scene\Game\MiniGame\MiniGame1\Object\Player\GunSystem</Filter>
     </ClInclude>
     <ClInclude Include="Bullet.h">
-      <Filter>ヘッダー ファイル\MiniGame\MiniGame1\Object\Player\Bullet</Filter>
+      <Filter>ヘッダー ファイル\Scene\Game\MiniGame\MiniGame1\Object\Player\Bullet</Filter>
     </ClInclude>
     <ClInclude Include="TransformDebugClass.h">
-      <Filter>ヘッダー ファイル\Debug\Transform\Object</Filter>
+      <Filter>ヘッダー ファイル\Scene\Demo\Debug\Transform\Object</Filter>
     </ClInclude>
     <ClInclude Include="PhysicsDebugClass.h">
-      <Filter>ヘッダー ファイル\Debug\Physics\Object</Filter>
+      <Filter>ヘッダー ファイル\Scene\Demo\Debug\Physics\Object</Filter>
     </ClInclude>
     <ClInclude Include="ObjectPoolDebugClass.h">
-      <Filter>ヘッダー ファイル\Debug\ObjectPool\Object</Filter>
+      <Filter>ヘッダー ファイル\Scene\Demo\Debug\ObjectPool\Object</Filter>
     </ClInclude>
     <ClInclude Include="CollisionDebugClass.h">
-      <Filter>ヘッダー ファイル\Debug\Collision\Object</Filter>
+      <Filter>ヘッダー ファイル\Scene\Demo\Debug\Collision\Object</Filter>
     </ClInclude>
     <ClInclude Include="CameraModelObject.h">
-      <Filter>ヘッダー ファイル\Debug\Camera\Object</Filter>
+      <Filter>ヘッダー ファイル\Scene\Demo\Debug\Camera\Object</Filter>
     </ClInclude>
     <ClInclude Include="Debug Class.h">
-      <Filter>ヘッダー ファイル\Debug\PublicObject</Filter>
+      <Filter>ヘッダー ファイル\Scene\Demo\Debug\PublicObject</Filter>
     </ClInclude>
     <ClInclude Include="SkyBoxScene.h">
-      <Filter>ヘッダー ファイル\Debug\SkyBox\Scene</Filter>
+      <Filter>ヘッダー ファイル\Scene\Demo\Debug\SkyBox\Scene</Filter>
     </ClInclude>
     <ClInclude Include="CameraScene.h">
-      <Filter>ヘッダー ファイル\Debug\Camera\Scene</Filter>
+      <Filter>ヘッダー ファイル\Scene\Demo\Debug\Camera\Scene</Filter>
     </ClInclude>
     <ClInclude Include="CcdScene.h">
-      <Filter>ヘッダー ファイル\Debug\Ccd\Scene</Filter>
+      <Filter>ヘッダー ファイル\Scene\Demo\Debug\Ccd\Scene</Filter>
     </ClInclude>
     <ClInclude Include="CollisionScene.h">
-      <Filter>ヘッダー ファイル\Debug\Collision\Scene</Filter>
+      <Filter>ヘッダー ファイル\Scene\Demo\Debug\Collision\Scene</Filter>
     </ClInclude>
     <ClInclude Include="ObjectPoolScene.h">
-      <Filter>ヘッダー ファイル\Debug\ObjectPool\Scene</Filter>
+      <Filter>ヘッダー ファイル\Scene\Demo\Debug\ObjectPool\Scene</Filter>
     </ClInclude>
     <ClInclude Include="PhysicsScene.h">
-      <Filter>ヘッダー ファイル\Debug\Physics\Scene</Filter>
+      <Filter>ヘッダー ファイル\Scene\Demo\Debug\Physics\Scene</Filter>
     </ClInclude>
     <ClInclude Include="TransformScene.h">
-      <Filter>ヘッダー ファイル\Debug\Transform\Scene</Filter>
+      <Filter>ヘッダー ファイル\Scene\Demo\Debug\Transform\Scene</Filter>
     </ClInclude>
     <ClInclude Include="TitleScene.h">
       <Filter>ヘッダー ファイル\Main\Title</Filter>
     </ClInclude>
     <ClInclude Include="HudDisplay.h">
-      <Filter>ヘッダー ファイル\MiniGame\MiniGame1\UI\Hub</Filter>
+      <Filter>ヘッダー ファイル\Scene\Game\MiniGame\MiniGame1\UI\Hub</Filter>
     </ClInclude>
     <ClInclude Include="EnemyDifficulty.h">
-      <Filter>ヘッダー ファイル\MiniGame\MiniGame1\Object\Enemy\Difficulty</Filter>
+      <Filter>ヘッダー ファイル\Scene\Game\MiniGame\MiniGame1\Object\Enemy\Difficulty</Filter>
     </ClInclude>
     <ClInclude Include="EnemyAircraft.h">
-      <Filter>ヘッダー ファイル\MiniGame\MiniGame1\Object\Enemy</Filter>
+      <Filter>ヘッダー ファイル\Scene\Game\MiniGame\MiniGame1\Object\Enemy</Filter>
     </ClInclude>
     <ClInclude Include="IDamageable.h">
-      <Filter>ヘッダー ファイル\MiniGame\MiniGame1\Object\Interface</Filter>
-    </ClInclude>
-    <ClInclude Include="GameMenuScene.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>ヘッダー ファイル\Scene\Game\MiniGame\MiniGame1\Object\Interface</Filter>
     </ClInclude>
     <ClInclude Include="DemoMenuScene.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>ヘッダー ファイル\Scene\Demo</Filter>
+    </ClInclude>
+    <ClInclude Include="GameMenuScene.h">
+      <Filter>ヘッダー ファイル\Scene\Game</Filter>
+    </ClInclude>
+    <ClInclude Include="PachinkoField.h">
+      <Filter>ヘッダー ファイル\Game\PachinkoGame\Object\Field</Filter>
+    </ClInclude>
+    <ClInclude Include="PachinkoFieldTpl.h">
+      <Filter>ヘッダー ファイル\Game\PachinkoGame\Object\Field</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -85,6 +85,7 @@ private:
 	void UpdateAllShapes();		// 全コライダーの形状を更新
 	void BuildCurrentPairs();	// 現フレームの衝突ペアを構築
 	void ProcessPairEvents();	// 衝突イベント (Enter/Stay/Exit) を処理
+	bool IsColliderRegistered(Collider* c) const noexcept;	// 登録済みか確認 (dangling 検出用)
 	void ResolvePushOut(Collider* a, Collider* b);	// 接触による押し出し処理
 	AABB GetSweptAABB(Collider* collider) const;	// スウェプト AABB を計算
 

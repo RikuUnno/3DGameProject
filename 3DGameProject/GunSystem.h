@@ -2,6 +2,7 @@
 
 #include "Bullet.h"
 #include "DxLib.h"
+#include "LayerMask.h"
 #include <vector>
 #include <memory>
 #include <functional>
@@ -17,7 +18,9 @@ public:
 		int   ammoCount = 30,		// 1マガジンの装弾数
 		float reloadTime = 1.5f,	// リロード時間（秒）
 		float bulletSpeed = 120.0f, // 弾の速度（単位/秒）
-		float bulletLife = 3.0f);	// 弾の寿命（秒）
+		float bulletLife = 3.0f,	// 弾の寿命（秒）
+		int   shooterLayer = layerMask::PLAYER, // 発射者のレイヤー（命中判定の相手を決める）
+		float bulletDamage = 10.0f); // 弾のダメージ量
 
 	virtual ~GunSystem() = default;
 
@@ -40,6 +43,8 @@ public:
 	void SetReloadTime	(float sec) { _reloadTime = sec; }		// リロード時間（秒）
 	void SetBulletSpeed	(float speed) { _bulletSpeed = speed; }	// 弾の速度（単位/秒）
 	void SetBulletLife	(float sec) { _bulletLife = sec; }		// 弾の寿命（秒）
+	void SetShooterLayer(int layer) { _shooterLayer = layer; }	// 発射者のレイヤー（命中判定の相手を決める）
+	void SetBulletDamage(float dmg) { _bulletDamage = dmg; }		// 弾のダメージ量
 
 	// ゲッター
 	float GetRPM()				const { return _rpm; }			// 発射レート（発射/分）
@@ -61,6 +66,8 @@ private:
 	float _reloadTime   = 1.5f;    // リロード時間（秒）
 	float _bulletSpeed  = 120.0f;  // 弾の速度
 	float _bulletLife   = 3.0f;    // 弾の寿命（秒）
+	int   _shooterLayer = layerMask::PLAYER; // 発射者のレイヤー
+	float _bulletDamage = 10.0f;   // 弾のダメージ量
 
 	// 状態
 	int   _currentAmmo  = 30;      // 残弾数

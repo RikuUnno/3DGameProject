@@ -7,10 +7,11 @@
 #include "CapsuleCollider.h"
 #include "CompoundCollider.h"
 #include "GunSystem.h"
+#include "IDamageable.h"
 
 
 // MiniGame1のプレイヤー機体クラス
-class FighterAircraft : public GameObject
+class FighterAircraft : public GameObject, public IDamageable
 {
 public:
 	// コンストラクタ/デストラクタ
@@ -40,6 +41,16 @@ public:
 
 	PhysicsBody* GetPhysicsBody() noexcept { return &_physicsBody; }				// 物理本体の取得
 	const PhysicsBody* GetPhysicsBody() const noexcept { return &_physicsBody; }	// 物理本体の取得
+
+	// 武器システム（機銃）の取得。HUD表示など今後拡張する武器（ミサイル等）を追加する際の参照元
+	GunSystem* GetGun() noexcept { return &_gun; }
+	const GunSystem* GetGun() const noexcept { return &_gun; }
+
+	// IDamageable 実装
+	void TakeDamage(float amount, GameObject* instigator) override;	// ダメージを受ける
+	bool IsDead() const noexcept override { return _hp <= 0.0f; }		// 死亡しているか
+	float GetHp() const noexcept { return _hp; }						// 現在のHPを取得
+	float GetMaxHp() const noexcept { return _maxHp; }					// 最大HPを取得
 
 	// 外部パラメータから形状・物理値を構築
 	void ConfigureFromParams_(const VariantMap& params);	// 物理パラメータの構築
@@ -77,6 +88,10 @@ private:
 	float _throttle = 0.3f;			// 現在のスロットル（0=最低速、1=最大速）
 	float _currentSpeed = 0.0f;		// 現在の飛行速度
 	bool _registered = false;		// マネージャー登録済みか
+
+	// 体力
+	float _maxHp = 100.0f;			// 最大HP
+	float _hp = 100.0f;				// 現在HP
 
 	// 武器システム
 	GunSystem _gun;                 // 機銃システム（デフォルト 600rpm / 30発 / リロード1.5秒）

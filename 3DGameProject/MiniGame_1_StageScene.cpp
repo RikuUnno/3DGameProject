@@ -9,6 +9,7 @@
 #include "SceneTransition.h"
 #include "CameraManager.h"
 #include "MiniGame_1_MenuScene.h"
+#include "Info.h"
 
 
 namespace {
@@ -30,10 +31,26 @@ namespace {
 
 void MiniGame_1_StageScene::Start()
 {
+    _returningToMenu = false;
+
     // 戦闘機の生成・配置
-    _aircraft = std::make_unique<FighterAircraft>();
+    _aircraft = std::make_shared<FighterAircraft>();
     _aircraft->transform.SetLocalPosition(VGet(0.0f, 5.0f, 0.0f));
     _aircraft->Start();
+
+    // 敵機の生成・配置（プレイヤーの前方に複数配置）
+    const VECTOR enemyPositions[] = {
+        VGet( 20.0f, 5.0f,  80.0f),
+        VGet(-25.0f, 8.0f, 120.0f),
+        VGet(  5.0f, 3.0f, 160.0f),
+    };
+    for (const auto& pos : enemyPositions) {
+        auto enemy = std::make_unique<EnemyAircraft>(_difficulty);
+        enemy->transform.SetLocalPosition(pos);
+        enemy->SetTarget(_aircraft);   // shared_ptr を渡す（内部で weak_ptr に変換される）
+        enemy->Start();
+        _enemies.push_back(std::move(enemy));
+    }
 
     // カメラ生成
     const int sceneId = SceneManager::Instance().CurrentSceneId();
@@ -47,26 +64,78 @@ void MiniGame_1_StageScene::Start()
 void MiniGame_1_StageScene::Update(float dtSec)
 {
 	// 機体更新
-    if (_aircraft) {
-        _aircraft->Update(dtSec);
-    }
+	if (_aircraft) {
+		_aircraft->Update(dtSec);
+	}
+
+	// 敵機更新
+	for (auto& enemy : _enemies) {
+		if (enemy) enemy->Update(dtSec);
+	}
+
+	// 敵機同士の重なり回避（簡易分離処理）
+	for (size_t i = 0; i < _enemies.size(); ++i) {
+		auto* a = _enemies[i].get();
+		if (!a || a->IsDead()) continue;
+		for (size_t j = i + 1; j < _enemies.size(); ++j) {
+			auto* b = _enemies[j].get();
+			if (!b || b->IsDead()) continue;
+
+			const VECTOR posA = a->transform.WorldPosition();
+			const VECTOR posB = b->transform.WorldPosition();
+			VECTOR diff = VSub(posB, posA);
+			const float minDist = (a->GetRadius() + b->GetRadius()) * 3.0f; // 機体サイズに応じた最小離隔距離
+			float dist = VSize(diff);
+			if (dist < minDist) {
+				VECTOR pushDir;
+				if (dist > 1e-4f) {
+					pushDir = VScale(diff, 1.0f / dist);
+				} else {
+					// 完全に重なっている場合はランダム性のある軸にずらす
+					pushDir = VGet(1.0f, 0.0f, 0.0f);
+					dist = 0.0f;
+				}
+				const float overlap = (minDist - dist) * 0.5f;
+				a->transform.TranslateWorld(VScale(pushDir, -overlap));
+				b->transform.TranslateWorld(VScale(pushDir,  overlap));
+			}
+		}
+	}
 
 	// 三人称カメラ更新
-    UpdateThirdPersonCamera_(dtSec);
+	UpdateThirdPersonCamera_(dtSec);
 
 	// --- Scene の更新 ---
 
-    // Esc でメニューへ戻る
-    if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_ESCAPE)) {
-        if (_aircraft) { _aircraft->End(); }
+	// Esc でメニューへ戻る
+	if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_ESCAPE)) {
+		ReturnToMenu_();
+		return;
+	}
 
-        SceneTransition::Params p;
-        p.mode           = SceneTransition::Mode::MaskImage;
-        p.durationSec    = 0.6;
-        p.maskGraphPath  = "Data/Transition/mask.png";
-        p.pixelShaderPath = "Data/Transition/mask_transition.pso";
-        SceneTransition::Instance().Start(std::make_unique<MiniGame_1_MenuScene>(), p, 0.5f);
-    }
+	// プレイヤーの体力が尽きたらメニュー画面へ戻る
+	if (!_returningToMenu && _aircraft && _aircraft->IsDead()) {
+		ReturnToMenu_();
+	}
+}
+
+// メニューシーンへ戻る（Esc操作 / 体力ゼロの両方から呼ばれる共通処理）
+void MiniGame_1_StageScene::ReturnToMenu_()
+{
+	if (_returningToMenu) return;
+	_returningToMenu = true;
+
+	if (_aircraft) { _aircraft->End(); }
+	for (auto& enemy : _enemies) {
+		if (enemy) enemy->End();
+	}
+
+	SceneTransition::Params p;
+	p.mode           = SceneTransition::Mode::MaskImage;
+	p.durationSec    = 0.6;
+	p.maskGraphPath  = "Data/Transition/mask.png";
+	p.pixelShaderPath = "Data/Transition/mask_transition.pso";
+	SceneTransition::Instance().Start(std::make_unique<MiniGame_1_MenuScene>(), p, 0.5f);
 }
 
 void MiniGame_1_StageScene::UpdateThirdPersonCamera_(float dtSec)
@@ -98,7 +167,7 @@ void MiniGame_1_StageScene::UpdateThirdPersonCamera_(float dtSec)
         // ヨー角追従
         const float targetYaw = std::atan2f(fwd.x, fwd.z);
         float diffYaw = targetYaw - _camYaw;
-        while (diffYaw >  DX_PI_F) diffYaw -= 2.0f * DX_PI_F;
+        while (diffYaw >   DX_PI_F) diffYaw -= 2.0f * DX_PI_F;
         while (diffYaw < -DX_PI_F) diffYaw += 2.0f * DX_PI_F;
 
         // ピッチ角追従（機体の前方ベクトルのY成分から算出）
@@ -141,6 +210,10 @@ void MiniGame_1_StageScene::End()
         _aircraft->End();
         _aircraft.reset();
     }
+    for (auto& enemy : _enemies) {
+        if (enemy) enemy->End();
+    }
+    _enemies.clear();
 }
 
 void MiniGame_1_StageScene::Draw()
@@ -152,10 +225,24 @@ void MiniGame_1_StageScene::Draw()
         _aircraft->Draw();
     }
 
+    for (auto& enemy : _enemies) {
+        if (enemy) enemy->Draw();
+    }
+
     DrawString(10, 10, "MiniGame_1 - 戦闘機飛行", GetColor(255, 255, 120));
     DrawString(10, 30, "W/S: ピッチ  A/D: ヨー  Q/E: ロール", GetColor(255, 255, 255));
     DrawString(10, 50, "Space: 加速  LShift: 減速", GetColor(255, 255, 255));
     DrawString(10, 70, "右クリック+ドラッグ: カメラ回転  ホイール: 距離調整", GetColor(200, 200, 255));
     DrawString(10, 90, "Esc: メニューへ戻る", GetColor(180, 255, 180));
+
+    // 画面右下のステータスHUD（体力・弾数。今後ミサイル等を追加する場合は AddResource を追加するだけでよい）
+    if (_aircraft) {
+        _hud.Clear();
+        _hud.AddResource("体力", _aircraft->GetHp(), _aircraft->GetMaxHp(), false);
+        if (const GunSystem* gun = _aircraft->GetGun()) {
+            _hud.AddResource("球数", static_cast<float>(gun->GetCurrentAmmo()), static_cast<float>(gun->GetMaxAmmo()), true);
+        }
+        _hud.Draw(WINDOW_WIDTH, WINDOW_HEIGHT);
+    }
 }
 

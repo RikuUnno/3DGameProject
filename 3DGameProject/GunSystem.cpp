@@ -6,13 +6,16 @@
 
 // コンストラクタ
 GunSystem::GunSystem(float rpm, int ammoCount, float reloadTime,
-					 float bulletSpeed, float bulletLife)
+					 float bulletSpeed, float bulletLife,
+					 int shooterLayer, float bulletDamage)
 	: _rpm(rpm)
 	, _maxAmmo(ammoCount)
 	, _currentAmmo(ammoCount)
 	, _reloadTime(reloadTime)
 	, _bulletSpeed(bulletSpeed)
 	, _bulletLife(bulletLife)
+	, _shooterLayer(shooterLayer)
+	, _bulletDamage(bulletDamage)
 	, _fireTimer(0.0f)
 	, _reloading(false)
 	, _reloadTimer(0.0f)
@@ -80,7 +83,7 @@ float GunSystem::GetReloadProgress() const
 void GunSystem::Fire_(const VECTOR& muzzlePos, const VECTOR& muzzleDir)
 {
 	auto bullet = std::make_unique<Bullet>();
-	bullet->Fire(muzzlePos, muzzleDir, _bulletSpeed, _bulletLife);
+	bullet->Fire(muzzlePos, muzzleDir, _bulletSpeed, _bulletLife, _shooterLayer, _bulletDamage);
 	_bullets.push_back(std::move(bullet));
 }
 

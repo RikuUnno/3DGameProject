@@ -44,14 +44,15 @@ FighterAircraft::FighterAircraft() {
 	compound->layer = layerMask::PLAYER;            // コライダーのレイヤーをプレイヤーに設定
 	compound->mask  = mask::ALL;                    // コライダーのマスクをすべてのレイヤーに設定
 	compound->isTrigger = false;                    // コライダーをトリガーではなく実体として設定
+	compound->useSceneFilter = false;               // 本クラスは ObjectManager::Spawn を介さず直接生成されるため、_ownerSceneId によるシーンフィルタを無効化
 	compound->sendEventsToOwner = true;             // イベントを所有者に送信
 	compound->bubbleEventsToParentOwner = false;    // イベントを親の所有者にバブルしない
 
 	// 胴体ボックスコライダー（長方形、機体の中心に配置）
 	auto body = std::make_unique<BoxCollider>();
 	body->owner = this;
-	body->layer = layerMask::PLAYER;
-	body->mask  = mask::ALL;
+	body->layer = layerMask::PLAYER;	// レイヤーをプレイヤーに設定
+	body->mask = mask::ALL;				// マスクをすべてのレイヤーに設定
 	body->_box.center     = VGet(0.0f, 0.0f, 0.0f);      // 機体中心
 	body->_box.halfExtents = VGet(_radius, _radius * 0.6f, _height * 0.f); // 幅・高さ・前後長
 	body->_box.axisX = VGet(1, 0, 0);
@@ -175,6 +176,12 @@ BoxCollider* FighterAircraft::GetTailVerticalCollider() const noexcept {
 	return _tailVerticalCollider;
 }
 
+// ダメージを受ける
+void FighterAircraft::TakeDamage(float amount, GameObject* /*instigator*/) {
+	if (IsDead()) return;
+	_hp = (std::max)(0.0f, _hp - amount);
+}
+
 // 物理本体・コライダーの登録
 void FighterAircraft::Start() {
     SetActive(true);
@@ -291,9 +298,10 @@ void FighterAircraft::OnAcquire(const VariantMap& params) {
     transform.SetLocalPosition(pos);
     transform.SetLocalRotation(Quaternion::Identity());
     transform.SetLocalScale(VGet(1.0f, 1.0f, 1.0f));
-    _throttle     = 0.3f;
-    _currentSpeed = Lerp(_minSpeed, _maxSpeed, _throttle);
-    _physicsBody._velocity        = VGet(0.0f, 0.0f, 0.0f);
+	_throttle     = 0.3f;
+	_currentSpeed = Lerp(_minSpeed, _maxSpeed, _throttle);
+	_hp           = _maxHp;
+	_physicsBody._velocity        = VGet(0.0f, 0.0f, 0.0f);
     _physicsBody._angularVelocity = VGet(0.0f, 0.0f, 0.0f);
     _physicsBody.WakeUp();
 

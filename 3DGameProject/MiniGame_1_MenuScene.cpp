@@ -1,7 +1,7 @@
 #include "MiniGame_1_MenuScene.h"
 #include "MiniGame_1_MenuScene.h"
 #include "MiniGame_1_StageScene.h"
-#include "TitleScene.h"
+#include "GameMenuScene.h"
 #include "SceneTransition.h"
 #include "KeyInput.h"
 #include "DxLib.h"
@@ -45,23 +45,23 @@ void MiniGame_1_MenuScene::Update(float dtSec)
 			// ゲームスタート → StageScene へ遷移
 			StartTransition(std::make_unique<MiniGame_1_StageScene>());
 		} else {
-			// 戻る → TitleScene へ遷移
-				StartTransition(std::make_unique<TitleScene>());
+			// 戻る → GameMenuScene へ遷移
+				StartTransition(std::make_unique<GameMenuScene>());
 		}
 	}
 
 	// Esc でタイトルへ戻る
 	if (key.IsKeyInputTrigger(KEY_INPUT_ESCAPE)) {
 		_decided = true;
-		StartTransition(std::make_unique<TitleScene>());
+		StartTransition(std::make_unique<GameMenuScene>());
 	}
 }
 
 void MiniGame_1_MenuScene::Draw()
 {
 	// タイトル
-	DrawString(200, 180, "--- MiniGame 1 ---", GetColor(255, 255, 120));
-	DrawString(200, 210, "  戦闘機飛行ゲーム", GetColor(200, 200, 200));
+	DrawString(200, 100, "--- MiniGame 1 ---", GetColor(255, 255, 120));
+	DrawString(200, 130, "  戦闘機飛行ゲーム", GetColor(200, 200, 200));
 
 	// 項目 0: ゲームスタート
 	const unsigned int colStart = (_selectedIndex == 0)

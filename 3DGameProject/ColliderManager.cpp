@@ -805,22 +805,45 @@ void ColliderManager::ProcessPairEvents() {
   #ifdef _DEBUG
 	auto _s = PerformanceMonitor::Instance().Scope("Collider.ProcessPairEvents");
 	#endif
+	// コールバック内で GameObject が破棄されると UnregisterCollider() から
+	// _currPairs / _prevPairs が変更され、走査中のイテレータが無効化される。
+	// そのため、配送内容を先に確定させてからイベントを送る。
+	std::vector<PairKey> enterPairs, stayPairs, exitPairs;
+	enterPairs.reserve(_currPairs.size());
+	stayPairs.reserve(_currPairs.size());
+	exitPairs.reserve(_prevPairs.size());
+
 	for (const auto& k : _currPairs) {
-		if (_prevPairs.contains(k)) {
-			DispatchStay(k.a, k.b);
-		}
-		else {
-			DispatchEnter(k.a, k.b);
-		}
+		if (_prevPairs.contains(k)) stayPairs.push_back(k);
+		else                        enterPairs.push_back(k);
 	}
 
 	for (const auto& k : _prevPairs) {
-		if (!_currPairs.contains(k)) {
-			DispatchExit(k.a, k.b);
-		}
+		if (!_currPairs.contains(k)) exitPairs.push_back(k);
 	}
 
 	_prevPairs = _currPairs;
+
+	// 配送中に解除されたコライダーは dangling の可能性があるためスキップする。
+	auto dispatchAll = [this](const std::vector<PairKey>& pairs,
+		void (ColliderManager::* fn)(Collider*, Collider*)) {
+		for (const auto& k : pairs) {
+			if (IsShuttingDown()) return;
+			if (!IsColliderRegistered(k.a) || !IsColliderRegistered(k.b)) continue;
+			(this->*fn)(k.a, k.b);
+		}
+	};
+
+	dispatchAll(stayPairs, &ColliderManager::DispatchStay);
+	dispatchAll(enterPairs, &ColliderManager::DispatchEnter);
+	dispatchAll(exitPairs, &ColliderManager::DispatchExit);
+}
+
+// コライダーが現在も管理対象に含まれているか。
+bool ColliderManager::IsColliderRegistered(Collider* c) const noexcept {
+	if (!c) return false;
+	std::lock_guard lk(_mtx);
+	return std::find(_colliders.begin(), _colliders.end(), c) != _colliders.end();
 }
 
 // 詳細判定一式。

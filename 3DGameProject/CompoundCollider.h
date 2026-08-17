@@ -6,15 +6,14 @@
 #include <algorithm>
 
 // CompoundCollider
-// - Composite collider that holds multiple child colliders.
-// - Maintains a simple binary BVH for O(log n) broad-phase culling of children.
-// - Narrow-phase dispatches to each overlapping child individually.
-// - Children share the compound's owner and transform.
+// 複合コライダー（複数の子Colliderをまとめて1つのColliderとして扱う）
+// - 子Colliderのイベントは owner に送るか、CompoundCollider自身で受け取るかを選択可能
+// - 子Colliderのイベントを owner の親GameObject にも伝えるかを選択可能
 class CompoundCollider : public Collider {
 public:
     CompoundCollider() = default;
 
-    // Add a child collider. Ownership is transferred.
+	// 子Colliderを追加する（所有者はCompoundColliderのownerに設定される）
     void AddChild(std::unique_ptr<Collider> child) {
         if (child) {
             child->owner = this->owner;
@@ -24,19 +23,21 @@ public:
         RebuildBVH();
     }
 
+	// 子Colliderを削除する（所有者はnullptrに設定される）
     size_t ChildCount() const noexcept { return _children.size(); }
+	// 子Colliderを取得する（インデックスが範囲外の場合はnullptrを返す）
     Collider* GetChild(size_t index) const noexcept {
         return (index < _children.size()) ? _children[index].get() : nullptr;
     }
 
+	// 子Colliderの一覧を取得する（const参照）
     const std::vector<std::unique_ptr<Collider>>& Children() const noexcept { return _children; }
 
-    // Query children overlapping a given AABB (for broad-phase culling).
-    // Calls callback(childIndex) for each overlapping child.
+	// QueryBVH: 再帰的にBVHを探索して、queryと重なる子Colliderのインデックスをコールバックする
     template<typename Func>
     void QueryOverlapping(const AABB& query, Func&& callback) const {
         if (_bvhNodes.empty()) {
-            // Fallback: test all children
+			// BVHが構築されていない場合は全ての子Colliderをチェック
             for (size_t i = 0; i < _children.size(); ++i) {
                 callback(i);
             }
@@ -45,11 +46,12 @@ public:
         QueryBVH(0, query, callback);
     }
 
-    // --- Collider overrides ---
+	// QueryBVH: 再帰的にBVHを探索して、queryと重なる子Colliderのインデックスをコールバックする
     Kind GetKind() const override { return Kind::Compound; }
     const AABB& GetAABB() const override { return _aabb; }
     VECTOR GetCenter() const override { return _aabb.center; }
 
+	// UpdateShape: 子ColliderのAABBを集約してCompoundColliderのAABBを更新
     void UpdateShape() override {
         for (auto& child : _children) {
             if (child) {
@@ -58,17 +60,20 @@ public:
             }
         }
         RebuildAABB();
-        // BVH is rebuilt only on AddChild; UpdateShape just updates the AABB
+		// RebuildAABB: 子ColliderのAABBを集約してCompoundColliderのAABBを更新
+		RebuildBVH();
     }
 
+	// SetAABB: CompoundColliderのAABBを再構築
     void SetAABB() override { RebuildAABB(); }
 
+	// デバッグ描画
     void DrawDebug() override {
         for (auto& child : _children) {
             if (child) child->DrawDebug();
         }
     }
-
+	// デバッグ描画（AABBのみ）
     void DrawDebugAABB() override {
         for (auto& child : _children) {
             if (child) child->DrawDebugAABB();
@@ -76,14 +81,15 @@ public:
     }
 
 private:
-    // BVH node (binary tree stored in a flat array)
+	// 子Colliderの所有権を保持する
     struct BVHNode {
-        AABB aabb{};
-        int leftOrChild = -1;   // If leaf: index into _children. If branch: left child node index.
-        int right = -1;         // Branch only: right child node index. -1 for leaf.
-        bool isLeaf = false;
+		AABB aabb{};            // このノードのAABB
+		int leftOrChild = -1;   // 左の子ノードのインデックス（葉ノードの場合は子Colliderのインデックス）
+		int right = -1;         // 右の子ノードのインデックス（葉ノードの場合は-1）
+		bool isLeaf = false;    // 葉ノードかどうか
     };
 
+	// 子Colliderの所有権を保持する
     void RebuildAABB() {
         if (_children.empty()) {
             _aabb = {};
@@ -106,6 +112,7 @@ private:
         _aabb.center = VScale(VAdd(mn, mx), 0.5f);
     }
 
+	// BVH構築（子ColliderのAABBを使ってBVHを構築）
     void RebuildBVH() {
         _bvhNodes.clear();
         if (_children.size() <= 2) return; // Not worth building BVH for <=2 children
@@ -115,9 +122,9 @@ private:
         BuildBVHNode(indices, 0, static_cast<int>(_children.size()));
     }
 
+	// BuildBVHNode: 再帰的にBVHノードを構築する
     int BuildBVHNode(std::vector<int>& indices, int begin, int end) {
         BVHNode node{};
-        // Compute AABB for this range
         VECTOR mn = VGet(1e6f, 1e6f, 1e6f);
         VECTOR mx = VGet(-1e6f, -1e6f, -1e6f);
         for (int i = begin; i < end; ++i) {
@@ -142,7 +149,6 @@ private:
             return idx;
         }
 
-        // Split along longest axis at midpoint
         const float dx = mx.x - mn.x;
         const float dy = mx.y - mn.y;
         const float dz = mx.z - mn.z;
@@ -161,9 +167,8 @@ private:
         std::nth_element(indices.begin() + begin, indices.begin() + mid, indices.begin() + end,
             [&](int a, int b) { return GetAxisCenter(a) < GetAxisCenter(b); });
 
-        // Reserve space for this node
         int thisIdx = static_cast<int>(_bvhNodes.size());
-        _bvhNodes.push_back(node); // placeholder
+        _bvhNodes.push_back(node); //
 
         int leftIdx = BuildBVHNode(indices, begin, mid);
         int rightIdx = BuildBVHNode(indices, mid, end);
@@ -174,12 +179,14 @@ private:
         return thisIdx;
     }
 
+	// AABB同士の重なり判定
     static bool AABBOverlap(const AABB& a, const AABB& b) noexcept {
         return (a.min.x <= b.max.x && a.max.x >= b.min.x) &&
                (a.min.y <= b.max.y && a.max.y >= b.min.y) &&
                (a.min.z <= b.max.z && a.max.z >= b.min.z);
     }
 
+	// QueryBVH: 再帰的にBVHを探索して、queryと重なる子Colliderのインデックスをコールバックする
     template<typename Func>
     void QueryBVH(int nodeIdx, const AABB& query, Func&& callback) const {
         if (nodeIdx < 0 || nodeIdx >= static_cast<int>(_bvhNodes.size())) return;
@@ -193,7 +200,12 @@ private:
         if (node.right >= 0) QueryBVH(node.right, query, callback);
     }
 
-    std::vector<std::unique_ptr<Collider>> _children;
-    std::vector<BVHNode> _bvhNodes;
-    AABB _aabb{};
+	// 子Colliderの所有権を保持する
+	std::vector<std::unique_ptr<Collider>> _children;   // 子Colliderの所有権を保持する
+	std::vector<BVHNode> _bvhNodes;                     // BVHノードの配列
+	AABB _aabb{};                                       // CompoundColliderのAABB
 };
+
+// ※BVHとは、Bounding Volume Hierarchyの略で、複数のオブジェクトを階層的にまとめたバウンディングボリュームの構造です。
+// これにより、衝突判定の際に効率的に候補を絞り込むことができます。
+// ※BVH構築は、子Colliderが少ない場合（2個以下）は行わず、全ての子Colliderを線形探索するようにしています。

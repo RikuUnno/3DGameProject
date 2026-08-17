@@ -19,7 +19,7 @@
 #include "CameraTags.h"
 #include "DxLib.h"
 #include "KeyInput.h"
-#include "TitleScene.h"
+#include "DemoMenuScene.h"
 #include "ObjectFactory.h"
 #include "ObjectManager.h"
 #include "PhysicsDebugClass.h"
@@ -444,13 +444,13 @@ void PhysicsScene::Update(float dtSec) {	// 毎フレームの更新処理
 		SceneManager::Instance().RequestChange(std::make_unique<PhysicsScene>());
 	}
 
-	if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_T)) {
+	if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_ESCAPE)) {
 		SceneTransition::Params params;
 		params.mode = SceneTransition::Mode::MaskImage;
 		params.durationSec = 0.4;
 		params.maskGraphPath = "Data/Transition/mask.png";
 		params.pixelShaderPath = "Data/Transition/mask_transition.pso";
-		SceneTransition::Instance().Start(std::make_unique<TitleScene>(), params, 0.5f);
+		SceneTransition::Instance().Start(std::make_unique<DemoMenuScene>(), params, 0.5f);
 	}
 }
 
@@ -476,7 +476,7 @@ void PhysicsScene::Draw() {	// 描画処理
     const unsigned int red    = GetColor(255, 180, 180);	// 赤色（UIテキスト用）
     const unsigned int green  = GetColor(180, 255, 180);	// 緑色（UIテキスト用）
 
-	DrawString(10, 10, "PhysicsScene  R: リセット  T: タイトル", white);	// タイトルと基本操作説明
+	DrawString(10, 10, "PhysicsScene  R: リセット  ESC: メニュー", white);	// タイトルと基本操作説明
 	DrawString(10, 30, "右クリック + WASDQE : フリーカメラ", blue);			// カメラ操作説明
     DrawString(10, 50, "1: Box  2: Sphere  3: Capsule", yellow);			// オブジェクト生成説明
 	DrawString(10, 70, "F : 球を発射", red);								// 高速弾発射説明

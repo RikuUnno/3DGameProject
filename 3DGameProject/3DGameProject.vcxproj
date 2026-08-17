@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -147,14 +147,22 @@
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="CameraController.cpp" />
     <ClCompile Include="CameraManager.cpp" />
+    <ClCompile Include="CameraModelObject.cpp" />
+    <ClCompile Include="CameraScene.cpp" />
     <ClCompile Include="CapsuleCollider.cpp" />
+    <ClCompile Include="CcdScene.cpp" />
     <ClCompile Include="Collider.cpp" />
     <ClCompile Include="ColliderManager.cpp" />
     <ClCompile Include="ColliderManagerThreadSafe.cpp" />
+    <ClCompile Include="CollisionScene.cpp" />
     <ClCompile Include="Debug Class.cpp" />
+    <ClCompile Include="DemoMenuScene.cpp" />
     <ClCompile Include="DynamicAABBTree.cpp" />
+    <ClCompile Include="EnemyAircraft.cpp" />
     <ClCompile Include="FighterAircraft.cpp" />
+    <ClCompile Include="GameMenuScene.cpp" />
     <ClCompile Include="GunSystem.cpp" />
+    <ClCompile Include="HudDisplay.cpp" />
     <ClCompile Include="HalfPlaneCollider.cpp" />
     <ClCompile Include="Math\Quaternion.cpp" />
     <ClCompile Include="MiniGame_1_MenuScene.cpp" />
@@ -167,6 +175,7 @@
     <ClCompile Include="MeshCollider.cpp" />
     <ClCompile Include="ObjectManager.cpp" />
     <ClCompile Include="ObjectPool.cpp" />
+    <ClCompile Include="ObjectPoolScene.cpp" />
     <ClCompile Include="PerformanceMonitor.cpp" />
     <ClCompile Include="PhysicsBody.cpp" />
     <ClCompile Include="PhysicsCcd.cpp" />
@@ -184,11 +193,13 @@
     <ClCompile Include="Se.cpp" />
     <ClCompile Include="SeManager.cpp" />
     <ClCompile Include="SkyBox.cpp" />
+    <ClCompile Include="SkyBoxScene.cpp" />
     <ClCompile Include="SphereCollider.cpp" />
     <ClCompile Include="MiniGame_1_StageScene.cpp" />
     <ClCompile Include="Time.cpp" />
     <ClCompile Include="TitleScene.cpp" />
     <ClCompile Include="Transform.cpp" />
+    <ClCompile Include="TransformScene.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="3DGameProject\Assert.h" />
@@ -200,8 +211,8 @@
     <ClInclude Include="Bullet.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="CameraController.h" />
-    <ClInclude Include="CameraDebugClass.h" />
     <ClInclude Include="CameraManager.h" />
+    <ClInclude Include="CameraModelObject.h" />
     <ClInclude Include="CameraPool.h" />
     <ClInclude Include="CameraScene.h" />
     <ClInclude Include="CameraTags.h" />
@@ -214,10 +225,16 @@
     <ClInclude Include="CollisionScene.h" />
     <ClInclude Include="CompoundCollider.h" />
     <ClInclude Include="Debug Class.h" />
+    <ClInclude Include="DemoMenuScene.h" />
     <ClInclude Include="DynamicAABBTree.h" />
+    <ClInclude Include="EnemyAircraft.h" />
+    <ClInclude Include="EnemyDifficulty.h" />
     <ClInclude Include="FighterAircraft.h" />
+    <ClInclude Include="GameMenuScene.h" />
     <ClInclude Include="GunSystem.h" />
+    <ClInclude Include="HudDisplay.h" />
     <ClInclude Include="HalfPlaneCollider.h" />
+    <ClInclude Include="IDamageable.h" />
     <ClInclude Include="IModel.h" />
     <ClInclude Include="MeshCollider.h" />
     <ClInclude Include="LayerMask.h" />

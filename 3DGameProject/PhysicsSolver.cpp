@@ -17,14 +17,15 @@ void PhysicsManager::SolveIsland(const PhysicsIsland& island, float /*stepDt*/) 
         {
             const float vn = RelNormalVelocity(sc.bodyA, sc.bodyB, sc.rA, sc.rB, sc.normal);
             float bias = 0.0f;
+            const bool allowRestitution = (sc.penetration <= (kSlop * 1.5f));
             if (!_splitImpulseEnabled) {
                 bias = sc.normalBias;
-            } else if (vn < -kRestitutionThreshold) {
+            } else if (vn < -kRestitutionThreshold && allowRestitution) {
                 bias = sc.restitution * (-vn);
             }
             if (sc.speculative) {
                 const float speculativeBias = (std::min)(sc.normalBias, (std::max)(-vn, 0.0f));
-                if (vn < -kRestitutionThreshold) {
+                if (vn < -kRestitutionThreshold && allowRestitution) {
                     bias = (std::max)(speculativeBias, sc.restitution * (-vn));
                 } else {
                     bias = speculativeBias;
@@ -136,8 +137,28 @@ void PhysicsManager::SolveRollingFriction(SolverContact& sc) {
     const VECTOR wSpinVec = VScale(sc.normal, wSpin);
     const VECTOR wRollVec = VSub(wRel, wSpinVec);
 
-    applyResistance(wSpinVec, kRollingFrictionFactor   * sc.friction * lever * sc.normalLambda);
-    applyResistance(wRollVec, kRollingResistanceFactor * sc.friction * lever * sc.normalLambda);
+    // --- 空転検出 ---
+    // 正常な転がりでは「接触点の周速 (w × lever)」と「並進速度」がほぼ一致する
+    // (v ? w*r)。壁とスロープの間に挟まれた球は並進できないのに接触摩擦から
+    // トルクを受け続け、転がり成分の角速度だけが蓄積して回転が加速する
+    // (エネルギー源は解消されない貫通を押し戻す法線インパルス+摩擦の発振)。
+    // 並進が周速に対して極端に小さい場合は「転がり」ではなく「空転」とみなし、
+    // 転がり成分にもスピン成分と同じ強い減衰を適用して暴走を止める。
+    // 坂を転がる球は v ? w*r で ratio ? 1 なので影響を受けない。
+    float rollFactor = kRollingResistanceFactor;
+    {
+        const VECTOR vA = sc.bodyA ? sc.bodyA->_velocity : VGet(0,0,0);
+        const VECTOR vB = sc.bodyB ? sc.bodyB->_velocity : VGet(0,0,0);
+        const float linSpeedSq  = LenSq(VSub(vB, vA));                 // 並進速度^2
+        const float rollSurfSq  = LenSq(wRollVec) * lever * lever;     // 周速^2
+        // 周速が有意 (>0.2 m/s) なのに並進がその 1/4 未満なら空転。
+        if (rollSurfSq > 0.04f && linSpeedSq < rollSurfSq * 0.0625f) {
+            rollFactor = kRollingFrictionFactor;
+        }
+    }
+
+    applyResistance(wSpinVec, kRollingFrictionFactor * sc.friction * lever * sc.normalLambda);
+    applyResistance(wRollVec, rollFactor             * sc.friction * lever * sc.normalLambda);
 }
 
 // SolveAllIslands - すべてのアイランドの制約を反復的に解く
@@ -207,11 +228,12 @@ void PhysicsManager::SolveAllIslands(float stepDt) {
         {
             const float vn = RelNormalVelocity(sc.bodyA, sc.bodyB, sc.rA, sc.rB, sc.normal);
             float bias = 0.0f;
+            const bool allowRestitution = (sc.penetration <= (kSlop * 1.5f));
             if (!_splitImpulseEnabled) bias = sc.normalBias;
-            else if (vn < -kRestitutionThreshold) bias = sc.restitution * (-vn);
+            else if (vn < -kRestitutionThreshold && allowRestitution) bias = sc.restitution * (-vn);
             if (sc.speculative) {
                 const float speculativeBias = (std::min)(sc.normalBias, (std::max)(-vn, 0.0f));
-                if (vn < -kRestitutionThreshold) bias = (std::max)(speculativeBias, sc.restitution * (-vn));
+                if (vn < -kRestitutionThreshold && allowRestitution) bias = (std::max)(speculativeBias, sc.restitution * (-vn));
                 else bias = speculativeBias;
             }
             float dl = (-vn + bias) / sc.effectiveInvMassN;
@@ -421,7 +443,9 @@ void PhysicsManager::SplitImpulseCorrection(float /*stepDt*/) {
                 const float oldL = sc.splitNormalLambda;
                 sc.splitNormalLambda = (std::max)(oldL + dl, 0.0f);
                 dl = sc.splitNormalLambda - oldL;
-                if (std::fabs(dl) < 1e-8f) return;
+                // return にするとアイランド内の残り接触の位置修正まで
+                // 打ち切られ、めり込みが解消されず球が面に沈み込む。
+                if (std::fabs(dl) < 1e-8f) continue;
 
                 const VECTOR impulse = VScale(sc.normal, dl);
                 if (idxA < bodyCount && sc.invA > 0.0f)
@@ -458,10 +482,23 @@ void PhysicsManager::SplitImpulseCorrection(float /*stepDt*/) {
 void PhysicsManager::PropagateIslandSleep() {
     // (a) 接触伝搬による wake 伝播。
     const size_t contactCount = _solverContacts.size();
+    // めり込みが深いまま残っている接触のボディはスリープさせない。
+    // スリープすると SolveAllIslands / SplitImpulseCorrection /
+    // PositionalCorrection がすべてスキップされ、めり込みが永久に
+    // 固定化される (速度エネルギーだけ見る sleep 判定の穴)。
+    // kSlop の 4 倍を閾値とし、正常に安定した接触 (pen <= kSlop 付近)
+    // のスタックは従来どおりスリープできるようにする。
+    const float kWakePenetration = kSlop * 4.0f;
     for (size_t i = 0; i < contactCount; ++i) {
         auto& sc = _solverContacts[i];
         PhysicsBody* a = sc.bodyA;
         PhysicsBody* b = sc.bodyB;
+
+        if (sc.penetration > kWakePenetration && !sc.speculative) {
+            if (a && a->IsDynamic()) a->WakeUp();
+            if (b && b->IsDynamic()) b->WakeUp();
+        }
+
         if (!a || !b) continue;
         const bool aSleep = a->_isSleeping;
         const bool bSleep = b->_isSleeping;

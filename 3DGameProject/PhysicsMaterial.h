@@ -155,6 +155,19 @@ struct PhysicsMaterial {
         return m;
     }
 
+    // つるつる壁: 摩擦ゼロ
+    static PhysicsMaterial Frictionless() noexcept {
+        PhysicsMaterial m;
+        m.friction = 0.0f;
+        m.staticFriction = 0.0f;
+        m.restitution = 0.0f;
+        m.density = 0.0f;
+        m.linearDamping = 0.0f;
+        m.angularDamping = 0.0f;
+        m.frictionCombine = CombineMode::Minimum;
+        return m;
+    }
+
     // 名前からプリセットを取得（不明な名前は Default を返す）
     static PhysicsMaterial FromName(const char* name) noexcept {
         if (!name) return Default();
@@ -175,6 +188,7 @@ struct PhysicsMaterial {
         if (eq(name, "ice"))     return Ice();
         if (eq(name, "stone"))   return Stone();
         if (eq(name, "bouncy"))  return Bouncy();
+        if (eq(name, "frictionless")) return Frictionless();
         if (eq(name, "default")) return Default();
         return Default();
     }

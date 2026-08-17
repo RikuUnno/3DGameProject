@@ -253,13 +253,17 @@ void PhysicsManager::StepSimulation(float stepDt) {
 #endif
 	}
 
-	_prevSolverContacts.swap(_solverContacts);
-
+	// PropagateIslandSleep は今フレームの接触 (_solverContacts) を参照して
+	// wake/sleep を決めるため、swap より前に呼ぶ。swap 後に呼ぶと
+	// 前フレームの古い接触で判定してしまい、めり込みが残っている接触を
+	// 見逃してスリープ固定化する。
 #ifdef _DEBUG	// デバッグビルドでは物理ステップの区間をさらに細かく計測する
 	{ auto _s = PerformanceMonitor::Instance().Scope("Physics.PropagateIslandSleep"); PropagateIslandSleep(); }
 #else			// リリースビルドでは計測なしでシンプルに実行する
 	PropagateIslandSleep();
 #endif
+
+	_prevSolverContacts.swap(_solverContacts);
 }
 
 // 登録・解除関数: コントローラーやボディを物理マネージャーに登録・解除するための関数。これらは、物理ステップの前に呼び出されることが想定されている。

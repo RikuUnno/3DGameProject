@@ -69,7 +69,9 @@ void SphereCollider::DrawDebug() {
 	_debugColor = (_debugColor != 0) ? _debugColor : GetColor(255, 255, 255);	// デフォルト色は白色
 
 	// ワイヤーフレーム球本体
-	DrawSphere3D(_center, _radius,20, _debugColor, _debugColor, FALSE);
+	// 粗い分割数だとポリゴン弦が内側に収縮して実半径より小さく見え、
+	// 床に沈んでいるように見えるため 32 分割にする (最大誤差 ~0.2%)。
+	DrawSphere3D(_center, _radius, 32, _debugColor, _debugColor, FALSE);
 	// 中心点
 	DrawSphere3D(_center,0.05f,8, _debugColor, _debugColor, TRUE);
 

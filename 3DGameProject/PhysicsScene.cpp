@@ -141,7 +141,7 @@ namespace {
 			{"static", "true"},
 			{"px", "-15.5"}, {"py", "3.0"}, {"pz", "0.0"},
 			{"hx", "0.5"}, {"hy", "4.0"}, {"hz", "9.0"},
-			{"material", "wood"},
+			{"material", "frictionless"},
 			{"color", std::to_string(colWall)}
 		});
 
@@ -150,7 +150,7 @@ namespace {
 			{"static", "true"},
 			{"px", "15.5"}, {"py", "3.0"}, {"pz", "0.0"},
 			{"hx", "0.5"}, {"hy", "4.0"}, {"hz", "9.0"},
-			{"material", "wood"},
+			{"material", "frictionless"},
 			{"color", std::to_string(colWall)}
 		});
 
@@ -159,7 +159,7 @@ namespace {
 			{"static", "true"},
 			{"px", "0.0"}, {"py", "3.0"}, {"pz", "9.5"},
 			{"hx", "15.0"}, {"hy", "4.0"}, {"hz", "0.5"},
-			{"material", "wood"},
+			{"material", "frictionless"},
 			{"color", std::to_string(colWall)}
 		});
 
@@ -168,7 +168,7 @@ namespace {
 			{"static", "true"},
 			{"px", "0.0"}, {"py", "3.0"}, {"pz", "-9.5"},
 			{"hx", "15.0"}, {"hy", "4.0"}, {"hz", "0.5"},
-			{"material", "wood"},
+			{"material", "frictionless"},
 			{"color", std::to_string(colWall)}
 		});
 

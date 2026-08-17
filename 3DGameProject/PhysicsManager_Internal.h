@@ -78,7 +78,10 @@ namespace {
     // ---- 物理定数 ----------------------------------------------------
 
     constexpr float kBiasFactor          = 0.2f;
-    constexpr float kSlop                = 0.005f;
+    // 静止時に許容するめり込み量。この値がそのまま「静止時の沈み」になる。
+    // 0.005 だと半径 0.45 の球で描画誤差と合わせ約 1cm 沈んで見えるため 0.002 に縮小。
+    // 小さくしすぎると接触がバウンスしてスリープできなくなるので 0.001 未満は非推奨。
+    constexpr float kSlop                = 0.002f;
     constexpr float kMaxPen              = 5.0f;
     constexpr float kMaxCorrection       = 0.4f;
     constexpr float kRestitutionThreshold = 0.05f;

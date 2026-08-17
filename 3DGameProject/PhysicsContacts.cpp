@@ -82,7 +82,9 @@ void PhysicsManager::BuildSolverContacts(float stepDt) {
         else if (bodyA) rest = bodyA->_restitution;
         else if (bodyB) rest = bodyB->_restitution;
         const float vn = RelNormalVelocity(bodyA, bodyB, sc.rA, sc.rB, sc.normal);
+        const bool allowRestitution = (sc.penetration <= (kSlop * 1.5f));
         if (std::fabs(vn) < kRestitutionThreshold) rest = 0.0f;
+        if (!allowRestitution) rest = 0.0f;
         sc.restitution = rest;
 
         if (bodyA && bodyB)  sc.friction = PhysicsMaterial::CombineFriction(bodyA->_material, bodyB->_material);
@@ -92,7 +94,7 @@ void PhysicsManager::BuildSolverContacts(float stepDt) {
         else                 sc.staticFriction  = sc.friction * 1.2f;
 
         sc.normalBias = kBiasFactor * invDt * (std::max)(sc.penetration - kSlop, 0.0f);
-        if (vn < -kRestitutionThreshold) sc.normalBias += rest * (-vn);
+        if (vn < -kRestitutionThreshold && allowRestitution) sc.normalBias += rest * (-vn);
         sc.splitBias         = kSplitBiasFactor * invDt * (std::max)(sc.penetration - kSlop, 0.0f);
         sc.splitNormalLambda = 0.0f;
         sc.speculative       = false;

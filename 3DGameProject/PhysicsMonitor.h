@@ -71,6 +71,8 @@ public:
         // 接触統計
         int totalContacts = 0;
         int activeContacts = 0;
+        float maxPenetration = 0.0f;   // 最大めり込み量（診断用）
+        float avgPenetration = 0.0f;   // 平均めり込み量（診断用）
 
         // アイランド統計
         int totalIslands = 0;

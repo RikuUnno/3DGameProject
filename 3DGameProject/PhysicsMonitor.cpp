@@ -166,6 +166,20 @@ void PhysicsMonitor::UpdateStatistics() {
     _stats.activeContacts = _stats.totalContacts;
     _stats.contactMemoryBytes = contacts.size() * sizeof(ColliderManager::Contact);
 
+    // めり込み診断: 接触の penetration の最大値/平均値を集計する。
+    // 「見た目がめり込んでいる」とき、ここが大きければソルバ/位置補正の問題、
+    // 接触数が 0 または pen が小さければ接触生成(ナロウフェーズ)の問題と切り分けられる。
+    _stats.maxPenetration = 0.0f;
+    _stats.avgPenetration = 0.0f;
+    if (!contacts.empty()) {
+        float sum = 0.0f;
+        for (const auto& ct : contacts) {
+            if (ct.penetration > _stats.maxPenetration) _stats.maxPenetration = ct.penetration;
+            sum += ct.penetration;
+        }
+        _stats.avgPenetration = sum / static_cast<float>(contacts.size());
+    }
+
     // アイランド統計（PhysicsManagerから取得）
     // Note: PhysicsManagerにアイランド情報取得APIが必要
     // 仮実装: アクティブボディからの推定
@@ -325,6 +339,12 @@ void PhysicsMonitor::Draw(int x, int y) const {
     // 接触統計
     DrawFormatString(x, ly, _stats.totalContacts > 0 ? red : white, 
         "Contacts: %d", _stats.totalContacts); ly += lineHeight;
+
+    // めり込み診断表示: MaxPen が球の半径級 (>0.1) のまま張り付くなら
+    // ソルバ/位置補正が機能していない。Contacts=0 で見た目めり込みなら
+    // 接触生成自体が失敗している。
+    DrawFormatString(x, ly, _stats.maxPenetration > 0.05f ? red : white,
+        "Penetration: max=%.4f avg=%.4f", _stats.maxPenetration, _stats.avgPenetration); ly += lineHeight;
 
     // アイランド統計
     DrawFormatString(x, ly, white, "Islands: %d (Largest:%d) ",

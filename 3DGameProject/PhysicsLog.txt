@@ -2,48 +2,628 @@
 ========================================
 [PHYSICS DETAILED LOG]
 ========================================
-Timestamp: 2026/8/17 14:39:35
+Timestamp: 2026/8/17 16:49:7
 
 --- Object Statistics ---
-Total Objects: 0
-  Dynamic: 0
-  Static: 0
-  Active: 0
-  Sleeping: 0
+Total Objects: 58
+  Dynamic: 50
+  Static: 8
+  Active: 43
+  Sleeping: 7
 
 --- Collider Statistics ---
-Total Colliders: 0
-  Sphere: 0
-  Box: 0
-  Capsule: 0
+Total Colliders: 58
+  Sphere: 43
+  Box: 13
+  Capsule: 2
   Plane: 0
   Compound: 0
 
 --- Physics Body Statistics ---
-Total Bodies: 0
-  Active: 0
-  Sleeping: 0
+Total Bodies: 58
+  Active: 43
+  Sleeping: 7
 
 --- Contact Statistics ---
-Total Contacts: 0
-Active Contacts: 0
+Total Contacts: 117
+Active Contacts: 117
 
 --- Island Statistics ---
-Total Islands: 0
-Largest Island Size: 0
+Total Islands: 1
+Largest Island Size: 43
 
 --- Memory Usage ---
-Total: 0 KB
-  Bodies: 0 KB
-  Colliders: 0 KB
-  Contacts: 0 KB
+Total: 32.0703 KB
+  Bodies: 16.7656 KB
+  Colliders: 9.82031 KB
+  Contacts: 5.48438 KB
 
 --- Performance ---
-Physics Time: 0.008 ms
-Collision Time: 0 ms
-Solver Time: 0 ms
+Physics Time: 15.185 ms
+Collision Time: 7.689 ms
+Solver Time: 7.921 ms
 
 --- All Objects Detail ---
+
+[PhysicsDebugBox]
+  Position: (0, -1, 0)
+  Size: (30, 2, 18)
+  Memory: 0.882812 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 29
+
+[PhysicsDebugBox]
+  Position: (-15.5, 3, 0)
+  Size: (1, 8, 18)
+  Memory: 0.882812 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PhysicsDebugBox]
+  Position: (15.5, 3, 0)
+  Size: (1, 8, 18)
+  Memory: 0.882812 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 34
+
+[PhysicsDebugBox]
+  Position: (0, 3, 9.5)
+  Size: (30, 8, 1)
+  Memory: 0.882812 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 4
+
+[PhysicsDebugBox]
+  Position: (0, 3, -9.5)
+  Size: (30, 8, 1)
+  Memory: 0.882812 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PhysicsDebugBox]
+  Position: (-12.8, 1, -1)
+  Size: (7.29215, 3.01282, 8)
+  Memory: 0.882812 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PhysicsDebugBox]
+  Position: (-9.6, 1, 3.2)
+  Size: (9.78054, 3.6103, 9.82997)
+  Memory: 0.882812 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PhysicsDebugBox]
+  Position: (-4.2, 1, 5.1)
+  Size: (15.6, 2.87601, 6.91628)
+  Memory: 0.882812 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PhysicsDebugBox]
+  Position: (3.00614, 2.24668, -1.55602)
+  Size: (1.02952, 0.901441, 0.931649)
+  Memory: 0.882812 KB
+  Static: No
+  Sleeping: Yes
+  Mass: 486
+  Velocity: (0, 0, 0)
+  Contacts: 4
+
+[PhysicsDebugBox]
+  Position: (-0.8, 0.446409, -3)
+  Size: (1.2, 0.9, 0.9)
+  Memory: 0.882812 KB
+  Static: No
+  Sleeping: Yes
+  Mass: 583.2
+  Velocity: (0, 0, 0)
+  Contacts: 9
+
+[PhysicsDebugBox]
+  Position: (0.4, 0.446409, -3)
+  Size: (1.2, 0.9, 0.9)
+  Memory: 0.882812 KB
+  Static: No
+  Sleeping: Yes
+  Mass: 583.2
+  Velocity: (0, 0, 0)
+  Contacts: 9
+
+[PhysicsDebugBox]
+  Position: (2.99603, 0.448543, -1.68769)
+  Size: (1.0957, 0.90433, 1.01057)
+  Memory: 0.882812 KB
+  Static: No
+  Sleeping: Yes
+  Mass: 486
+  Velocity: (0, 0, 0)
+  Contacts: 10
+
+[PhysicsDebugBox]
+  Position: (3.01538, 1.34838, -1.56256)
+  Size: (1.02025, 0.902065, 0.921583)
+  Memory: 0.882812 KB
+  Static: No
+  Sleeping: Yes
+  Mass: 486
+  Velocity: (0, 0, 0)
+  Contacts: 10
+
+[PhysicsDebugCapsule]
+  Position: (-8, 1, -4.5)
+  Size: (0.7, 2, 0.7)
+  Memory: 0.84375 KB
+  Static: No
+  Sleeping: Yes
+  Mass: 747.882
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PhysicsDebugCapsule]
+  Position: (-6.2, 1, -4.5)
+  Size: (0.7, 2, 0.7)
+  Memory: 0.84375 KB
+  Static: No
+  Sleeping: Yes
+  Mass: 747.882
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PhysicsDebugSphere]
+  Position: (7.96839, 0.446412, 1.55417)
+  Size: (0.9, 0.9, 0.9)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 2977.29
+  Velocity: (1.32858e-31, 1.86265e-09, 4.5808e-31)
+  Contacts: 1
+
+[PhysicsDebugSphere]
+  Position: (8.00336, 0.446412, 7.29573)
+  Size: (0.9, 0.9, 0.9)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 2977.29
+  Velocity: (-0.00208966, 2.51342e-08, -0.000275499)
+  Contacts: 2
+
+[PhysicsDebugSphere]
+  Position: (8.11216, 0.446412, 8.55)
+  Size: (0.9, 0.9, 0.9)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 2977.29
+  Velocity: (-1.78413e-24, 1.86265e-09, -4.93433e-16)
+  Contacts: 2
+
+[PhysicsDebugSphere]
+  Position: (14.652, 1.0403, 1.03347)
+  Size: (0.700001, 0.7, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (-8.83322e-07, 0.0665547, -1.30052)
+  Contacts: 4
+
+[PhysicsDebugSphere]
+  Position: (14.6501, 0.346434, 6.07728)
+  Size: (0.700001, 0.7, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (-0.00017272, -0.00753529, -0.0237771)
+  Contacts: 5
+
+[PhysicsDebugSphere]
+  Position: (14.6504, 0.346109, 0.96172)
+  Size: (0.700001, 0.7, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (-0.000271008, -0.000576237, -0.64972)
+  Contacts: 3
+
+[PhysicsDebugSphere]
+  Position: (14.652, 0.340553, 8.65349)
+  Size: (0.700001, 0.7, 0.700001)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (-6.43702e-05, -0.00200188, -0.00554308)
+  Contacts: 5
+
+[PhysicsDebugSphere]
+  Position: (14.6512, 0.346308, 1.66532)
+  Size: (0.700001, 0.7, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (-0.000455041, -6.17001e-09, -0.782105)
+  Contacts: 4
+
+[PhysicsDebugSphere]
+  Position: (14.6519, 0.346412, -1.36098)
+  Size: (0.700001, 0.7, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (-2.83423e-10, 0, -1.19909)
+  Contacts: 2
+
+[PhysicsDebugSphere]
+  Position: (14.6513, 0.346327, 4.53676)
+  Size: (0.700001, 0.7, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (-0.000322341, 3.0268e-09, -0.42607)
+  Contacts: 4
+
+[PhysicsDebugSphere]
+  Position: (14.6518, 0.502646, 6.75729)
+  Size: (0.700001, 0.7, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (-0.000382989, -0.012303, -0.0212156)
+  Contacts: 3
+
+[PhysicsDebugSphere]
+  Position: (14.6499, 1.03656, 8.65194)
+  Size: (0.700001, 0.7, 0.700001)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (8.00355e-11, -0.00199859, -0.00412985)
+  Contacts: 5
+
+[PhysicsDebugSphere]
+  Position: (8.64606, 0.346412, 7.75821)
+  Size: (0.700001, 0.7, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (-0.0688487, -5.45806e-08, 0.0924962)
+  Contacts: 2
+
+[PhysicsDebugSphere]
+  Position: (14.6508, 0.346275, 7.43723)
+  Size: (0.700001, 0.7, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (-0.000317016, 2.09548e-09, -0.0121964)
+  Contacts: 5
+
+[PhysicsDebugSphere]
+  Position: (1.64448, 0.346412, 0.496191)
+  Size: (0.7, 0.7, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (-1.7277, 0, -0.541392)
+  Contacts: 1
+
+[PhysicsDebugSphere]
+  Position: (7.0977, 0.346412, 3.17815)
+  Size: (0.7, 0.7, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (-0.965378, 0, -0.350752)
+  Contacts: 1
+
+[PhysicsDebugSphere]
+  Position: (14.65, 0.684698, 8.04759)
+  Size: (0.700001, 0.7, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (-0.000477232, -0.00286957, -0.014605)
+  Contacts: 5
+
+[PhysicsDebugSphere]
+  Position: (14.6507, 1.04114, 1.73145)
+  Size: (0.700001, 0.7, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (-0.000717145, 0.0525401, -1.2998)
+  Contacts: 4
+
+[PhysicsDebugSphere]
+  Position: (14.6517, 0.34626, 2.36318)
+  Size: (0.700001, 0.7, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (-0.000288764, -2.32831e-09, -0.784092)
+  Contacts: 4
+
+[PhysicsDebugSphere]
+  Position: (14.6519, 0.346301, 3.61159)
+  Size: (0.700001, 0.7, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (-0.000808439, -6.75209e-09, -0.759981)
+  Contacts: 4
+
+[PhysicsDebugSphere]
+  Position: (14.6503, 1.04407, 7.44983)
+  Size: (0.700001, 0.7, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (-0.000571899, -0.00185234, -0.0139935)
+  Contacts: 4
+
+[PhysicsDebugSphere]
+  Position: (14.6503, 1.63316, 2.10075)
+  Size: (0.700001, 0.7, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (-0.00294852, 0.206489, -1.54002)
+  Contacts: 3
+
+[PhysicsDebugSphere]
+  Position: (14.6519, 1.03666, 2.46315)
+  Size: (0.700001, 0.7, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (-0.00117, 0.121148, -1.68367)
+  Contacts: 4
+
+[PhysicsDebugSphere]
+  Position: (14.652, 0.346185, 5.37805)
+  Size: (0.700001, 0.7, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (-6.40163e-05, 1.86265e-09, -0.0628201)
+  Contacts: 4
+
+[PhysicsDebugSphere]
+  Position: (14.6511, 1.02337, 6.24699)
+  Size: (0.700001, 0.7, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (-4.83963e-05, -0.0109578, -0.0101005)
+  Contacts: 3
+
+[PhysicsDebugSphere]
+  Position: (14.6784, 1.6992, 8.64996)
+  Size: (0.700001, 0.7, 0.700001)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (5.22661e-05, -0.00469646, -0.236582)
+  Contacts: 3
+
+[PhysicsDebugSphere]
+  Position: (14.6519, 0.868201, 4.07471)
+  Size: (0.700001, 0.7, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (-0.00167274, -0.152253, -0.592481)
+  Contacts: 4
+
+[PhysicsDebugSphere]
+  Position: (14.6514, 1.38696, 6.84199)
+  Size: (0.700001, 0.7, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (-5.22809e-05, -0.00481693, -0.0160287)
+  Contacts: 3
+
+[PhysicsDebugSphere]
+  Position: (14.6518, 0.346412, -4.8116)
+  Size: (0.700001, 0.7, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (-9.62356e-05, 0, -1.93697)
+  Contacts: 2
+
+[PhysicsDebugSphere]
+  Position: (67.681, -30.6161, -6.62085)
+  Size: (0.699997, 0.700001, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (17.3252, -28.1945, -4.16413)
+  Contacts: 0
+
+[PhysicsDebugSphere]
+  Position: (63.9272, -24.7284, -5.71862)
+  Size: (0.699997, 0.700001, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (17.3252, -26.0712, -4.16413)
+  Contacts: 0
+
+[PhysicsDebugSphere]
+  Position: (65.3147, -22.1028, -4.08571)
+  Size: (0.699997, 0.700001, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (18.7015, -24.6786, -3.96889)
+  Contacts: 0
+
+[PhysicsDebugSphere]
+  Position: (14.8035, 7.33829, 6.86237)
+  Size: (0.700001, 0.7, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (-3.08012, -1.78908, -3.89556)
+  Contacts: 1
+
+[PhysicsDebugSphere]
+  Position: (14.652, 1.73744, 1.00078)
+  Size: (0.700001, 0.7, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (6.25278e-13, 0.0619638, -1.38619)
+  Contacts: 2
+
+[PhysicsDebugSphere]
+  Position: (14.6507, 0.856353, 3.13644)
+  Size: (0.700001, 0.7, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (-0.00404426, -1.17984, -2.02683)
+  Contacts: 4
+
+[PhysicsDebugSphere]
+  Position: (14.6519, 1.02326, 5.54664)
+  Size: (0.700001, 0.7, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (-0.000658112, 0.0649226, -0.24903)
+  Contacts: 3
+
+[PhysicsDebugSphere]
+  Position: (14.6526, 1.37738, 3.59462)
+  Size: (0.700001, 0.7, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (-0.000955903, -1.33725, -1.85208)
+  Contacts: 4
+
+[PhysicsDebugSphere]
+  Position: (14.6516, 0.988715, 4.79314)
+  Size: (0.700001, 0.7, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (-0.000293499, -0.449786, 0.701207)
+  Contacts: 2
+
+[PhysicsDebugSphere]
+  Position: (14.6516, 1.61938, 5.18389)
+  Size: (0.700001, 0.7, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (-0.00143551, -0.671321, -1.51277)
+  Contacts: 4
+
+[PhysicsDebugSphere]
+  Position: (14.6513, 1.67743, 4.22136)
+  Size: (0.700001, 0.7, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (-0.000508183, -2.05195, -1.5167)
+  Contacts: 3
+
+[PhysicsDebugSphere]
+  Position: (14.652, 2.15056, 4.73076)
+  Size: (0.700001, 0.7, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (-0.000661084, -1.28554, -2.22709)
+  Contacts: 3
+
+[PhysicsDebugSphere]
+  Position: (14.652, 2.24095, 5.49522)
+  Size: (0.700001, 0.7, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (-3.97659e-05, -0.920787, -1.0053)
+  Contacts: 2
+
+[PhysicsDebugSphere]
+  Position: (14.652, 3.02689, 5.62233)
+  Size: (0.700001, 0.7, 0.7)
+  Memory: 0.796875 KB
+  Static: No
+  Sleeping: No
+  Mass: 1400.84
+  Velocity: (0, -5.47324, -3.90387)
+  Contacts: 1
 
 ========================================
 

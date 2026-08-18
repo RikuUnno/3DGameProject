@@ -676,6 +676,30 @@
     <Filter Include="ソース ファイル\Game\PachinkoGame\System\SubSystem">
       <UniqueIdentifier>{562bd58c-5fbd-4cb9-8d90-73b209933ab5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ヘッダー ファイル\Game\PachinkoGame\Scene\PachinkoGameMenu">
+      <UniqueIdentifier>{962e209a-2425-46a4-9ff8-52427d51a6a5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Game\PachinkoGame\Scene\PachinkoGameStage">
+      <UniqueIdentifier>{28c7f1e3-4487-43b6-8d8f-27df76243471}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Game\PachinkoGame\Scene\PachinkoGameStage">
+      <UniqueIdentifier>{a5246ac5-9cbf-44c9-ab2a-96ec20c32768}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Game\PachinkoGame\Scene\PachinkoGameMenu">
+      <UniqueIdentifier>{6d4a62c4-61e3-4a75-8e81-521c98ceb850}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Game\PachinkoGame\Object\ObjectTpl">
+      <UniqueIdentifier>{bf008816-18c9-4287-984e-75d0fa0ba071}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Game\PachinkoGame\Object\ObjectTpl">
+      <UniqueIdentifier>{1fe3f52e-1b21-4423-9c76-5737608caac0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Game\PachinkoGame\Object\Sensor">
+      <UniqueIdentifier>{2245aa38-905a-462d-ba90-e7135293d2a2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Game\PachinkoGame\Object\Sensor">
+      <UniqueIdentifier>{7be7493e-6751-47fe-b6e3-69728e1e45b8}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Assert.cpp">
@@ -866,6 +890,27 @@
     </ClCompile>
     <ClCompile Include="PachinkoFieldTpl.cpp">
       <Filter>ソース ファイル\Game\PachinkoGame\Object\Field</Filter>
+    </ClCompile>
+    <ClCompile Include="PachinkoGameMenu.cpp">
+      <Filter>ソース ファイル\Game\PachinkoGame\Scene\PachinkoGameMenu</Filter>
+    </ClCompile>
+    <ClCompile Include="PachinkoGameStage.cpp">
+      <Filter>ソース ファイル\Game\PachinkoGame\Scene\PachinkoGameStage</Filter>
+    </ClCompile>
+    <ClCompile Include="PachinkoBall.cpp">
+      <Filter>ソース ファイル\Game\PachinkoGame\Object\Ball</Filter>
+    </ClCompile>
+    <ClCompile Include="PachinkoPhysicsObjectTpl.cpp">
+      <Filter>ソース ファイル\Game\PachinkoGame\Object\ObjectTpl</Filter>
+    </ClCompile>
+    <ClCompile Include="PachinkoNail.cpp">
+      <Filter>ソース ファイル\Game\PachinkoGame\Object\Nail</Filter>
+    </ClCompile>
+    <ClCompile Include="GameObject.cpp">
+      <Filter>ソース ファイル\System\Object\GameObject</Filter>
+    </ClCompile>
+    <ClCompile Include="PachinkoSensor.cpp">
+      <Filter>ソース ファイル\Game\PachinkoGame\Object\Sensor</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -1111,6 +1156,24 @@
     </ClInclude>
     <ClInclude Include="PachinkoFieldTpl.h">
       <Filter>ヘッダー ファイル\Game\PachinkoGame\Object\Field</Filter>
+    </ClInclude>
+    <ClInclude Include="PachinkoGameStage.h">
+      <Filter>ヘッダー ファイル\Game\PachinkoGame\Scene\PachinkoGameStage</Filter>
+    </ClInclude>
+    <ClInclude Include="PachinkoGameMenu.h">
+      <Filter>ヘッダー ファイル\Game\PachinkoGame\Scene\PachinkoGameMenu</Filter>
+    </ClInclude>
+    <ClInclude Include="PachinkoBall.h">
+      <Filter>ヘッダー ファイル\Game\PachinkoGame\Object\Ball</Filter>
+    </ClInclude>
+    <ClInclude Include="PachinkoNail.h">
+      <Filter>ヘッダー ファイル\Game\PachinkoGame\Object\Nail</Filter>
+    </ClInclude>
+    <ClInclude Include="PachinkoPhysicsObjectTpl.h">
+      <Filter>ヘッダー ファイル\Game\PachinkoGame\Object\ObjectTpl</Filter>
+    </ClInclude>
+    <ClInclude Include="PachinkoSensor.h">
+      <Filter>ヘッダー ファイル\Game\PachinkoGame\Object\Sensor</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

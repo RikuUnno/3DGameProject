@@ -1,6 +1,7 @@
 #include "GameMenuScene.h"
 
 #include "MiniGame_1_MenuScene.h"
+#include "PachinkoGameMenu.h"
 #include "TitleScene.h"
 
 #include "SceneTransition.h"
@@ -28,6 +29,7 @@ namespace {
 
     const std::vector<MenuItem> kItems = {
         { "MiniGame 1", []{ return std::make_unique<MiniGame_1_MenuScene>(); } },
+        { "Pachinko",   []{ return std::make_unique<PachinkoGame_MenuScene>(); } },
         { "Back",       []{ return std::make_unique<TitleScene>(); } },
     };
 }

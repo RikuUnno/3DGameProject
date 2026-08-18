@@ -1,21 +1,14 @@
 #include "PachinkoFieldTpl.h"
 
 #include <algorithm>
-#include <cstdlib>
 
 #include "ColliderManager.h"
 #include "PhysicsManager.h"
 #include "PhysicsMaterial.h"
-#include "SceneManager.h"
 
 // コンストラクタ/デストラクタ
 PachinkoFieldTpl::PachinkoFieldTpl() {
-	_ownerSceneId = SceneManager::Instance().CurrentSceneId();
-	SetActive(true);
-	transform.SetParent(nullptr);
-	transform.SetLocalPosition(VGet(0.0f, 0.0f, 0.0f));
-	transform.SetLocalEulerRad(VGet(0.0f, 0.0f, 0.0f));
-	transform.SetLocalScale(VGet(1.0f, 1.0f, 1.0f));
+	PrepareForAcquire_();
 	_boxCollider = std::make_unique<BoxCollider>();
 	_boxCollider->owner = this;
 	_physicsBody._owner = this;
@@ -31,9 +24,7 @@ void PachinkoFieldTpl::OnDestroy() {
 
 // プール/再利用フック
 void PachinkoFieldTpl::OnAcquire(const VariantMap& params) {
-	_ownerSceneId = SceneManager::Instance().CurrentSceneId();
-	SetActive(true);
-	transform.SetParent(nullptr);
+	PrepareForAcquire_();
 	transform.SetLocalScale(VGet(1.0f, 1.0f, 1.0f));
 	_physicsBody.Reset();
 	_physicsBody._owner = this;
@@ -46,7 +37,7 @@ void PachinkoFieldTpl::OnAcquire(const VariantMap& params) {
 	RebuildCollider_();
 	if (_boxCollider) {
 		_boxCollider->owner = this;
-		_boxCollider->isTrigger = ParseBool_(params, "trigger", false);
+		_boxCollider->isTrigger = ParseBoolParam_(params, "trigger", false);
 		_boxCollider->layer = layerMask::ENVIRONMENT;
 		_boxCollider->mask = mask::ALL;
 		_boxCollider->enableCCD = false;
@@ -78,14 +69,23 @@ void PachinkoFieldTpl::OnAcquire(const VariantMap& params) {
 // プールに返却される直前の後片付け
 void PachinkoFieldTpl::OnRelease() {
 	ReleaseFromManagers_();
-	SetActive(false);
-	transform.SetParent(nullptr);
+	PrepareForRelease_();
 }
 
 // 更新（毎フレーム呼ばれる）
 void PachinkoFieldTpl::Draw() {
-	if (_boxCollider) {
+	if (!_boxCollider) return;
+	switch (FieldDrawStyle_()) {
+	case DrawStyle::AABB:
+		_boxCollider->DrawDebugAABB();
+		break;
+	case DrawStyle::Solid:
+		_boxCollider->DrawPrimitive();
+		break;
+	case DrawStyle::OBBWire:
+	default:
 		_boxCollider->DrawDebug();
+		break;
 	}
 }
 
@@ -108,52 +108,15 @@ void PachinkoFieldTpl::RebuildCollider_() {
 
 // パラメータマップから設定を適用
 void PachinkoFieldTpl::ApplyParams_(const VariantMap& params) {
-	const float px = ParseFloat_(params, "px", 0.0f);
-	const float py = ParseFloat_(params, "py", 0.0f);
-	const float pz = ParseFloat_(params, "pz", 0.0f);
-	transform.SetLocalPosition(VGet(px, py, pz));
-
-	const float pitch = ParseFloat_(params, "pitch", ParseFloat_(params, "rx", 0.0f));
-	const float yaw   = ParseFloat_(params, "yaw",   ParseFloat_(params, "ry", 0.0f));
-	const float roll  = ParseFloat_(params, "roll",  ParseFloat_(params, "rz", 0.0f));
-	transform.SetLocalEulerRad(VGet(pitch, yaw, roll));
-
-	const float sx = ParseFloat_(params, "sx", 1.0f);
-	const float sy = ParseFloat_(params, "sy", 1.0f);
-	const float sz = ParseFloat_(params, "sz", 1.0f);
-	transform.SetLocalScale(VGet(sx, sy, sz));
+	ApplyTransformFromParams_(params);
 
 	_halfExtents = VGet(
-		ParseFloat_(params, "hx", _halfExtents.x),
-		ParseFloat_(params, "hy", _halfExtents.y),
-		ParseFloat_(params, "hz", _halfExtents.z)
+		ParseFloatParam_(params, "hx", _halfExtents.x),
+		ParseFloatParam_(params, "hy", _halfExtents.y),
+		ParseFloatParam_(params, "hz", _halfExtents.z)
 	);
 
-	const int color = ParseInt_(params, "color", 0);
+	const int color = ParseIntParam_(params, "color", 0);
 	if (color != 0) _drawColor = static_cast<unsigned int>(color);
-	_materialName = ParseString_(params, "material", _materialName);
-}
-
-
-// パラメータマップから値を取得するユーティリティ関数群
-float PachinkoFieldTpl::ParseFloat_(const VariantMap& params, const char* key, float defaultValue) {						// Float 型の値をパラメータマップから取得。見つからなければ defaultValue を返す
-	auto it = params.find(key);
-	if (it == params.end()) return defaultValue;
-	return static_cast<float>(std::atof(it->second.c_str()));
-}
-int PachinkoFieldTpl::ParseInt_(const VariantMap& params, const char* key, int defaultValue) {								// Int 型の値をパラメータマップから取得。見つからなければ defaultValue を返す
-	auto it = params.find(key);
-	if (it == params.end()) return defaultValue;
-	return std::atoi(it->second.c_str());
-}
-bool PachinkoFieldTpl::ParseBool_(const VariantMap& params, const char* key, bool defaultValue) {							// Bool 型の値をパラメータマップから取得。見つからなければ defaultValue を返す
-	auto it = params.find(key);
-	if (it == params.end()) return defaultValue;
-	const std::string& s = it->second;
-	return s == "1" || s == "true" || s == "TRUE" || s == "True";
-}
-std::string PachinkoFieldTpl::ParseString_(const VariantMap& params, const char* key, const std::string& defaultValue) {	// String 型の値をパラメータマップから取得。見つからなければ defaultValue を返す
-	auto it = params.find(key);
-	if (it == params.end()) return defaultValue;
-	return it->second;
+	_materialName = ParseStringParam_(params, "material", _materialName);
 }

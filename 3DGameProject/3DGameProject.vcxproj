@@ -161,6 +161,7 @@
     <ClCompile Include="EnemyAircraft.cpp" />
     <ClCompile Include="FighterAircraft.cpp" />
     <ClCompile Include="GameMenuScene.cpp" />
+    <ClCompile Include="GameObject.cpp" />
     <ClCompile Include="GunSystem.cpp" />
     <ClCompile Include="HudDisplay.cpp" />
     <ClCompile Include="HalfPlaneCollider.cpp" />
@@ -176,8 +177,14 @@
     <ClCompile Include="ObjectManager.cpp" />
     <ClCompile Include="ObjectPool.cpp" />
     <ClCompile Include="ObjectPoolScene.cpp" />
+    <ClCompile Include="PachinkoBall.cpp" />
     <ClCompile Include="PachinkoField.cpp" />
     <ClCompile Include="PachinkoFieldTpl.cpp" />
+    <ClCompile Include="PachinkoGameMenu.cpp" />
+    <ClCompile Include="PachinkoGameStage.cpp" />
+    <ClCompile Include="PachinkoNail.cpp" />
+    <ClCompile Include="PachinkoPhysicsObjectTpl.cpp" />
+    <ClCompile Include="PachinkoSensor.cpp" />
     <ClCompile Include="PerformanceMonitor.cpp" />
     <ClCompile Include="PhysicsBody.cpp" />
     <ClCompile Include="PhysicsCcd.cpp" />
@@ -255,8 +262,14 @@
     <ClInclude Include="ObjectPool.h" />
     <ClInclude Include="ObjectPoolDebugClass.h" />
     <ClInclude Include="ObjectPoolScene.h" />
+    <ClInclude Include="PachinkoBall.h" />
     <ClInclude Include="PachinkoField.h" />
     <ClInclude Include="PachinkoFieldTpl.h" />
+    <ClInclude Include="PachinkoGameMenu.h" />
+    <ClInclude Include="PachinkoGameStage.h" />
+    <ClInclude Include="PachinkoNail.h" />
+    <ClInclude Include="PachinkoPhysicsObjectTpl.h" />
+    <ClInclude Include="PachinkoSensor.h" />
     <ClInclude Include="PerformanceMonitor.h" />
     <ClInclude Include="PhysicsBody.h" />
     <ClInclude Include="PhysicsCcd.h" />

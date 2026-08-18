@@ -10,6 +10,12 @@
 // PachinkoFieldTpl
 class PachinkoFieldTpl : public GameObject {
 public:
+	enum class DrawStyle {
+		AABB,
+		OBBWire,
+		Solid,
+	};
+
 	PachinkoFieldTpl();
 	~PachinkoFieldTpl() override;
 
@@ -28,16 +34,12 @@ protected:
 	virtual VECTOR DefaultHalfExtents_() const noexcept = 0;
 	virtual unsigned int DefaultColor_() const noexcept = 0;
 	virtual std::string DefaultMaterialName_() const { return "frictionless"; }
+	virtual DrawStyle FieldDrawStyle_() const noexcept { return DrawStyle::OBBWire; }
 
 private:
 	void ReleaseFromManagers_();
 	void RebuildCollider_();
 	void ApplyParams_(const VariantMap& params);
-
-	static float ParseFloat_(const VariantMap& params, const char* key, float defaultValue);
-	static int ParseInt_(const VariantMap& params, const char* key, int defaultValue);
-	static bool ParseBool_(const VariantMap& params, const char* key, bool defaultValue);
-	static std::string ParseString_(const VariantMap& params, const char* key, const std::string& defaultValue);
 
 private:
 	std::unique_ptr<BoxCollider> _boxCollider;

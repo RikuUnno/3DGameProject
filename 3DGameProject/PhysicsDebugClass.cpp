@@ -148,6 +148,14 @@ void PhysicsDebugClass::ConfigureFromParams_(const VariantMap& params) {
 	const float pz = ParseFloat_(params, "pz", 0.0f);
 	transform.SetLocalPosition(VGet(px, py, pz));
 
+	// 回転パラメータの適用（ラジアン）
+	// - pitch/yaw/roll を優先
+	// - 省略時は rx/ry/rz を代替キーとして使用
+	const float pitch = ParseFloat_(params, "pitch", ParseFloat_(params, "rx", 0.0f));
+	const float yaw   = ParseFloat_(params, "yaw",   ParseFloat_(params, "ry", 0.0f));
+	const float roll  = ParseFloat_(params, "roll",  ParseFloat_(params, "rz", 0.0f));
+	transform.SetLocalEulerRad(VGet(pitch, yaw, roll));
+
 	const float sx = ParseFloat_(params, "sx", 1.0f);
 	const float sy = ParseFloat_(params, "sy", 1.0f);
 	const float sz = ParseFloat_(params, "sz", 1.0f);

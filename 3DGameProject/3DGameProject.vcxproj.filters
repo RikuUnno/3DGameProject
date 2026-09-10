@@ -912,6 +912,12 @@
     <ClCompile Include="PachinkoSensor.cpp">
       <Filter>ソース ファイル\Game\PachinkoGame\Object\Sensor</Filter>
     </ClCompile>
+    <ClCompile Include="PachinkoMainSystem.cpp">
+      <Filter>ソース ファイル\Game\PachinkoGame\System\MainSystem</Filter>
+    </ClCompile>
+    <ClCompile Include="PachinkoSubSystem.cpp">
+      <Filter>ソース ファイル\Game\PachinkoGame\System\SubSystem</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Info.h">
@@ -1174,6 +1180,12 @@
     </ClInclude>
     <ClInclude Include="PachinkoSensor.h">
       <Filter>ヘッダー ファイル\Game\PachinkoGame\Object\Sensor</Filter>
+    </ClInclude>
+    <ClInclude Include="PachinkoMainSystem.h">
+      <Filter>ヘッダー ファイル\Game\PachinkoGame\System\MainSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="PachinkoSubSystem.h">
+      <Filter>ヘッダー ファイル\Game\PachinkoGame\System\SubSystem</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

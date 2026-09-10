@@ -16,6 +16,7 @@
 #include "KeyInput.h"
 #include "DxLib.h"
 
+// PachinkoGameStage の自動登録
 namespace {
 	// シーン遷移開始
 	void StartTransition(std::unique_ptr<IScene> next) {
@@ -37,12 +38,14 @@ namespace {
 		}
 	}
 
+	// ランダム範囲生成（minValue <= x < maxValue）
 	float RandRange_(float minValue, float maxValue) {
 		static std::mt19937 rng{ std::random_device{}() };
 		std::uniform_real_distribution<float> dist(minValue, maxValue);
 		return dist(rng);
 	}
 
+	// 金属玉をランダム位置・速度で生成
 	GameObject* SpawnMetalBall_() {
 		const float x = RandRange_(-2.4f, 2.4f);
 		const float z = 1.0f + RandRange_(-0.08f, 0.08f);
@@ -68,6 +71,7 @@ namespace {
 			{"freezeRotation", "0"}
 		});
 	}
+
 	// PachinkoField_Front / Back / Side のプール登録を確実に行う
 	void EnsurePachinkoFieldRegistered_() {
 		auto& factory = ObjectFactory::Instance();
@@ -106,6 +110,7 @@ namespace {
 		objMgr.RegisterPool(PachinkoSensor::StaticPoolKey(), 16);
 	}
 
+	// 釘を配置する
 	void SpawnNails_() {
 		constexpr int rows = 9;
 		constexpr int cols = 11;
@@ -138,6 +143,7 @@ void PachinkoGame_StageScene::SpawnSensors_() {
 	// Y: フィールド最下部 (y = 0.15 = 床の直上)
 	// Z: フィールド中央 (z = 1.0)
 	struct SensorDef { float x; int score; const char* name; };
+
 	static constexpr SensorDef kDefs[] = {
 		{ -2.8f, 100, "Left"   },
 		{  0.0f, 300, "Center" },

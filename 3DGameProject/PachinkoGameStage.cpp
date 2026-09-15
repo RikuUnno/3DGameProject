@@ -46,36 +46,6 @@ namespace {
 		return dist(rng);
 	}
 
-	// 金属玉をランダム位置・速度で生成（上部から落下）
-	GameObject* SpawnMetalBall() {
-		// 固定位置 (0, 12, 0) からスポーン
-		const float x = 0.0f;
-		const float z = 1.0f;
-		const float startY = 12.0f;
-
-		// いろんな方向へのランダムな力（より大きな力）
-		const float launchX = RandRange(-100.0f, 100.0f);    // 左右に大きくランダム
-		const float launchY = RandRange(3.0f, 8.0f);     // 上方向にランダム
-		const float launchZ = RandRange(-3.0f, 3.0f);    // 前後にランダム
-
-		// 回転要素（ランダム性を保持）
-		const float avx = RandRange(-3.0f, 3.0f);        // 回転
-		const float avy = RandRange(-3.0f, 3.0f);
-		const float avz = RandRange(-3.0f, 3.0f);
-
-		GameObject* ball = ObjectManager::Instance().Spawn(PachinkoBall::StaticPoolKey(), {
-			{"px", std::to_string(x)}, {"py", std::to_string(startY)}, {"pz", std::to_string(z)},		// Position（固定上部）
-			{"vx", "0.0"}, {"vy", "0.0"}, {"vz", "0.0"},												// 初期速度ゼロ
-			{"avx", std::to_string(avx)}, {"avy", std::to_string(avy)}, {"avz", std::to_string(avz)},	// 回転（ランダム）
-			{"freezeRotation", "0"}
-		});
-		// PachinkoBall に Launch() を呼んで初速を与える
-		if (auto* pachinkoBall = dynamic_cast<PachinkoBall*>(ball)) {
-			pachinkoBall->Launch(VGet(launchX, launchY, launchZ));
-		}
-		return ball;
-	}
-
 	// PachinkoField_Front / Back / Side のプール登録を確実に行う
 	void EnsurePachinkoFieldRegistered() {
 		auto& factory = ObjectFactory::Instance();
@@ -201,6 +171,42 @@ namespace {
 	}
 } // namespace
 
+// 金属玉をランダム位置・速度で生成（上部から落下）
+GameObject* PachinkoGame_StageScene::SpawnMetalBall() {
+	// 固定位置 (0, 12, 0) からスポーン
+	const float x = 0.0f;
+	const float z = 1.0f;
+	const float startY = 12.0f;
+
+	// いろんな方向へのランダムな力（より大きな力）
+	const float launchX = RandRange(-100.0f, 100.0f);    // 左右に大きくランダム
+	const float launchY = RandRange(3.0f, 8.0f);     // 上方向にランダム
+	const float launchZ = RandRange(-3.0f, 3.0f);    // 前後にランダム
+
+	// 回転要素（ランダム性を保持）
+	const float avx = RandRange(-3.0f, 3.0f);        // 回転
+	const float avy = RandRange(-3.0f, 3.0f);
+	const float avz = RandRange(-3.0f, 3.0f);
+
+	GameObject* ball = ObjectManager::Instance().Spawn(PachinkoBall::StaticPoolKey(), {
+		{"px", std::to_string(x)}, {"py", std::to_string(startY)}, {"pz", std::to_string(z)},		// Position（固定上部）
+		{"vx", "0.0"}, {"vy", "0.0"}, {"vz", "0.0"},												// 初期速度ゼロ
+		{"avx", std::to_string(avx)}, {"avy", std::to_string(avy)}, {"avz", std::to_string(avz)},	// 回転（ランダム）
+		{"freezeRotation", "0"}
+	});
+
+	// 生成成功時にカウンターを増やす
+	if (ball) {
+		++_spawnedBallCount;
+	}
+
+	// PachinkoBall に Launch() を呼んで初速を与える
+	if (auto* pachinkoBall = dynamic_cast<PachinkoBall*>(ball)) {
+		pachinkoBall->Launch(VGet(launchX, launchY, launchZ));
+	}
+	return ball;
+}
+
 // センサーを配置してメンバーリストに追加
 void PachinkoGame_StageScene::SpawnSensors() {
 	// センサー配置用のヘルパー関数
@@ -217,8 +223,31 @@ void PachinkoGame_StageScene::SpawnSensors() {
 		});
 
 		if (auto* sensor = static_cast<PachinkoSensor*>(obj)) {
-			sensor->onHit = [this, score](Collider*) {
+			sensor->onHit = [this, score, name](Collider* other) {
 				_totalScore += score;
+				
+				// BottomLineセンサーの場合、ボールを削除（持ち球には戻さない）
+				if (strcmp(name, "Bottom_Line") == 0 && other && other->owner) {
+					GameObject* ball = other->owner;
+					
+					// ボールをアクティブリストから削除
+					auto it = std::find(_liveBalls.begin(), _liveBalls.end(), ball);
+					if (it != _liveBalls.end()) {
+						// 対応するBallTrackも削除
+						auto tit = _ballTracks.begin() + std::distance(_liveBalls.begin(), it);
+						_liveBalls.erase(it);
+						_ballTracks.erase(tit);
+						
+						// ボールをリリース
+						if (ball->IsActive()) {
+							ObjectManager::Instance().Release(ball);
+						}
+						
+						// カウンターを更新
+						++_deletedBallCount;
+						_activeBallCount = static_cast<int>(_liveBalls.size());
+					}
+				}
 			};
 			_sensors.push_back(sensor);
 		}
@@ -259,7 +288,7 @@ void PachinkoGame_StageScene::SpawnSensors() {
 	spawnSensor(0.0f, 4.1f, 0.15f, 0.04f, 10, "CenterSensor", GetColor(255, 255, 0)); // 黄色
 
 	// 下部の連続センサー（例：ボールが集まる場所）
-	spawnSensor(0.0f, -3.0f, 6.0f, 0.5f, 0, "Bottom_Line", GetColor(255, 255, 0)); // 白色
+	spawnSensor(0.0f, -0.0f, 6.0f, 0.5f, 0, "Bottom_Line", GetColor(255, 255, 0)); // 白色
 }
 
 // メイン開始
@@ -394,9 +423,32 @@ void PachinkoGame_StageScene::Update(float dtSec) {
 		}
 
 		if (remove) {
+			// 削除理由を判定
+			bool isStuck = false;
+			bool isOutOfBounds = false;
+			
+			if (ball && ball->IsActive()) {
+				// 画面下に落下した場合
+				if (ball->transform.WorldPosition().y < -40.0f) {
+					isOutOfBounds = true;
+				}
+				
+				// スタック判定（位置変化量チェック）
+				BallTrack& track = *tit;
+				if (track.stuckCount >= kStuckCountThreshold) {
+					isStuck = true;
+				}
+			}
+			
 			if (ball && ball->IsActive()) om.Release(ball);
 			it  = _liveBalls.erase(it);
 			tit = _ballTracks.erase(tit);
+			++_deletedBallCount;  // 削除カウンターを増やす（総数）
+			
+			// 途中で引っかかった（スタックした）場合のみ持ち球に返す
+			if (isStuck && !isOutOfBounds) {
+				++_remainingBalls;
+			}
 		} else {
 			++it;
 			++tit;
@@ -445,15 +497,29 @@ void PachinkoGame_StageScene::Update(float dtSec) {
 	}
 #endif
 
-	// 鉄球追加（スペースキー）
-	if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_SPACE)) {
-		if (GameObject* ball = SpawnMetalBall()) {
-			_liveBalls.push_back(ball);
-			BallTrack t; t.ball = ball; t.lastSnapPos = ball->transform.WorldPosition();
-			_ballTracks.push_back(t);
-			++_ballCount;
-			_activeBallCount = static_cast<int>(_liveBalls.size());
+	// 鉄球追加（スペースキー押下中は持ち球を消費して自動生成）
+	if (KeyInput::Instance().IsKeyInputHeld(KEY_INPUT_SPACE)) {
+		_ballSpawnTimer += dtSec;
+		if (_ballSpawnTimer >= _ballSpawnIntervalSec) {
+			_ballSpawnTimer -= _ballSpawnIntervalSec;
+			if (_remainingBalls > 0) {  // 持ち球がある場合のみ生成
+				if (GameObject* ball = SpawnMetalBall()) {
+					_liveBalls.push_back(ball);
+					BallTrack t; t.ball = ball; t.lastSnapPos = ball->transform.WorldPosition();
+					_ballTracks.push_back(t);
+					++_ballCount;
+					_activeBallCount = static_cast<int>(_liveBalls.size());
+					--_remainingBalls;  // 持ち球を消費
+				}
+			}
 		}
+	} else {
+		_ballSpawnTimer = 0.0f;  // スペースキーが離されたらタイマーをリセット
+	}
+
+	// Rキーで125球の貸出し
+	if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_R)) {
+		_remainingBalls += 125;  // 持ち球を125増やす
 	}
 
 	// メニューへ戻る（Escキー）
@@ -477,14 +543,23 @@ void PachinkoGame_StageScene::Draw() {
 	DrawString(10, 50, "後面: 白い壁", GetColor(255, 255, 255));
 	DrawFormatString(10, 70, GetColor(180, 255, 180), "F1: フリー移動カメラ [%s]", _freeCameraMode ? "ON" : "OFF");
 	DrawString(10, 90, "Space: 鉄球を追加", GetColor(180, 255, 180));
-	DrawString(10, 110, "Esc: メニューへ戻る", GetColor(180, 255, 180));
-	DrawFormatString(10, 130, GetColor(220, 220, 220), "アクティブ鉄球数: %d", _activeBallCount);
+	DrawString(10, 110, "R: 125球貸出", GetColor(255, 255, 100));
+	DrawString(10, 130, "Esc: メニューへ戻る", GetColor(180, 255, 180));
+	DrawFormatString(10, 150, GetColor(220, 220, 220), "アクティブ鉄球数: %d", _activeBallCount);
+
+	// 右上に持ち球を表示
+	DrawFormatString(1150 - 200, 10, GetColor(255, 255, 0), "持ち球: %d", _remainingBalls);
+
+	// ボール管理情報（左上）
+	DrawFormatString(10, 170, GetColor(255, 200, 100), "生成数: %d", _spawnedBallCount);
+	DrawFormatString(10, 190, GetColor(255, 150, 100), "削除数: %d", _deletedBallCount);
+	DrawFormatString(10, 210, GetColor(200, 255, 200), "有効球数: %d", _spawnedBallCount - _deletedBallCount);
 
 	// センサー入賞情報
-	DrawFormatString(10, 150, GetColor(255, 220, 50), "スコア: %d", _totalScore);
+	DrawFormatString(10, 230, GetColor(255, 220, 50), "スコア: %d", _totalScore);
 	for (int i = 0; i < static_cast<int>(_sensors.size()); ++i) {
 		const PachinkoSensor* s = _sensors[i];
-		DrawFormatString(10, 170 + i * 18, GetColor(180, 255, 180),
+		DrawFormatString(10, 250 + i * 18, GetColor(180, 255, 180),
 			"[%s] 入賞: %d 回", s->GetSensorName().c_str(), s->GetHitCount());
 	}
 

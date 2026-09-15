@@ -2,7 +2,7 @@
 ========================================
 [PHYSICS DETAILED LOG]
 ========================================
-Timestamp: 2026/9/15 14:28:9
+Timestamp: 2026/9/15 16:2:3
 
 --- Object Statistics ---
 Total Objects: 126
@@ -39,9 +39,9 @@ Total: 61.7344 KB
   Contacts: 0 KB
 
 --- Performance ---
-Physics Time: 1.672 ms
-Collision Time: 1.727 ms
-Solver Time: 0.043 ms
+Physics Time: 2.587 ms
+Collision Time: 2.255 ms
+Solver Time: 0.203 ms
 
 --- All Objects Detail ---
 
@@ -1316,7 +1316,7 @@ Solver Time: 0.043 ms
   Contacts: 0
 
 [PachinkoSensor]
-  Position: (0, -3, 1)
+  Position: (0, 0, 1)
   Size: (12, 1, 3)
   Memory: 0.59375 KB
   Static: No

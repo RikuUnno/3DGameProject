@@ -1424,3 +1424,446 @@ Physics.SplitImpulseCorrection us=142 calls=1
 Physics.IntegrateBodies us=105 calls=1
 Collider.UpdateAllShapes us=101 calls=1
 Physics.PositionalCorrection us=90 calls=1
+
+[SLOW] frame=18655 frameTimeMs=45.721 fps=7201.81 cpu%=0 workers=15 queue=0
+-- SectionsTop --
+Physics.Update us=2254 calls=1
+Physics.StepSimulation us=2213 calls=1
+Collider.Update us=1023 calls=1
+Collider.UpdateFrame us=914 calls=1
+Collider.CheckDetailedCollisions us=668 calls=1
+Collider.BuildCurrentPairs us=646 calls=1
+Collider.SpatialPartitioning us=640 calls=1
+Physics.SplitImpulseCorrection us=301 calls=1
+Physics.BuildLookupCaches us=229 calls=1
+Physics.IntegrateBodies us=185 calls=1
+ThreadPool.Barrier.SpinWait us=160 calls=5
+Collider.GridMerge us=147 calls=1
+Physics.PropagateIslandSleep us=145 calls=1
+Physics.SolveAllIslands us=128 calls=1
+Collider.BroadPhase us=81 calls=1
+Collider.UpdateAllShapes us=71 calls=1
+
+[SLOW] frame=24478 frameTimeMs=34.85 fps=7053.21 cpu%=6.35227 workers=15 queue=0
+-- SectionsTop --
+Physics.Update us=3879 calls=1
+Physics.StepSimulation us=3634 calls=1
+Collider.Update us=1518 calls=1
+Collider.UpdateFrame us=1411 calls=1
+Collider.CheckDetailedCollisions us=1327 calls=1
+Collider.BuildCurrentPairs us=1297 calls=1
+Collider.SpatialPartitioning us=1273 calls=1
+Physics.BuildLookupCaches us=1021 calls=1
+Collider.GridCellCompute us=513 calls=1
+Physics.IntegrateBodies us=394 calls=1
+Physics.SplitImpulseCorrection us=269 calls=1
+Collider.GridMerge us=194 calls=1
+ThreadPool.Barrier.SpinWait us=179 calls=3
+Collider.SweptAABB us=122 calls=1
+Collider.BroadPhase us=110 calls=1
+Collider.UpdateAllShapes us=72 calls=1
+
+[SLOW] frame=11169 frameTimeMs=45.282 fps=5714.09 cpu%=0 workers=15 queue=0
+-- SectionsTop --
+Physics.Update us=6827 calls=1
+Physics.StepSimulation us=6705 calls=1
+Physics.BuildIslands us=2990 calls=1
+Collider.Update us=1162 calls=1
+Collider.UpdateFrame us=1156 calls=1
+Physics.IntegrateBodies us=740 calls=1
+Collider.UpdateAllShapes us=591 calls=1
+Collider.CheckDetailedCollisions us=554 calls=1
+Physics.BuildLookupCaches us=534 calls=1
+Physics.SolveAllIslands us=504 calls=1
+Collider.BuildCurrentPairs us=503 calls=1
+Collider.SpatialPartitioning us=498 calls=1
+Physics.SplitImpulseCorrection us=490 calls=1
+ThreadPool.Barrier.SpinWait us=267 calls=5
+Collider.GridMerge us=170 calls=1
+Collider.GridCellCompute us=92 calls=1
+
+[SLOW] frame=16657 frameTimeMs=33.373 fps=166.057 cpu%=32.3912 workers=15 queue=0
+-- SectionsTop --
+Physics.Update us=2588 calls=1
+Physics.StepSimulation us=2534 calls=1
+Collider.Update us=1114 calls=1
+Collider.UpdateFrame us=902 calls=1
+Collider.CheckDetailedCollisions us=650 calls=1
+Collider.BuildCurrentPairs us=531 calls=1
+Collider.SpatialPartitioning us=516 calls=1
+ThreadPool.Barrier.SpinWait us=457 calls=13
+Physics.IntegrateBodies us=436 calls=1
+Physics.GenerateSpeculativeContacts us=277 calls=1
+Physics.BuildLookupCaches us=220 calls=1
+Collider.UpdateAllShapes us=160 calls=1
+Physics.SplitImpulseCorrection us=116 calls=1
+Physics.SolveAllIslands us=105 calls=1
+Collider.GridMerge us=101 calls=1
+Collider.ActiveCollect us=90 calls=1
+
+[SLOW] frame=17017 frameTimeMs=65.181 fps=145.914 cpu%=48.7234 workers=15 queue=0
+-- SectionsTop --
+Physics.Update us=4576 calls=1
+Physics.StepSimulation us=4237 calls=1
+Physics.GenerateSpeculativeContacts us=1386 calls=1
+Collider.Update us=1258 calls=1
+Collider.UpdateFrame us=1248 calls=1
+Collider.CheckDetailedCollisions us=1012 calls=1
+Collider.BuildCurrentPairs us=949 calls=1
+Collider.SpatialPartitioning us=935 calls=1
+Physics.BuildIslands us=660 calls=1
+Collider.BroadPhase us=290 calls=1
+Physics.BuildLookupCaches us=236 calls=1
+Collider.GridMerge us=186 calls=1
+Physics.IntegrateBodies us=173 calls=1
+Collider.SweptAABB us=137 calls=1
+ThreadPool.Barrier.SpinWait us=136 calls=6
+Physics.SolveAllIslands us=135 calls=1
+
+[SLOW] frame=17314 frameTimeMs=39.727 fps=7319.57 cpu%=12.122 workers=15 queue=0
+-- SectionsTop --
+Physics.Update us=4192 calls=1
+Physics.StepSimulation us=3934 calls=1
+Physics.BuildIslands us=1593 calls=1
+Collider.Update us=1016 calls=1
+Collider.UpdateFrame us=956 calls=1
+Collider.CheckDetailedCollisions us=715 calls=1
+Collider.BuildCurrentPairs us=687 calls=1
+Collider.SpatialPartitioning us=680 calls=1
+Physics.IntegrateBodies us=637 calls=1
+ThreadPool.Barrier.SpinWait us=410 calls=6
+Collider.UpdateAllShapes us=224 calls=1
+Collider.GridCellCompute us=190 calls=1
+Physics.BuildLookupCaches us=183 calls=1
+Physics.SolveAllIslands us=173 calls=1
+Collider.GridMerge us=163 calls=1
+Physics.ComputeInterpolation us=118 calls=1
+
+[SLOW] frame=18779 frameTimeMs=423.653 fps=240.991 cpu%=0 workers=15 queue=0
+-- SectionsTop --
+Physics.Update us=3182 calls=1
+Physics.StepSimulation us=2767 calls=1
+Collider.Update us=1079 calls=1
+Collider.UpdateFrame us=1070 calls=1
+ThreadPool.Barrier.SpinWait us=711 calls=7
+Collider.CheckDetailedCollisions us=622 calls=1
+Collider.BuildCurrentPairs us=583 calls=1
+Collider.SpatialPartitioning us=573 calls=1
+Physics.SplitImpulseCorrection us=439 calls=1
+Collider.UpdateAllShapes us=428 calls=1
+Physics.BuildLookupCaches us=402 calls=1
+Collider.GridMerge us=165 calls=1
+Collider.BroadPhase us=143 calls=1
+Physics.PropagateIslandSleep us=128 calls=1
+Physics.IntegrateBodies us=88 calls=1
+Physics.ComputeInterpolation us=80 calls=1
+
+[SLOW] frame=15229 frameTimeMs=44.117 fps=7291.29 cpu%=3.42352 workers=15 queue=0
+-- SectionsTop --
+Physics.Update us=7315 calls=1
+Physics.StepSimulation us=7251 calls=1
+Physics.BuildIslands us=3043 calls=1
+Collider.Update us=1161 calls=1
+Collider.UpdateFrame us=1155 calls=1
+Physics.IntegrateBodies us=823 calls=1
+Physics.BuildLookupCaches us=782 calls=1
+Collider.UpdateAllShapes us=650 calls=1
+Physics.SplitImpulseCorrection us=513 calls=1
+Physics.SolveAllIslands us=511 calls=1
+Collider.CheckDetailedCollisions us=496 calls=1
+Collider.BuildCurrentPairs us=477 calls=1
+Collider.SpatialPartitioning us=471 calls=1
+ThreadPool.Barrier.SpinWait us=256 calls=7
+Collider.GridMerge us=170 calls=1
+Physics.PositionalCorrection us=163 calls=1
+
+[SLOW] frame=23456 frameTimeMs=45.056 fps=7362.88 cpu%=4.93577 workers=15 queue=0
+-- SectionsTop --
+Physics.Update us=6939 calls=1
+Physics.StepSimulation us=6653 calls=1
+Physics.BuildIslands us=2583 calls=1
+Collider.Update us=1451 calls=1
+Collider.UpdateFrame us=1445 calls=1
+Collider.CheckDetailedCollisions us=815 calls=1
+Collider.BuildCurrentPairs us=795 calls=1
+Collider.SpatialPartitioning us=783 calls=1
+Physics.IntegrateBodies us=725 calls=1
+Physics.BuildLookupCaches us=721 calls=1
+Collider.UpdateAllShapes us=621 calls=1
+Physics.SolveAllIslands us=418 calls=1
+ThreadPool.Barrier.SpinWait us=414 calls=6
+Physics.SplitImpulseCorrection us=397 calls=1
+Collider.GridMerge us=348 calls=1
+Collider.GridCellCompute us=132 calls=1
+
+[SLOW] frame=29851 frameTimeMs=152.548 fps=181.377 cpu%=0 workers=15 queue=0
+-- SectionsTop --
+Physics.Update us=8990 calls=1
+Physics.StepSimulation us=8516 calls=1
+Collider.Update us=4789 calls=1
+Collider.UpdateFrame us=4383 calls=1
+Collider.CheckDetailedCollisions us=2933 calls=1
+Collider.BuildCurrentPairs us=2404 calls=1
+Collider.SpatialPartitioning us=2363 calls=1
+Physics.GenerateSpeculativeContacts us=2239 calls=1
+ThreadPool.Barrier.SpinWait us=792 calls=4
+Collider.GridCellCompute us=672 calls=1
+Collider.BroadPhase us=577 calls=1
+Collider.GridMerge us=571 calls=1
+Physics.SplitImpulseCorrection us=313 calls=1
+Physics.ComputeInterpolation us=279 calls=1
+Physics.BuildLookupCaches us=246 calls=1
+Physics.PositionalCorrection us=212 calls=1
+
+[SLOW] frame=14118 frameTimeMs=38.059 fps=5674.76 cpu%=0 workers=15 queue=0
+-- SectionsTop --
+Physics.Update us=3975 calls=1
+Physics.StepSimulation us=3726 calls=1
+Collider.Update us=1585 calls=1
+Collider.UpdateFrame us=1314 calls=1
+Collider.CheckDetailedCollisions us=924 calls=1
+Collider.BuildCurrentPairs us=906 calls=1
+Collider.SpatialPartitioning us=900 calls=1
+Physics.BuildIslands us=742 calls=1
+ThreadPool.Barrier.SpinWait us=699 calls=6
+Collider.UpdateAllShapes us=378 calls=1
+Physics.SolveAllIslands us=336 calls=1
+Physics.IntegrateBodies us=315 calls=1
+Collider.GridCellCompute us=290 calls=1
+Collider.SweptAABB us=260 calls=1
+Physics.BuildLookupCaches us=204 calls=1
+Collider.GridMerge us=152 calls=1
+
+[SLOW] frame=22274 frameTimeMs=35.682 fps=6740.85 cpu%=8.67963 workers=15 queue=0
+-- SectionsTop --
+Physics.Update us=5300 calls=1
+Physics.StepSimulation us=5099 calls=1
+Collider.Update us=2172 calls=1
+Collider.UpdateFrame us=2164 calls=1
+Collider.CheckDetailedCollisions us=1853 calls=1
+Collider.BuildCurrentPairs us=1759 calls=1
+Collider.SpatialPartitioning us=1717 calls=1
+Physics.BuildIslands us=1364 calls=1
+Collider.GridMerge us=808 calls=1
+Physics.IntegrateBodies us=307 calls=1
+Collider.GridCellCompute us=284 calls=1
+Collider.UpdateAllShapes us=266 calls=1
+Physics.SplitImpulseCorrection us=221 calls=1
+Collider.BroadPhase us=214 calls=1
+Physics.BuildLookupCaches us=178 calls=1
+ThreadPool.Barrier.SpinWait us=102 calls=4
+
+[SLOW] frame=38365 frameTimeMs=1307.92 fps=154.984 cpu%=0 workers=15 queue=0
+-- SectionsTop --
+Physics.Update us=2683 calls=1
+Physics.StepSimulation us=2516 calls=1
+Collider.Update us=862 calls=1
+Collider.UpdateFrame us=853 calls=1
+Collider.CheckDetailedCollisions us=660 calls=1
+Collider.BuildCurrentPairs us=535 calls=1
+Collider.SpatialPartitioning us=524 calls=1
+ThreadPool.Barrier.SpinWait us=241 calls=2
+Physics.SplitImpulseCorrection us=238 calls=1
+Physics.BuildLookupCaches us=235 calls=1
+Physics.PositionalCorrection us=222 calls=1
+Physics.SolveAllIslands us=184 calls=1
+Collider.UpdateAllShapes us=181 calls=1
+Collider.GridMerge us=103 calls=1
+Collider.BroadPhase us=87 calls=1
+Collider.GridCellCompute us=83 calls=1
+
+[SLOW] frame=40605 frameTimeMs=8986.82 fps=191.562 cpu%=24.411 workers=15 queue=0
+-- SectionsTop --
+Physics.Update us=2762 calls=1
+Physics.StepSimulation us=2697 calls=1
+Collider.Update us=1181 calls=1
+Collider.UpdateFrame us=986 calls=1
+Collider.CheckDetailedCollisions us=738 calls=1
+Collider.BuildCurrentPairs us=713 calls=1
+Collider.SpatialPartitioning us=700 calls=1
+ThreadPool.Barrier.SpinWait us=416 calls=3
+Collider.GridCellCompute us=316 calls=1
+Physics.SplitImpulseCorrection us=298 calls=1
+Physics.BuildLookupCaches us=235 calls=1
+Physics.IntegrateBodies us=235 calls=1
+Physics.SolveAllIslands us=235 calls=1
+Collider.GridMerge us=151 calls=1
+Physics.PositionalCorrection us=136 calls=1
+Collider.BroadPhase us=80 calls=1
+
+[SLOW] frame=1 frameTimeMs=41.729 fps=0 cpu%=0 workers=0 queue=0
+-- SectionsTop --
+Physics.Update us=21324 calls=1
+Physics.StepSimulation us=17190 calls=1
+Collider.Update us=10907 calls=1
+Collider.UpdateFrame us=10877 calls=1
+Collider.CheckDetailedCollisions us=9379 calls=1
+Collider.BuildCurrentPairs us=8747 calls=1
+Collider.SpatialPartitioning us=8715 calls=1
+Collider.SweptAABB us=6812 calls=1
+Physics.BuildLookupCaches us=2012 calls=1
+Physics.SplitImpulseCorrection us=1322 calls=1
+Physics.BuildIslands us=933 calls=1
+Physics.IntegrateBodies us=504 calls=1
+Collider.UpdateAllShapes us=392 calls=1
+Physics.SolveAllIslands us=292 calls=1
+Physics.BuildSolverContacts us=276 calls=1
+Collider.NarrowPhase us=21 calls=1
+
+[SLOW] frame=20876 frameTimeMs=193.497 fps=4047.89 cpu%=0 workers=15 queue=0
+-- SectionsTop --
+Physics.Update us=118206 calls=1
+Physics.ComputeInterpolation us=118178 calls=1
+ThreadPool.Barrier.SpinWait us=17 calls=1
+
+[SLOW] frame=26182 frameTimeMs=1924.61 fps=114.72 cpu%=16.2663 workers=15 queue=0
+-- SectionsTop --
+Physics.Update us=1779 calls=1
+Physics.StepSimulation us=1630 calls=1
+Collider.Update us=561 calls=1
+Collider.UpdateFrame us=554 calls=1
+Collider.CheckDetailedCollisions us=500 calls=1
+Collider.BuildCurrentPairs us=460 calls=1
+Collider.SpatialPartitioning us=448 calls=1
+Physics.BuildLookupCaches us=275 calls=1
+Physics.PositionalCorrection us=191 calls=1
+Physics.SplitImpulseCorrection us=182 calls=1
+Physics.IntegrateBodies us=134 calls=1
+ThreadPool.Barrier.SpinWait us=119 calls=8
+Collider.GridMerge us=118 calls=1
+Collider.BroadPhase us=103 calls=1
+Physics.SolveAllIslands us=88 calls=1
+Collider.SweptAABB us=74 calls=1
+
+[SLOW] frame=27079 frameTimeMs=1059.84 fps=166.92 cpu%=0 workers=15 queue=0
+-- SectionsTop --
+Physics.Update us=4602 calls=1
+Physics.StepSimulation us=4056 calls=1
+Collider.Update us=1694 calls=1
+Collider.UpdateFrame us=1580 calls=1
+Collider.CheckDetailedCollisions us=1290 calls=1
+Collider.BuildCurrentPairs us=1252 calls=1
+Collider.SpatialPartitioning us=1237 calls=1
+Physics.BuildIslands us=736 calls=1
+ThreadPool.Barrier.SpinWait us=731 calls=7
+Physics.IntegrateBodies us=561 calls=1
+Collider.GridMerge us=401 calls=1
+Collider.GridCellCompute us=298 calls=1
+Collider.UpdateAllShapes us=266 calls=1
+Physics.ComputeInterpolation us=242 calls=1
+Physics.BuildLookupCaches us=196 calls=1
+Collider.ActiveCollect us=180 calls=1
+
+[SLOW] frame=28736 frameTimeMs=907.084 fps=61.0304 cpu%=50.0702 workers=15 queue=0
+-- SectionsTop --
+Physics.Update us=3545 calls=1
+Physics.StepSimulation us=3214 calls=1
+Collider.Update us=1168 calls=1
+Collider.UpdateFrame us=819 calls=1
+Collider.CheckDetailedCollisions us=664 calls=1
+Collider.BuildCurrentPairs us=551 calls=1
+Collider.SpatialPartitioning us=541 calls=1
+Physics.GenerateSpeculativeContacts us=469 calls=1
+ThreadPool.Barrier.SpinWait us=460 calls=9
+Physics.SolveAllIslands us=445 calls=1
+Physics.BuildLookupCaches us=339 calls=1
+Physics.SplitImpulseCorrection us=206 calls=1
+Collider.GridMerge us=203 calls=1
+Physics.PositionalCorrection us=143 calls=1
+Physics.ComputeInterpolation us=104 calls=1
+Collider.BroadPhase us=98 calls=1
+
+[SLOW] frame=28828 frameTimeMs=690.573 fps=65.5275 cpu%=24.0201 workers=15 queue=0
+-- SectionsTop --
+Physics.Update us=4705 calls=1
+Physics.StepSimulation us=4301 calls=1
+Physics.IntegrateBodies us=1312 calls=1
+ThreadPool.Barrier.SpinWait us=1154 calls=7
+Collider.Update us=1055 calls=1
+Collider.UpdateFrame us=1045 calls=1
+Collider.CheckDetailedCollisions us=949 calls=1
+Collider.BuildCurrentPairs us=893 calls=1
+Collider.SpatialPartitioning us=879 calls=1
+Physics.SolveAllIslands us=415 calls=1
+Physics.BuildLookupCaches us=337 calls=1
+Physics.SplitImpulseCorrection us=292 calls=1
+Physics.PropagateIslandSleep us=239 calls=1
+Collider.GridCellCompute us=231 calls=1
+Collider.GridMerge us=175 calls=1
+Collider.BroadPhase us=168 calls=1
+
+[SLOW] frame=29021 frameTimeMs=691.202 fps=84.3892 cpu%=29.3747 workers=15 queue=0
+-- SectionsTop --
+Physics.Update us=2045 calls=1
+Physics.StepSimulation us=1900 calls=1
+Collider.Update us=690 calls=1
+Collider.UpdateFrame us=584 calls=1
+Collider.CheckDetailedCollisions us=525 calls=1
+Collider.BuildCurrentPairs us=496 calls=1
+Collider.SpatialPartitioning us=489 calls=1
+ThreadPool.Barrier.SpinWait us=454 calls=10
+Physics.BuildLookupCaches us=270 calls=1
+Physics.SplitImpulseCorrection us=221 calls=1
+Physics.PropagateIslandSleep us=163 calls=1
+Collider.GridCellCompute us=151 calls=1
+Physics.SolveAllIslands us=124 calls=1
+Physics.IntegrateBodies us=121 calls=1
+Collider.GridMerge us=114 calls=1
+Collider.BroadPhase us=97 calls=1
+
+[SLOW] frame=33294 frameTimeMs=1216.19 fps=162.729 cpu%=0 workers=15 queue=0
+-- SectionsTop --
+Physics.Update us=2390 calls=1
+Physics.StepSimulation us=2350 calls=1
+Collider.Update us=1325 calls=1
+Collider.UpdateFrame us=1319 calls=1
+Collider.CheckDetailedCollisions us=1235 calls=1
+Collider.BuildCurrentPairs us=1025 calls=1
+Collider.SpatialPartitioning us=1016 calls=1
+Collider.GridMerge us=269 calls=1
+Physics.BuildLookupCaches us=259 calls=1
+Physics.SplitImpulseCorrection us=232 calls=1
+Collider.BroadPhase us=151 calls=1
+Collider.GridCellCompute us=119 calls=1
+Collider.SweptAABB us=73 calls=1
+Collider.UpdateAllShapes us=71 calls=1
+Physics.SolveAllIslands us=65 calls=1
+Physics.IntegrateBodies us=58 calls=1
+
+[SLOW] frame=33821 frameTimeMs=676.086 fps=164.102 cpu%=0 workers=15 queue=0
+-- SectionsTop --
+Physics.Update us=2570 calls=1
+Physics.StepSimulation us=2161 calls=1
+Collider.Update us=626 calls=1
+Collider.UpdateFrame us=588 calls=1
+Collider.CheckDetailedCollisions us=473 calls=1
+Collider.BuildCurrentPairs us=433 calls=1
+Collider.SpatialPartitioning us=424 calls=1
+Physics.SolveAllIslands us=365 calls=1
+ThreadPool.Barrier.SpinWait us=340 calls=7
+Physics.BuildLookupCaches us=256 calls=1
+Physics.SplitImpulseCorrection us=190 calls=1
+Physics.ComputeInterpolation us=155 calls=1
+Collider.GridMerge us=132 calls=1
+Collider.BroadPhase us=86 calls=1
+Physics.IntegrateBodies us=71 calls=1
+Collider.SweptAABB us=60 calls=1
+
+[SLOW] frame=34317 frameTimeMs=1929.6 fps=164.046 cpu%=0 workers=15 queue=0
+-- SectionsTop --
+Physics.Update us=3099 calls=1
+Physics.StepSimulation us=2881 calls=1
+Collider.Update us=1039 calls=1
+Collider.UpdateFrame us=1020 calls=1
+Collider.CheckDetailedCollisions us=715 calls=1
+Collider.BuildCurrentPairs us=658 calls=1
+Collider.SpatialPartitioning us=628 calls=1
+Physics.IntegrateBodies us=256 calls=1
+Physics.BuildLookupCaches us=254 calls=1
+ThreadPool.Barrier.SpinWait us=239 calls=3
+Collider.UpdateAllShapes us=235 calls=1
+Physics.SplitImpulseCorrection us=228 calls=1
+Collider.GridMerge us=170 calls=1
+Collider.BroadPhase us=151 calls=1
+Physics.ComputeInterpolation us=91 calls=1
+Collider.GridCellCompute us=82 calls=1

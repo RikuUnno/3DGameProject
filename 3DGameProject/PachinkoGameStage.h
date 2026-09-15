@@ -39,6 +39,9 @@ private:
 	// センサー登録ヘルパ
 	void SpawnSensors();
 
+	// 金属玉をランダム位置・速度で生成
+	GameObject* SpawnMetalBall();
+
 	// フラグ
 	bool _returningToMenu = false; // メニューへの遷移が開始済みか（多重遷移防止）
 
@@ -65,4 +68,15 @@ private:
 	// 固定カメラの位置と注視点(初期値)
 	VECTOR _fixedCameraEye    = VGet(0.0f, 8.0f, 14.0f);
 	VECTOR _fixedCameraTarget = VGet(0.0f, 8.0f, 0.0f);
+
+	// ゲーム進行用変数
+	int _remainingBalls = 0;			// 持ち球
+	float _ballSpawnTimer = 0.0f;		// 鉄球の生成タイマー
+	float _ballSpawnIntervalSec = 0.3f;	// 鉄球の生成間隔
+	int _spawnedBallCount = 0;			// 生成したボールの総数
+	int _deletedBallCount = 0;			// 削除したボールの総数
+
+
+
+	
 };

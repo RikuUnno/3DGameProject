@@ -2,252 +2,52 @@
 ========================================
 [PHYSICS DETAILED LOG]
 ========================================
-Timestamp: 2026/9/10 13:19:30
+Timestamp: 2026/9/15 14:28:9
 
 --- Object Statistics ---
-Total Objects: 123
-  Dynamic: 20
-  Static: 103
-  Active: 20
+Total Objects: 126
+  Dynamic: 0
+  Static: 126
+  Active: 0
   Sleeping: 0
 
 --- Collider Statistics ---
-Total Colliders: 126
-  Sphere: 20
-  Box: 7
-  Capsule: 99
+Total Colliders: 128
+  Sphere: 0
+  Box: 8
+  Capsule: 120
   Plane: 0
   Compound: 0
 
 --- Physics Body Statistics ---
-Total Bodies: 123
-  Active: 20
+Total Bodies: 126
+  Active: 0
   Sleeping: 0
 
 --- Contact Statistics ---
-Total Contacts: 3
-Active Contacts: 3
+Total Contacts: 0
+Active Contacts: 0
 
 --- Island Statistics ---
-Total Islands: 1
-Largest Island Size: 20
+Total Islands: 0
+Largest Island Size: 0
 
 --- Memory Usage ---
-Total: 59.6406 KB
-  Bodies: 35.5547 KB
-  Colliders: 23.9453 KB
-  Contacts: 0.140625 KB
+Total: 61.7344 KB
+  Bodies: 36.4219 KB
+  Colliders: 25.3125 KB
+  Contacts: 0 KB
 
 --- Performance ---
-Physics Time: 3.096 ms
-Collision Time: 2.702 ms
-Solver Time: 0.218 ms
+Physics Time: 1.672 ms
+Collision Time: 1.727 ms
+Solver Time: 0.043 ms
 
 --- All Objects Detail ---
 
-[PachinkoBall]
-  Position: (0.674656, 12.942, 0.956046)
-  Size: (0.36, 0.360001, 0.36)
-  Memory: 0.796875 KB
-  Static: No
-  Sleeping: No
-  Mass: 190.546
-  Velocity: (0.195441, -1.02582, 0.16608)
-  Contacts: 0
-
-[PachinkoBall]
-  Position: (-3.98673, -5.66462, 1.0554)
-  Size: (0.36, 0.36, 0.36)
-  Memory: 0.796875 KB
-  Static: No
-  Sleeping: No
-  Mass: 190.546
-  Velocity: (1.31068e-05, -15.7209, -0.00255405)
-  Contacts: 0
-
-[PachinkoBall]
-  Position: (1.4604, -22.3539, 0.740392)
-  Size: (0.36, 0.360001, 0.36)
-  Memory: 0.796875 KB
-  Static: No
-  Sleeping: No
-  Mass: 190.546
-  Velocity: (0.89665, -22.4329, -0.0514051)
-  Contacts: 0
-
-[PachinkoBall]
-  Position: (5.34397, -39.9112, 1.74767)
-  Size: (0.36, 0.360001, 0.36)
-  Memory: 0.796875 KB
-  Static: No
-  Sleeping: No
-  Mass: 190.546
-  Velocity: (1.50506, -30.0207, -1.07852e-05)
-  Contacts: 0
-
-[PachinkoBall]
-  Position: (1.90883, -13.337, 0.711362)
-  Size: (0.36, 0.360001, 0.36)
-  Memory: 0.796875 KB
-  Static: No
-  Sleeping: No
-  Mass: 190.546
-  Velocity: (-0.746189, -18.0808, -0.0210397)
-  Contacts: 0
-
-[PachinkoBall]
-  Position: (3.98438, -0.0484032, 1.11807)
-  Size: (0.36, 0.36, 0.36)
-  Memory: 0.796875 KB
-  Static: No
-  Sleeping: No
-  Mass: 190.546
-  Velocity: (0, -17.4504, 0.00624374)
-  Contacts: 1
-
-[PachinkoBall]
-  Position: (4.52312, -5.18436, 1.14632)
-  Size: (0.36, 0.36, 0.36)
-  Memory: 0.796875 KB
-  Static: No
-  Sleeping: No
-  Mass: 190.546
-  Velocity: (1.98982, -13.016, 0.0111926)
-  Contacts: 0
-
-[PachinkoBall]
-  Position: (1.13662, 0.526384, 1.09393)
-  Size: (0.36, 0.36, 0.36)
-  Memory: 0.796875 KB
-  Static: No
-  Sleeping: No
-  Mass: 190.546
-  Velocity: (1.55635, -7.57996, 0.00335136)
-  Contacts: 0
-
-[PachinkoBall]
-  Position: (2.68374, -3.21492, 0.914664)
-  Size: (0.36, 0.36, 0.36)
-  Memory: 0.796875 KB
-  Static: No
-  Sleeping: No
-  Mass: 190.546
-  Velocity: (-0.542006, -11.5992, -0.0136434)
-  Contacts: 0
-
-[PachinkoBall]
-  Position: (-1.0623, 4.79599, 0.966919)
-  Size: (0.36, 0.36, 0.36)
-  Memory: 0.796875 KB
-  Static: No
-  Sleeping: No
-  Mass: 190.546
-  Velocity: (0.732612, -2.38735, -0.0009091)
-  Contacts: 0
-
-[PachinkoBall]
-  Position: (0.290118, 3.22543, 0.83619)
-  Size: (0.36, 0.36, 0.36)
-  Memory: 0.796875 KB
-  Static: No
-  Sleeping: No
-  Mass: 190.546
-  Velocity: (1.32434, -4.5274, -0.0306103)
-  Contacts: 0
-
-[PachinkoBall]
-  Position: (3.52411, 3.40542, 0.944066)
-  Size: (0.36, 0.36, 0.36)
-  Memory: 0.796875 KB
-  Static: No
-  Sleeping: No
-  Mass: 190.546
-  Velocity: (0.685247, -0.414033, -0.00881729)
-  Contacts: 1
-
-[PachinkoBall]
-  Position: (0.988756, 4.66262, 0.806468)
-  Size: (0.36, 0.36, 0.36)
-  Memory: 0.796875 KB
-  Static: No
-  Sleeping: No
-  Mass: 190.546
-  Velocity: (0.726698, -3.50294, -0.0417463)
-  Contacts: 0
-
-[PachinkoBall]
-  Position: (1.7061, 6.422, 1.05986)
-  Size: (0.36, 0.36, 0.36)
-  Memory: 0.796875 KB
-  Static: No
-  Sleeping: No
-  Mass: 190.546
-  Velocity: (0.960674, -2.75394, 0.0223162)
-  Contacts: 0
-
-[PachinkoBall]
-  Position: (0.749544, 5.40563, 0.677258)
-  Size: (0.36, 0.36, 0.36)
-  Memory: 0.796875 KB
-  Static: No
-  Sleeping: No
-  Mass: 190.546
-  Velocity: (2.45059, -7.03649, -0.0669864)
-  Contacts: 0
-
-[PachinkoBall]
-  Position: (3.00052, 6.60628, 0.873044)
-  Size: (0.36, 0.36, 0.36)
-  Memory: 0.796875 KB
-  Static: No
-  Sleeping: No
-  Mass: 190.546
-  Velocity: (0.815515, -4.69095, -0.0473016)
-  Contacts: 0
-
-[PachinkoBall]
-  Position: (2.35747, 8.28468, 0.846495)
-  Size: (0.36, 0.360001, 0.36)
-  Memory: 0.796875 KB
-  Static: No
-  Sleeping: No
-  Mass: 190.546
-  Velocity: (2.06489, -2.94544, -0.064468)
-  Contacts: 0
-
-[PachinkoBall]
-  Position: (-0.518135, 9.31084, 0.814007)
-  Size: (0.36, 0.360001, 0.36)
-  Memory: 0.796875 KB
-  Static: No
-  Sleeping: No
-  Mass: 190.546
-  Velocity: (-0.752198, -0.833105, -0.123964)
-  Contacts: 1
-
-[PachinkoBall]
-  Position: (-1.61544, 9.80817, 1.03371)
-  Size: (0.36, 0.360001, 0.36)
-  Memory: 0.796875 KB
-  Static: No
-  Sleeping: No
-  Mass: 190.546
-  Velocity: (2.69285, -4.44972, 0.0710775)
-  Contacts: 0
-
-[PachinkoBall]
-  Position: (0.649248, 11.2417, 0.944543)
-  Size: (0.36, 0.360001, 0.36)
-  Memory: 0.796875 KB
-  Static: No
-  Sleeping: No
-  Mass: 190.546
-  Velocity: (0.142465, -5.8301, 0.010632)
-  Contacts: 0
-
 [PachinkoField_Back]
-  Position: (0, 7, -0.0399999)
-  Size: (8.4, 14, 0.16)
+  Position: (0, 6.5, -1.1)
+  Size: (8, 15, 0.16)
   Memory: 0.882812 KB
   Static: Yes
   Sleeping: No
@@ -256,8 +56,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoField_Front]
-  Position: (0, 7, 2.04)
-  Size: (8.4, 14, 0.16)
+  Position: (0, 6.5, 2.5)
+  Size: (8, 15, 0.16)
   Memory: 0.882812 KB
   Static: Yes
   Sleeping: No
@@ -266,8 +66,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoField_Side]
-  Position: (-4.28, 7, 1)
-  Size: (0.16, 14, 3.8)
+  Position: (-2.5, 12, 1)
+  Size: (4.94975, 2.97319, 4)
   Memory: 0.882812 KB
   Static: Yes
   Sleeping: No
@@ -276,399 +76,29 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoField_Side]
-  Position: (4.28, 7, 1)
-  Size: (0.16, 14, 3.8)
+  Position: (2.5, 12, 1)
+  Size: (4.94975, 2.97319, 4)
   Memory: 0.882812 KB
   Static: Yes
   Sleeping: No
   Mass: 0
   Velocity: (0, 0, 0)
-  Contacts: 1
-
-[PachinkoNail]
-  Position: (3.06, 4.05, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (3.74, 4.05, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (-3.4, 4.9, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (-2.72, 4.9, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (-2.04, 4.9, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (-1.36, 4.9, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (-0.68, 4.9, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (0, 4.9, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (0.68, 4.9, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (1.36, 4.9, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (2.04, 4.9, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (2.72, 4.9, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (3.4, 4.9, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (-3.06, 5.75, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (-2.38, 5.75, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (-1.7, 5.75, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (-1.02, 5.75, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (-0.34, 5.75, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (0.34, 5.75, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (1.02, 5.75, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (1.7, 5.75, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (2.38, 5.75, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (3.06, 5.75, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (3.74, 5.75, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (-3.4, 6.6, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (-2.72, 6.6, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (-2.04, 6.6, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (-1.36, 6.6, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (-0.68, 6.6, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (0, 6.6, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (0.68, 6.6, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (1.36, 6.6, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (2.04, 6.6, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (2.72, 6.6, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (3.4, 6.6, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (-3.06, 7.45, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoNail]
-  Position: (-2.38, 7.45, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
   Contacts: 0
 
-[PachinkoNail]
-  Position: (-1.7, 7.45, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
+[PachinkoField_Side]
+  Position: (-4, 4.8, 1)
+  Size: (0.2, 13, 4)
+  Memory: 0.882812 KB
   Static: Yes
   Sleeping: No
   Mass: 0
   Velocity: (0, 0, 0)
   Contacts: 0
 
-[PachinkoNail]
-  Position: (-1.02, 7.45, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
+[PachinkoField_Side]
+  Position: (4, 4.8, 1)
+  Size: (0.2, 13, 4)
+  Memory: 0.882812 KB
   Static: Yes
   Sleeping: No
   Mass: 0
@@ -676,8 +106,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (-3.06, 4.05, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (0, 11, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -686,8 +116,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (0.34, 7.45, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (1.4, 9.2, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -696,8 +126,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (1.02, 7.45, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (1.39831, 9.23925, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -706,8 +136,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (1.7, 7.45, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (1.39326, 9.27841, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -716,8 +146,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (2.38, 7.45, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (1.38485, 9.31738, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -726,8 +156,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (3.06, 7.45, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (1.3731, 9.35607, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -736,8 +166,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (3.74, 7.45, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (1.35804, 9.39438, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -746,8 +176,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (-3.4, 8.3, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (1.33972, 9.43223, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -756,8 +186,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (-2.72, 8.3, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (1.31816, 9.46951, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -766,8 +196,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (-2.04, 8.3, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (1.29343, 9.50615, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -776,8 +206,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (-1.36, 8.3, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (1.26558, 9.54204, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -786,8 +216,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (-0.68, 8.3, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (1.23469, 9.57712, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -796,8 +226,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (0, 8.3, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (1.20082, 9.61128, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -806,8 +236,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (0.68, 8.3, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (1.16406, 9.64446, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -816,8 +246,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (1.36, 8.3, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (1.12449, 9.67656, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -826,8 +256,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (2.04, 8.3, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (1.08221, 9.70751, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -836,8 +266,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (2.72, 8.3, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (1.03733, 9.73725, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -846,8 +276,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (3.4, 8.3, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (0.989949, 9.76569, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -856,8 +286,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (-3.06, 9.15, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (0.940182, 9.79276, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -866,8 +296,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (-2.38, 9.15, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (0.888151, 9.81841, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -876,8 +306,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (-1.7, 9.15, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (0.833979, 9.84257, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -886,28 +316,18 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (-1.02, 9.15, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (0.777798, 9.86518, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
   Mass: 0
   Velocity: (0, 0, 0)
   Contacts: 0
-
-[PachinkoNail]
-  Position: (-0.34, 9.15, 1)
-  Size: (0.12, 0.120001, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 1
 
 [PachinkoNail]
-  Position: (0.34, 9.15, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (0.719744, 9.88618, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -916,8 +336,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (1.02, 9.15, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (0.659955, 9.90554, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -926,8 +346,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (1.7, 9.15, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (0.598577, 9.92319, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -936,8 +356,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (2.38, 9.15, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (0.535757, 9.9391, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -946,8 +366,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (3.06, 9.15, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (0.471646, 9.95323, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -956,8 +376,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (3.74, 9.15, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (0.406398, 9.96555, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -966,8 +386,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (-3.4, 10, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (0.340172, 9.97602, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -976,8 +396,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (-2.72, 10, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (0.273126, 9.98463, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -986,8 +406,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (-2.04, 10, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (0.205423, 9.99134, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -996,8 +416,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (-3.4, 3.2, 1)
-  Size: (0.12, 0.12, 1.92)
+  Position: (0.137224, 9.99615, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -1006,8 +426,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (-0.68, 10, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (0.068695, 9.99904, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -1017,7 +437,7 @@ Solver Time: 0.218 ms
 
 [PachinkoNail]
   Position: (0, 10, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -1026,8 +446,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (0.68, 10, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (-0.068695, 9.99904, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -1036,8 +456,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (1.36, 10, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (-0.137224, 9.99615, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -1046,8 +466,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (2.04, 10, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (-0.205423, 9.99134, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -1056,8 +476,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (2.72, 10, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (-0.273126, 9.98463, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -1066,8 +486,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (3.4, 10, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (-0.340172, 9.97602, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -1076,8 +496,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (-2.72, 3.2, 1)
-  Size: (0.12, 0.12, 1.92)
+  Position: (-0.406399, 9.96555, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -1086,8 +506,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (-2.04, 3.2, 1)
-  Size: (0.12, 0.12, 1.92)
+  Position: (-0.471646, 9.95323, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -1096,8 +516,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (-1.36, 3.2, 1)
-  Size: (0.12, 0.12, 1.92)
+  Position: (-0.535757, 9.9391, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -1106,8 +526,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (-0.68, 3.2, 1)
-  Size: (0.12, 0.12, 1.92)
+  Position: (-0.598577, 9.92319, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -1116,8 +536,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (-0.34, 7.45, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (-0.659956, 9.90554, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -1126,8 +546,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (0, 3.2, 1)
-  Size: (0.12, 0.12, 1.92)
+  Position: (-0.719744, 9.88618, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -1136,8 +556,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (0.68, 3.2, 1)
-  Size: (0.12, 0.12, 1.92)
+  Position: (-0.777798, 9.86518, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -1146,8 +566,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (1.36, 3.2, 1)
-  Size: (0.12, 0.12, 1.92)
+  Position: (-0.833979, 9.84257, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -1156,8 +576,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (2.04, 3.2, 1)
-  Size: (0.12, 0.12, 1.92)
+  Position: (-0.888151, 9.81841, 1)
+  Size: (0.12, 0.120003, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -1166,8 +586,238 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (2.72, 3.2, 1)
-  Size: (0.12, 0.12, 1.92)
+  Position: (-0.940183, 9.79276, 1)
+  Size: (0.12, 0.120003, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-0.989949, 9.76569, 1)
+  Size: (0.12, 0.120003, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-1.03733, 9.73725, 1)
+  Size: (0.12, 0.120003, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-1.08221, 9.70751, 1)
+  Size: (0.12, 0.120003, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-1.12449, 9.67656, 1)
+  Size: (0.12, 0.120003, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-1.16406, 9.64446, 1)
+  Size: (0.12, 0.120003, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-1.20082, 9.61128, 1)
+  Size: (0.12, 0.120003, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-1.23469, 9.57712, 1)
+  Size: (0.12, 0.120003, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-1.26558, 9.54204, 1)
+  Size: (0.12, 0.120003, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-1.29343, 9.50615, 1)
+  Size: (0.12, 0.120003, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-1.31816, 9.46951, 1)
+  Size: (0.12, 0.120003, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-1.33972, 9.43223, 1)
+  Size: (0.12, 0.120003, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-1.35804, 9.39438, 1)
+  Size: (0.12, 0.120003, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-1.3731, 9.35607, 1)
+  Size: (0.12, 0.120003, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-1.38485, 9.31738, 1)
+  Size: (0.12, 0.120003, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-1.39326, 9.27841, 1)
+  Size: (0.12, 0.120003, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-1.39831, 9.23925, 1)
+  Size: (0.12, 0.120003, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-1.4, 9.2, 1)
+  Size: (0.12, 0.120003, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (3.4, 8, 1)
+  Size: (0.12, 0.120002, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (3.4, 7.2, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (3.4, 6.4, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (3.4, 5.6, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (3.4, 4.8, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (3.4, 4, 1)
+  Size: (0.12, 0.120001, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -1177,17 +827,7 @@ Solver Time: 0.218 ms
 
 [PachinkoNail]
   Position: (3.4, 3.2, 1)
-  Size: (0.12, 0.12, 1.92)
-  Memory: 0.84375 KB
-  Static: Yes
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 1
-
-[PachinkoNail]
-  Position: (-2.38, 4.05, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Size: (0.12, 0.120001, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -1196,8 +836,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (-1.7, 4.05, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (3.4, 2.4, 1)
+  Size: (0.12, 0.120001, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -1206,8 +846,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (-1.02, 4.05, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (-3.4, 8, 1)
+  Size: (0.12, 0.120002, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -1216,8 +856,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (-0.34, 4.05, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (-3.4, 7.2, 1)
+  Size: (0.12, 0.120001, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -1226,8 +866,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (0.34, 4.05, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (-3.4, 6.4, 1)
+  Size: (0.12, 0.120001, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -1236,8 +876,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (1.02, 4.05, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (-3.4, 5.6, 1)
+  Size: (0.12, 0.120001, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -1246,8 +886,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (1.7, 4.05, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (-3.4, 4.8, 1)
+  Size: (0.12, 0.120001, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -1256,8 +896,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (2.38, 4.05, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (-3.4, 4, 1)
+  Size: (0.12, 0.120001, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -1266,8 +906,398 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoNail]
-  Position: (-1.36, 10, 1)
-  Size: (0.12, 0.120001, 1.92)
+  Position: (-3.4, 3.2, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-3.4, 2.4, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (2.8, 7, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (2.8, 6.4, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (2.8, 5.8, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (2.8, 5.2, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (2.8, 4.6, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-2.8, 7, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-2.8, 6.4, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-2.8, 5.8, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-2.8, 5.2, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-2.8, 4.6, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (2.3, 7.7, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (2.3, 6.9, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (2.3, 6.1, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (2.3, 5.3, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (2.3, 4.5, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (2.3, 3.7, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (2.3, 2.9, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-2.3, 7.7, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-2.3, 6.9, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-2.3, 6.1, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-2.3, 5.3, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-2.3, 4.5, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-2.3, 3.7, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-2.3, 2.9, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (1.8, 5, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (1.35, 4.75, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (0.9, 4.5, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-1.8, 5, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-1.35, 4.75, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-0.9, 4.5, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (1.6, 4, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (1.15, 3.75, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (0.7, 3.5, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-1.6, 4, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-1.2, 3.75, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-0.8, 3.5, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (0.25, 4.2, 1)
+  Size: (0.12, 0.120001, 3.32)
+  Memory: 0.84375 KB
+  Static: Yes
+  Sleeping: No
+  Mass: 0
+  Velocity: (0, 0, 0)
+  Contacts: 0
+
+[PachinkoNail]
+  Position: (-0.25, 4.2, 1)
+  Size: (0.12, 0.120001, 3.32)
   Memory: 0.84375 KB
   Static: Yes
   Sleeping: No
@@ -1276,8 +1306,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoSensor]
-  Position: (2.8, 0.15, 1)
-  Size: (2.4, 0.3, 2)
+  Position: (0, 4.1, 1)
+  Size: (0.3, 0.0799999, 3)
   Memory: 0.59375 KB
   Static: No
   Sleeping: No
@@ -1286,18 +1316,8 @@ Solver Time: 0.218 ms
   Contacts: 0
 
 [PachinkoSensor]
-  Position: (-2.8, 0.15, 1)
-  Size: (2.4, 0.3, 2)
-  Memory: 0.59375 KB
-  Static: No
-  Sleeping: No
-  Mass: 0
-  Velocity: (0, 0, 0)
-  Contacts: 0
-
-[PachinkoSensor]
-  Position: (0, 0.15, 1)
-  Size: (2.4, 0.3, 2)
+  Position: (0, -3, 1)
+  Size: (12, 1, 3)
   Memory: 0.59375 KB
   Static: No
   Sleeping: No

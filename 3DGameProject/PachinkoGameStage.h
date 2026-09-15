@@ -37,7 +37,7 @@ private:
 	static constexpr int   kStuckCountThreshold  = 4;     // 何回連続で変位不足ならスタックとみなすか
 
 	// センサー登録ヘルパ
-	void SpawnSensors_();
+	void SpawnSensors();
 
 	// フラグ
 	bool _returningToMenu = false; // メニューへの遷移が開始済みか（多重遷移防止）
@@ -63,6 +63,6 @@ private:
 	CameraController _cameraController; // カメラコントローラ
 	bool _freeCameraMode = false;       // フリームーブカメラモードかどうか
 	// 固定カメラの位置と注視点(初期値)
-	VECTOR _fixedCameraEye    = VGet(0.0f, 7.0f, 12.3f);
-	VECTOR _fixedCameraTarget = VGet(0.0f, 7.0f, 0.0f);
+	VECTOR _fixedCameraEye    = VGet(0.0f, 8.0f, 14.0f);
+	VECTOR _fixedCameraTarget = VGet(0.0f, 8.0f, 0.0f);
 };

@@ -38,7 +38,10 @@ void PachinkoPhysicsObjectTpl::OnAcquire(const VariantMap& params) {
 	collider->owner = this;
 	collider->isTrigger = ParseBoolParam_(params, "trigger", false);
 	collider->layer = DefaultLayer_();
-	collider->mask = mask::ALL;
+	// 釘と球でマスクを分ける
+	// 球（layerMask::BALL）はすべてと衝突
+	// 釘（layerMask::ENVIRONMENT）は球のみと衝突
+	collider->mask = (collider->layer == layerMask::BALL) ? mask::ALL : mask::BALL;
 	collider->enableCCD = ParseBoolParam_(params, "ccd", DefaultCcd_());
 	collider->SetDebugColor(_drawColor);
 	collider->UpdateShape();

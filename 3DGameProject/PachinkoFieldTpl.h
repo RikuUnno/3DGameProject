@@ -11,9 +11,9 @@
 class PachinkoFieldTpl : public GameObject {
 public:
 	enum class DrawStyle {
-		AABB,
-		OBBWire,
-		Solid,
+		AABB,		// AABBワイヤー
+		OBBWire,	// OBBワイヤー
+		Solid,		// ソリッド（半透明）
 	};
 
 	PachinkoFieldTpl();

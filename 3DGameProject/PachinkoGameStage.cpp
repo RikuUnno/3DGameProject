@@ -6,6 +6,7 @@
 #include "PachinkoGameMenu.h"
 #include "PachinkoSensor.h"
 
+#include <cmath>
 #include <random>
 
 #include "ObjectFactory.h"
@@ -39,41 +40,44 @@ namespace {
 	}
 
 	// ランダム範囲生成（minValue <= x < maxValue）
-	float RandRange_(float minValue, float maxValue) {
+	float RandRange(float minValue, float maxValue) {
 		static std::mt19937 rng{ std::random_device{}() };
 		std::uniform_real_distribution<float> dist(minValue, maxValue);
 		return dist(rng);
 	}
 
-	// 金属玉をランダム位置・速度で生成
-	GameObject* SpawnMetalBall_() {
-		const float x = RandRange_(-2.4f, 2.4f);
-		const float z = 1.0f + RandRange_(-0.08f, 0.08f);
+	// 金属玉をランダム位置・速度で生成（上部から落下）
+	GameObject* SpawnMetalBall() {
+		// 固定位置 (0, 12, 0) からスポーン
+		const float x = 0.0f;
+		const float z = 1.0f;
+		const float startY = 12.0f;
 
-		const float vx = RandRange_(-0.25f, 0.25f);
-		const float vy = RandRange_(-0.05f, 0.05f);
-		const float vz = RandRange_(-0.20f, 0.20f);
+		// いろんな方向へのランダムな力（より大きな力）
+		const float launchX = RandRange(-100.0f, 100.0f);    // 左右に大きくランダム
+		const float launchY = RandRange(3.0f, 8.0f);     // 上方向にランダム
+		const float launchZ = RandRange(-3.0f, 3.0f);    // 前後にランダム
 
-		const float avx = RandRange_(-0.8f, 0.8f);
-		const float avy = RandRange_(-0.8f, 0.8f);
-		const float avz = RandRange_(-0.8f, 0.8f);
+		// 回転要素（ランダム性を保持）
+		const float avx = RandRange(-3.0f, 3.0f);        // 回転
+		const float avy = RandRange(-3.0f, 3.0f);
+		const float avz = RandRange(-3.0f, 3.0f);
 
-		return ObjectManager::Instance().Spawn(PachinkoBall::StaticPoolKey(), {
-			{"px", std::to_string(x)},
-			{"py", "13.0"},
-			{"pz", std::to_string(z)},
-			{"vx", std::to_string(vx)},
-			{"vy", std::to_string(vy)},
-			{"vz", std::to_string(vz)},
-			{"avx", std::to_string(avx)},
-			{"avy", std::to_string(avy)},
-			{"avz", std::to_string(avz)},
+		GameObject* ball = ObjectManager::Instance().Spawn(PachinkoBall::StaticPoolKey(), {
+			{"px", std::to_string(x)}, {"py", std::to_string(startY)}, {"pz", std::to_string(z)},		// Position（固定上部）
+			{"vx", "0.0"}, {"vy", "0.0"}, {"vz", "0.0"},												// 初期速度ゼロ
+			{"avx", std::to_string(avx)}, {"avy", std::to_string(avy)}, {"avz", std::to_string(avz)},	// 回転（ランダム）
 			{"freezeRotation", "0"}
 		});
+		// PachinkoBall に Launch() を呼んで初速を与える
+		if (auto* pachinkoBall = dynamic_cast<PachinkoBall*>(ball)) {
+			pachinkoBall->Launch(VGet(launchX, launchY, launchZ));
+		}
+		return ball;
 	}
 
 	// PachinkoField_Front / Back / Side のプール登録を確実に行う
-	void EnsurePachinkoFieldRegistered_() {
+	void EnsurePachinkoFieldRegistered() {
 		auto& factory = ObjectFactory::Instance();
 		auto& objMgr = ObjectManager::Instance();
 
@@ -111,76 +115,151 @@ namespace {
 	}
 
 	// 釘を配置する
-	void SpawnNails_() {
-		constexpr int rows = 9;
-		constexpr int cols = 11;
-		const float startY = 3.2f;
-		const float stepY = 0.85f;
-		const float stepX = 0.68f;
+	void SpawnNails() {
 		constexpr float kNailRotX = DX_PI_F * 0.5f; // 既存姿勢から +90度
-		constexpr float kNailHalfHeight = 0.90f;    // Front/Back に届く長さへ延長
-		for (int r = 0; r < rows; ++r) {
-			const float y = startY + stepY * static_cast<float>(r);
-			const float xOffset = (r % 2 == 0) ? 0.0f : (stepX * 0.5f);
-			for (int c = 0; c < cols; ++c) {
-				const float x = (static_cast<float>(c) - (cols - 1) * 0.5f) * stepX + xOffset;
-				ObjectManager::Instance().Spawn(PachinkoNail::StaticPoolKey(), {
-					{"px", std::to_string(x)},
-					{"py", std::to_string(y)},
-					{"pz", "1.0"},
-					{"rx", std::to_string(kNailRotX)},
-					{"halfHeight", std::to_string(kNailHalfHeight)}
-				});
+		constexpr float kNailHalfHeight = 1.6f;    // Front/Back に届く長さへ延長
+		auto spawnNail = [&](float x, float y) {
+			ObjectManager::Instance().Spawn(PachinkoNail::StaticPoolKey(), {
+				{"px", std::to_string(x)},
+				{"py", std::to_string(y)},
+				{"pz", "1.0"},
+				{"rx", std::to_string(kNailRotX)},
+				{"halfHeight", std::to_string(kNailHalfHeight)}
+			});
+		};
+
+		// 縦に一括で釘を配置するヘルパー関数
+		auto spawnNailsVertical = [&](float x, float yStart, float yEnd, float interval) {
+			for (float y = yStart; y >= yEnd; y -= interval) {
+				spawnNail(x, y);
 			}
+		};
+
+		// 縦に一括で釘を配置するヘルパー関数（個数指定版）
+		auto spawnNailsVerticalCount = [&](float x, float yStart, int count, float interval) {
+			for (int i = 0; i < count; ++i) {
+				spawnNail(x, yStart - static_cast<float>(i) * interval);
+			}
+		};
+
+		// XYの2点間に釘を配置するヘルパー関数（間隔指定版）
+		auto spawnNailsBetween = [&](float x1, float y1, float x2, float y2, float interval) {
+			const float dx = x2 - x1;
+			const float dy = y2 - y1;
+			const float distance = std::sqrt(dx * dx + dy * dy);
+			const int count = static_cast<int>(distance / interval) + 1;
+
+			for (int i = 0; i < count; ++i) {
+				const float t = static_cast<float>(i) / static_cast<float>(count - 1);
+				const float x = x1 + dx * t;
+				const float y = y1 + dy * t;
+				spawnNail(x, y);
+			}
+		};
+
+		// XYの2点間に釘を配置するヘルパー関数（個数指定版）
+		auto spawnNailsBetweenCount = [&](float x1, float y1, float x2, float y2, int count) {
+			const float dx = x2 - x1;
+			const float dy = y2 - y1;
+
+			for (int i = 0; i < count; ++i) {
+				const float t = static_cast<float>(i) / static_cast<float>(count - 1);
+				const float x = x1 + dx * t;
+				const float y = y1 + dy * t;
+				spawnNail(x, y);
+			}
+		};
+
+		constexpr float kPi = DX_PI_F;
+
+		// ボール生成位置（0, 12, 0）のちょっと下に釘を一本配置
+		spawnNail(0.0f, 11.0f);
+
+		// 中央液晶部を囲む連釘（半円 - 隙間なし）
+		for (int i = 0; i <= 64; ++i) {  // 釘の数を17→65に大幅増加
+			const float angle = kPi * static_cast<float>(i) / 64.0f;  // 0～πの範囲で均等配置
+			const float x = 1.4f * std::cos(angle);
+			const float y = 9.2f + 0.8f * std::sin(angle);
+			spawnNail(x, y);
 		}
+
+		spawnNailsVerticalCount(3.4f, 8.0f, 8, 0.8f); // 左側の縦釘一列目
+		spawnNailsVerticalCount(-3.4f, 8.0f, 8, 0.8f); // 右側の縦釘一列目
+
+		spawnNailsVerticalCount(2.8f, 7.0f, 5, 0.6f); // 左側の縦釘二列目
+		spawnNailsVerticalCount(-2.8f, 7.0f, 5, 0.6f); // 右側の縦釘二列目
+		spawnNailsVerticalCount(2.3f, 7.7f, 7, 0.8f); // 左側の縦釘三列目
+		spawnNailsVerticalCount(-2.3f, 7.7f, 7, 0.8f); // 右側の縦釘三列目
+
+		spawnNailsBetween(1.8f, 5.0f, 0.9f, 4.5f, 0.4f); // へそを目指す斜めの釘（左）
+		spawnNailsBetween(-1.8f, 5.0f, -0.9f, 4.5f, 0.4f); // へそを目指す斜めの釘（右）
+		spawnNailsBetween(1.6f, 4.0f, 0.7f, 3.5f, 0.4f); // へそを目指す斜めの釘の下の釘（左）
+		spawnNailsBetween(-1.6f, 4.0f, -0.8f, 3.5f, 0.4f); // へそを目指す斜めの釘の下の釘（右）
+
+		spawnNail(0.25f, 4.2f); // へそ中央の釘 （左）
+		spawnNail(-0.25f, 4.2f); // へそ中央の釘（右）
 	}
 } // namespace
 
 // センサーを配置してメンバーリストに追加
-void PachinkoGame_StageScene::SpawnSensors_() {
-	// フィールド底部に3つの入賞ポケットを並べる
-	// X 位置: 左(-2.8) / 中央(0.0) / 右(+2.8)
-	// Y: フィールド最下部 (y = 0.15 = 床の直上)
-	// Z: フィールド中央 (z = 1.0)
-	struct SensorDef { float x; int score; const char* name; };
-
-	static constexpr SensorDef kDefs[] = {
-		{ -2.8f, 100, "Left"   },
-		{  0.0f, 300, "Center" },
-		{  2.8f, 100, "Right"  },
-	};
-	static constexpr unsigned int kColors[] = {
-		0, // Left  : 赤
-		0, // Center: 金
-		0, // Right  : 赤
-	};
-	const unsigned int colors[] = {
-		GetColor(255, 80, 80),
-		GetColor(255, 220, 0),
-		GetColor(255, 80, 80),
-	};
-
-	for (int i = 0; i < 3; ++i) {
-		const SensorDef& def = kDefs[i];
+void PachinkoGame_StageScene::SpawnSensors() {
+	// センサー配置用のヘルパー関数
+	auto spawnSensor = [&](float x, float y, float hx, float hy, int score, const char* name, unsigned int color) {
 		GameObject* obj = ObjectManager::Instance().Spawn(PachinkoSensor::StaticPoolKey(), {
-			{"px",    std::to_string(def.x)},
-			{"py",    "0.15"},
-			{"pz",    "1.0"},
-			{"hx",    "1.2"},
-			{"hy",    "0.15"},
-			{"hz",    "1.0"},
-			{"color", std::to_string(colors[i])},
-			{"name",  def.name},
+			{"px", std::to_string(x)},
+			{"py", std::to_string(y)},
+			{"pz", "1.0"},
+			{"hx", std::to_string(hx)},
+			{"hy", std::to_string(hy)},
+			{"hz", "1.5"},
+			{"color", std::to_string(color)},
+			{"name", name},
 		});
 
 		if (auto* sensor = static_cast<PachinkoSensor*>(obj)) {
-			const int score = def.score;
 			sensor->onHit = [this, score](Collider*) {
 				_totalScore += score;
 			};
 			_sensors.push_back(sensor);
 		}
-	}
+	};
+
+	// XYの2点間にセンサーを配置するヘルパー関数（間隔指定版）
+	auto spawnSensorsBetween = [&](float x1, float y1, float x2, float y2,
+		float hx, float hy, int score, const char* name, unsigned int color, float interval) {
+		const float dx = x2 - x1;
+		const float dy = y2 - y1;
+		const float distance = std::sqrt(dx * dx + dy * dy);
+		const int count = static_cast<int>(distance / interval) + 1;
+
+		for (int i = 0; i < count; ++i) {
+			const float t = static_cast<float>(i) / static_cast<float>(count - 1);
+			const float x = x1 + dx * t;
+			const float y = y1 + dy * t;
+			spawnSensor(x, y, hx, hy, score, name, color);
+		}
+	};
+
+	// XYの2点間にセンサーを配置するヘルパー関数（個数指定版）
+	auto spawnSensorsBetweenCount = [&](float x1, float y1, float x2, float y2,
+		float hx, float hy, int score, const char* name, unsigned int color, int count) {
+		const float dx = x2 - x1;
+		const float dy = y2 - y1;
+
+		for (int i = 0; i < count; ++i) {
+			const float t = static_cast<float>(i) / static_cast<float>(count - 1);
+			const float x = x1 + dx * t;
+			const float y = y1 + dy * t;
+			spawnSensor(x, y, hx, hy, score, name, color);
+		}
+	};
+
+	// --- センサー配置例 ---
+	// 電チュウ(入賞センサー)
+	spawnSensor(0.0f, 4.1f, 0.15f, 0.04f, 10, "CenterSensor", GetColor(255, 255, 0)); // 黄色
+
+	// 下部の連続センサー（例：ボールが集まる場所）
+	spawnSensor(0.0f, -3.0f, 6.0f, 0.5f, 0, "Bottom_Line", GetColor(255, 255, 0)); // 白色
 }
 
 // メイン開始
@@ -194,52 +273,66 @@ void PachinkoGame_StageScene::Start() {
 	_sensors.clear();
 	_totalScore = 0;
 
-	EnsurePachinkoFieldRegistered_();
+	EnsurePachinkoFieldRegistered();
 
-	// 縦長の長方形パチンコ枠
-	// Back: 白い実壁
-	ObjectManager::Instance().Spawn(PachinkoField_Back::StaticPoolKey(), {
-		{"px", "0.0"}, {"py", "7.0"}, {"pz", "0.0"},
-		{"hx", "4.2"}, {"hy", "7.0"}, {"hz", "0.08"},
-		{"color", std::to_string(GetColor(255, 255, 255))},
-		{"material", "frictionless"}
-	});
-
-	// Front: 透明板イメージ（AABB線のみ）
+	// -- 新構成案 -- 
+	// 前面
 	ObjectManager::Instance().Spawn(PachinkoField_Front::StaticPoolKey(), {
-		{"px", "0.0"}, {"py", "7.0"}, {"pz", "2.0"},
-		{"hx", "4.2"}, {"hy", "7.0"}, {"hz", "0.08"},
-		{"color", std::to_string(GetColor(120, 200, 255))},
-		{"material", "frictionless"}
-	});
+	  {"px", "0.0"}, {"py", "6.5"}, {"pz", "2.5"},
+	  {"hx", "4.0"}, {"hy", "7.5"}, {"hz", "0.08"},
+	  {"color", std::to_string(GetColor(255, 255, 255))}, // 前面は白色
+	  {"material", "frictionless"}
+		});
+	
 
-	// Side(L/R): 透明板イメージ（AABB線のみ）
+	// 背面
+	ObjectManager::Instance().Spawn(PachinkoField_Back::StaticPoolKey(), {
+	  {"px", "0.0"}, {"py", "6.5"}, {"pz", "-1.1"},
+	  {"hx", "4.0"}, {"hy", "7.5"}, {"hz", "0.08"},
+	  {"color", std::to_string(GetColor(128, 128, 128))}, // 背面は灰色
+	  {"material", "frictionless"}
+		});
+
+	// 六角形のパチンコ台を作る為、壁を六角形に配置する
+	// 右上
 	ObjectManager::Instance().Spawn(PachinkoField_Side::StaticPoolKey(), {
-		{"px", "-4.28"}, {"py", "7.0"}, {"pz", "1.0"},
-		{"hx", "0.08"}, {"hy", "7.0"}, {"hz", "1.9"},
-		{"color", std::to_string(GetColor(120, 200, 255))},
-		{"material", "frictionless"}
-	});
+	  {"px", "-2.5"}, {"py", "12.0"}, {"pz", "1.0"},	// Position
+	  {"hx", "0.1"}, {"hy", "2.8"}, {"hz", "2.0"},		// Scale
+	  {"rz", "-1.0472"},								// 回転角度（ラジアン）
+	  {"color", std::to_string(GetColor(255, 0, 0))},	// 赤色
+	  {"material", "frictionless"}						// 素材(摩擦なし)
+		});
+
+	// 左上
 	ObjectManager::Instance().Spawn(PachinkoField_Side::StaticPoolKey(), {
-		{"px", "4.28"}, {"py", "7.0"}, {"pz", "1.0"},
-		{"hx", "0.08"}, {"hy", "7.0"}, {"hz", "1.9"},
-		{"color", std::to_string(GetColor(120, 200, 255))},
-		{"material", "frictionless"}
-	});
+	  {"px", "2.5"}, {"py", "12.0"}, {"pz", "1.0"},
+	  {"hx", "0.1"}, {"hy", "2.8"}, {"hz", "2.0"},
+	  {"rz", "1.0472"},
+	  {"material", "frictionless"}
+		});
 
-	// パチンコ釘（鉄カプセル）を配置
-	SpawnNails_();
+	// 右中
+	ObjectManager::Instance().Spawn(PachinkoField_Side::StaticPoolKey(), {
+	  {"px", "-4.0"}, {"py", "4.8"}, {"pz", "1.0"},
+	  {"hx", "0.1"}, {"hy", "6.5"}, {"hz", "2.0"},
+	  {"color", std::to_string(GetColor(255, 0, 0))}, // 赤色
+	  {"material", "frictionless"}
+		});
 
-	// 入賞判定センサーを配置
-	SpawnSensors_();
+	// 左中
+	ObjectManager::Instance().Spawn(PachinkoField_Side::StaticPoolKey(), {
+	  {"px", "4.0"}, {"py", "4.8"}, {"pz", "1.0"},
+	  {"hx", "0.1"}, {"hy", "6.5"}, {"hz", "2.0"},
+	  {"material", "frictionless"}
+		});
 
-	// 初期の鉄球を1つ配置
-	if (GameObject* ball = SpawnMetalBall_()) {
-		_liveBalls.push_back(ball);
-		BallTrack t; t.ball = ball; t.lastSnapPos = ball->transform.WorldPosition();
-		_ballTracks.push_back(t);
-		++_ballCount;
-	}
+	// 液晶に当たる内側の壁は、釘を敷き詰めて円形にし対応する、
+	// 釘（円形）
+	SpawnNails();
+
+	// sensor を配置してメンバーリストに追加
+	SpawnSensors();
+	// --------------
 
 	// フロントオブジェクトの後ろ側(内側)に固定カメラを配置
 	CameraManager& camMgr = CameraManager::Instance();
@@ -248,6 +341,12 @@ void PachinkoGame_StageScene::Start() {
 	if (Camera* cam = camMgr.Get(_cameraId)) { // カメラの初期位置を固定カメラ位置に設定
 		cam->transform.SetLocalPosition(_fixedCameraEye);
 		cam->LookAt(_fixedCameraEye, _fixedCameraTarget, VGet(0.0f, 1.0f, 0.0f));
+
+		// カメラ位置に光源を配置（ポイントライト）
+		SetLightPosition(_fixedCameraEye);
+		SetLightAmbColor(GetColorF(0.8f, 0.8f, 0.8f, 1.0f));
+		SetLightDifColor(GetColorF(1.0f, 1.0f, 1.0f, 1.0f));
+		SetLightSpcColor(GetColorF(1.0f, 1.0f, 1.0f, 1.0f));
 	}
 	camMgr.SetActive(_cameraId);
 	camMgr.SetRender(_cameraId);
@@ -336,7 +435,7 @@ void PachinkoGame_StageScene::Update(float dtSec) {
 #ifdef _DEBUG
 	// チートモード中に 1 キーで鉄球生成
 	if (_isCheatMode && KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_1)) {
-		if (GameObject* ball = SpawnMetalBall_()) {
+		if (GameObject* ball = SpawnMetalBall()) {
 			_liveBalls.push_back(ball);
 			BallTrack t; t.ball = ball; t.lastSnapPos = ball->transform.WorldPosition();
 			_ballTracks.push_back(t);
@@ -348,7 +447,7 @@ void PachinkoGame_StageScene::Update(float dtSec) {
 
 	// 鉄球追加（スペースキー）
 	if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_SPACE)) {
-		if (GameObject* ball = SpawnMetalBall_()) {
+		if (GameObject* ball = SpawnMetalBall()) {
 			_liveBalls.push_back(ball);
 			BallTrack t; t.ball = ball; t.lastSnapPos = ball->transform.WorldPosition();
 			_ballTracks.push_back(t);

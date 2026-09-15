@@ -20,12 +20,12 @@ Bullet::Bullet()
     col->mask              = mask::ALL;          // マスクをすべてのレイヤーに設定
     col->isTrigger         = true;               // トリガーとして使用（貫通させる場合はtrue）
     col->sendEventsToOwner = true;
-    col->useSceneFilter    = false;         // Bulletは ObjectManager::Spawn を介さず直接生成されるため、_ownerSceneId によるシーンフィルタを無効化
+    col->useSceneFilter    = false;              // Bulletは ObjectManager::Spawn を介さず直接生成されるため、_ownerSceneId によるシーンフィルタを無効化
     col->enableCCD         = true;
     col->ccdDistanceThreshold = 0.0f;
     col->_cap.radius = 0.05f;
     col->_cap.bottom = VGet(0.0f, 0.0f,  0.0f);
-    col->_cap.top    = VGet(0.0f, 0.0f,  0.3f); // 弾頭の長さ
+    col->_cap.top    = VGet(0.0f, 0.0f,  0.3f);  // 弾頭の長さ
     col->UpdateShape();
     _collider = std::move(col);
 
@@ -82,10 +82,10 @@ void Bullet::Fire(const VECTOR& muzzlePos, const VECTOR& direction,
     _alive     = true;
 
     // 発射者のレイヤーに応じて、命中対象（マスク）を切り替える
-    // PLAYER が撃てば ENEMY/ENVIRONMENT/GROUND と、それ以外なら逆にフィルタ
+    // PLAYER が撃てば ENEMY と衝突し、ENEMY が撃てば PLAYER と衝突する
     if (_collider) {
         _collider->layer = shooterLayer;
-        _collider->mask  = (shooterLayer == layerMask::PLAYER) ? mask::PLAYER : mask::ENEMY;
+        _collider->mask  = (shooterLayer == layerMask::PLAYER) ? mask::ENEMY : mask::PLAYER;
     }
 
     SetActive(true);
@@ -130,11 +130,14 @@ void Bullet::Draw()
 // 命中判定（GameObject::OnTriggerEnter）: 相手が IDamageable ならダメージを与えて消滅
 void Bullet::OnTriggerEnter(Collider* /*self*/, Collider* other)
 {
+	// 弾が生存していない場合や、相手が nullptr の場合は何もしない
     if (!_alive || !other) return;
 
+	// 相手の GameObject を取得
     GameObject* otherOwner = other->owner;
-    if (!otherOwner) return;
-
+	if (!otherOwner) return; // 相手の GameObject が nullptr の場合は何もしない
+    
+	// 相手が IDamageable ならダメージを与える
     if (auto* damageable = dynamic_cast<IDamageable*>(otherOwner)) {
         damageable->TakeDamage(_damage, this);
         _alive = false;

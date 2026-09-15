@@ -13,7 +13,7 @@ protected:
     VECTOR DefaultHalfExtents_() const noexcept override { return VGet(4.2f, 7.0f, 0.08f); }
     unsigned int DefaultColor_() const noexcept override { return GetColor(120, 200, 255); }
     std::string DefaultMaterialName_() const override { return "frictionless"; }
-    DrawStyle FieldDrawStyle_() const noexcept override { return DrawStyle::AABB; }
+    DrawStyle FieldDrawStyle_() const noexcept override { return DrawStyle::OBBWire; }
 };
 
 // PachinkoField_Back: 背面のパチンコ盤面（色付き板）オブジェクト 
@@ -25,7 +25,7 @@ public:
 protected:
     const char* FieldName_() const noexcept override { return "PachinkoField_Back"; }
     VECTOR DefaultHalfExtents_() const noexcept override { return VGet(4.2f, 7.0f, 0.08f); }
-    unsigned int DefaultColor_() const noexcept override { return GetColor(25, 25, 25); }
+    unsigned int DefaultColor_() const noexcept override { return GetColor(255, 255, 255); }
     std::string DefaultMaterialName_() const override { return "frictionless"; }
     DrawStyle FieldDrawStyle_() const noexcept override { return DrawStyle::Solid; }
 };
@@ -41,5 +41,5 @@ protected:
     VECTOR DefaultHalfExtents_() const noexcept override { return VGet(0.08f, 7.0f, 1.9f); }
     unsigned int DefaultColor_() const noexcept override { return GetColor(120, 200, 255); }
     std::string DefaultMaterialName_() const override { return "frictionless"; }
-    DrawStyle FieldDrawStyle_() const noexcept override { return DrawStyle::AABB; }
+    DrawStyle FieldDrawStyle_() const noexcept override { return DrawStyle::OBBWire; }
 };

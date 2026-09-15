@@ -15,6 +15,9 @@ public:
 	PachinkoBall();
 	~PachinkoBall() override;
 
+	// ”­Ë‘ä‚©‚ç‹Ê‚Ö‰‘¬‚ğ—^‚¦‚éB
+	void Launch(const VECTOR& impulse) noexcept;
+
 protected:
 	Collider* GetCollider_() const noexcept override;
 	void EnsureCollider_() override;

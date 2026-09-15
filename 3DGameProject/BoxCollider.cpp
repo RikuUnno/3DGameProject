@@ -86,7 +86,7 @@ void BoxCollider::UpdateShape() {
 
 // デバッグ描画
 void BoxCollider::DrawDebug() {
-	_debugColor = (_debugColor != 0) ? _debugColor : GetColor(255, 255, 255);	// デフォルト色は白色	
+	unsigned int color = (_debugColor != 0) ? _debugColor : GetColor(255, 255, 255);	// デフォルト色は白色	
 
 	// OBBの8頂点を計算するためのラムダ関数
 	auto Corner = [&](float sx, float sy, float sz) {
@@ -109,28 +109,28 @@ void BoxCollider::DrawDebug() {
 
 	// OBBの12辺を描画
 	// 下面の辺
-	DrawLine3D(p000, p001, _debugColor);
-	DrawLine3D(p001, p011, _debugColor);
-	DrawLine3D(p011, p010, _debugColor);
-	DrawLine3D(p010, p000, _debugColor);
+	DrawLine3D(p000, p001, color);
+	DrawLine3D(p001, p011, color);
+	DrawLine3D(p011, p010, color);
+	DrawLine3D(p010, p000, color);
 	// 上面の辺
-	DrawLine3D(p100, p101, _debugColor);
-	DrawLine3D(p101, p111, _debugColor);
-	DrawLine3D(p111, p110, _debugColor);
-	DrawLine3D(p110, p100, _debugColor);
+	DrawLine3D(p100, p101, color);
+	DrawLine3D(p101, p111, color);
+	DrawLine3D(p111, p110, color);
+	DrawLine3D(p110, p100, color);
 	// 側面の辺
-	DrawLine3D(p000, p100, _debugColor);
-	DrawLine3D(p001, p101, _debugColor);
-	DrawLine3D(p010, p110, _debugColor);
-	DrawLine3D(p011, p111, _debugColor);
+	DrawLine3D(p000, p100, color);
+	DrawLine3D(p001, p101, color);
+	DrawLine3D(p010, p110, color);
+	DrawLine3D(p011, p111, color);
 
 	// 中心点を描画
-	DrawSphere3D(_center,0.05f,8, _debugColor, _debugColor, TRUE);
+	DrawSphere3D(_center,0.05f,8, color, color, TRUE);
 }
 
 // デバッグ描画（AABBのみ）
 void BoxCollider::DrawDebugAABB() {
-	_debugColor = (_debugColor != 0) ? _debugColor : GetColor(128, 128, 128);	// デフォルト色はグレー
+	unsigned int color = (_debugColor != 0) ? _debugColor : GetColor(128, 128, 128);	// デフォルト色はグレー
 	// AABBの8頂点を計算
 	const VECTOR mn = _aabb.min;
 	const VECTOR mx = _aabb.max;
@@ -147,26 +147,26 @@ void BoxCollider::DrawDebugAABB() {
 
 	// AABBの12辺を描画
 	// 下面の辺
-	DrawLine3D(p000, p001, _debugColor);
-	DrawLine3D(p001, p011, _debugColor);
-	DrawLine3D(p011, p010, _debugColor);
-	DrawLine3D(p010, p000, _debugColor);
+	DrawLine3D(p000, p001, color);
+	DrawLine3D(p001, p011, color);
+	DrawLine3D(p011, p010, color);
+	DrawLine3D(p010, p000, color);
 	// 上面の辺
-	DrawLine3D(p100, p101, _debugColor);
-	DrawLine3D(p101, p111, _debugColor);
-	DrawLine3D(p111, p110, _debugColor);
-	DrawLine3D(p110, p100, _debugColor);
+	DrawLine3D(p100, p101, color);
+	DrawLine3D(p101, p111, color);
+	DrawLine3D(p111, p110, color);
+	DrawLine3D(p110, p100, color);
 	// 側面の辺
-	DrawLine3D(p000, p100, _debugColor);
-	DrawLine3D(p001, p101, _debugColor);
-	DrawLine3D(p010, p110, _debugColor);
-	DrawLine3D(p011, p111, _debugColor);
+	DrawLine3D(p000, p100, color);
+	DrawLine3D(p001, p101, color);
+	DrawLine3D(p010, p110, color);
+	DrawLine3D(p011, p111, color);
 }
 
 // デバッグ描画（DXLibのプリミティブ描画）
 void BoxCollider::DrawPrimitive() 
 {
-	_debugColor = (_debugColor != 0) ? _debugColor : GetColor(255, 255, 255);	// デフォルト色は白色
+	unsigned int color = (_debugColor != 0) ? _debugColor : GetColor(255, 255, 255);	// デフォルト色は白色
 	const unsigned int obbColor = GetColor(0, 0, 0);							// デフォルト色は黒
 
 	// OBBの8頂点を計算するためのラムダ関数
@@ -190,21 +190,21 @@ void BoxCollider::DrawPrimitive()
 
 	// OBBの12辺を描画（三角形で描画することで面としても見えるようにする）
 	// 下面の辺
-	DrawTriangle3D(p000, p001, p011, _debugColor, TRUE);
-	DrawTriangle3D(p000, p011, p010, _debugColor, TRUE);
+	DrawTriangle3D(p000, p001, p011, color, TRUE);
+	DrawTriangle3D(p000, p011, p010, color, TRUE);
 	// 上面の辺
-	DrawTriangle3D(p100, p101, p111, _debugColor, TRUE);
-	DrawTriangle3D(p100, p111, p110, _debugColor, TRUE);
+	DrawTriangle3D(p100, p101, p111, color, TRUE);
+	DrawTriangle3D(p100, p111, p110, color, TRUE);
 	// 側面の辺(左右)
-	DrawTriangle3D(p000, p100, p101, _debugColor, TRUE);
-	DrawTriangle3D(p000, p101, p001, _debugColor, TRUE);
-	DrawTriangle3D(p010, p110, p111, _debugColor, TRUE);
-	DrawTriangle3D(p010, p111, p011, _debugColor, TRUE);
+	DrawTriangle3D(p000, p100, p101, color, TRUE);
+	DrawTriangle3D(p000, p101, p001, color, TRUE);
+	DrawTriangle3D(p010, p110, p111, color, TRUE);
+	DrawTriangle3D(p010, p111, p011, color, TRUE);
 	// 側面の辺(前後)
-	DrawTriangle3D(p001, p101, p111, _debugColor, TRUE);
-	DrawTriangle3D(p001, p111, p011, _debugColor, TRUE);
-	DrawTriangle3D(p000, p100, p110, _debugColor, TRUE);
-	DrawTriangle3D(p000, p110, p010, _debugColor, TRUE);
+	DrawTriangle3D(p001, p101, p111, color, TRUE);
+	DrawTriangle3D(p001, p111, p011, color, TRUE);
+	DrawTriangle3D(p000, p100, p110, color, TRUE);
+	DrawTriangle3D(p000, p110, p010, color, TRUE);
 
 	// OBBの12辺を描画（線で輪郭を描く）
 	// 下面の辺

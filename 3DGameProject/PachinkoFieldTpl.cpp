@@ -39,7 +39,7 @@ void PachinkoFieldTpl::OnAcquire(const VariantMap& params) {
 		_boxCollider->owner = this;
 		_boxCollider->isTrigger = ParseBoolParam_(params, "trigger", false);
 		_boxCollider->layer = layerMask::ENVIRONMENT;
-		_boxCollider->mask = mask::ALL;
+		_boxCollider->mask = mask::BALL;  // 球のみと衝突
 		_boxCollider->enableCCD = false;
 		_boxCollider->SetDebugColor(_drawColor);
 		_boxCollider->UpdateShape();
@@ -116,7 +116,20 @@ void PachinkoFieldTpl::ApplyParams_(const VariantMap& params) {
 		ParseFloatParam_(params, "hz", _halfExtents.z)
 	);
 
-	const int color = ParseIntParam_(params, "color", 0);
-	if (color != 0) _drawColor = static_cast<unsigned int>(color);
+	// color パラメータが存在する場合は適用
+	if (params.count("color")) {
+		const auto& colorStr = params.at("color");
+		// 16進数文字列として解析（"0xRRGGBB" または "RRGGBB" 形式）
+		unsigned int colorValue = 0;
+		if (colorStr.find("0x") != std::string::npos || colorStr.find("0X") != std::string::npos) {
+			// 16進数形式
+			colorValue = static_cast<unsigned int>(std::stoul(colorStr, nullptr, 16));
+		} else {
+			// 通常の整数形式
+			colorValue = static_cast<unsigned int>(std::stoul(colorStr));
+		}
+		_drawColor = colorValue;
+	}
+
 	_materialName = ParseStringParam_(params, "material", _materialName);
 }

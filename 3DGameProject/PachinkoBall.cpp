@@ -6,6 +6,10 @@
 PachinkoBall::PachinkoBall() = default;
 PachinkoBall::~PachinkoBall() = default;
 
+void PachinkoBall::Launch(const VECTOR& impulse) noexcept {
+	Body_().AddImpulse(impulse);
+}
+
 Collider* PachinkoBall::GetCollider_() const noexcept {
 	return _sphereCollider.get();
 }

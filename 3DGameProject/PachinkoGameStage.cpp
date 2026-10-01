@@ -641,37 +641,40 @@ void PachinkoGame_StageScene::Draw() {
 	// 抽選結果表示
 	if (_lotteryResult.isActive) {
 		// 表示位置（画面中央やや上）
-		const int centerX = 320;
-		const int centerY = 330;
+		const int centerX = 150;
+		const int centerY = 300;
+
+		// フォントサイズを設定（大きく）
+		const int oldFontSize = GetFontSize();
+		SetFontSize(24);  // フォントサイズを24に設定
+
+		unsigned int color = GetColor(255, 255, 255); // デフォルト白色
 		
 		if (_lotteryResult.isWin) {
 			// 当たり：3つの数字揃い（1-9）
-			DrawFormatString(centerX - 100, centerY - 30, GetColor(255, 50, 50), "★ 大当たり！ ★");
-			DrawFormatString(centerX - 80, centerY, GetColor(255, 255, 0), 
-				"%d %d %d", 
-				_lotteryResult.numbers[0], 
-				_lotteryResult.numbers[1], 
-				_lotteryResult.numbers[2]);
+			DrawFormatString(centerX - 100, centerY - 30, GetColor(255, 50, 50), "★ 大当たり！ ★");	// 赤色表示
 			DrawFormatString(centerX - 60, centerY + 30, GetColor(255, 200, 100), "+300発追加！");
+			color = GetColor(255, 200, 100); // 黄色表示
 		}
 		else if (_lotteryResult.isTempai) {
 			// テンパイ：バラ目だがあと一歩
-			DrawFormatString(centerX - 100, centerY - 30, GetColor(100, 200, 255), "テンパイ！");
-			DrawFormatString(centerX - 80, centerY, GetColor(200, 200, 255), 
-				"%d %d %d", 
-				_lotteryResult.numbers[0], // 1つ目の数字
-				_lotteryResult.numbers[1],  // 2つ目の数字
-				_lotteryResult.numbers[2]); // 3つ目の数字
+			DrawFormatString(centerX - 100, centerY - 30, GetColor(100, 200, 255), "テンパイ！");	// 水色表示
+			color = GetColor(200, 200, 255); // 水色表示
 		}
 		else {
 			// はずれ：バラ目
 			DrawFormatString(centerX - 100, centerY - 30, GetColor(150, 150, 150), "はずれ");	// 灰色表示
-			DrawFormatString(centerX - 80, centerY, GetColor(200, 200, 200),					// 白色表示
-				"%d %d %d", 
-				_lotteryResult.numbers[0],	// 1つ目の数字
-				_lotteryResult.numbers[1],  // 2つ目の数字
-				_lotteryResult.numbers[2]); // 3つ目の数字
+			color = GetColor(200, 200, 200); // 灰色表示
 		}
+
+		SetFontSize(32);  // フォントサイズを32に設定
+		DrawFormatString(centerX - 80, centerY, color,	"%d %d %d", // 出目に応じて色を変える
+			_lotteryResult.numbers[0],	// 1つ目の数字
+			_lotteryResult.numbers[1],  // 2つ目の数字
+			_lotteryResult.numbers[2]); // 3つ目の数字
+
+		// フォントサイズを元に戻す
+		SetFontSize(oldFontSize);
 	}
 
 	// カメラ座標と視線方向の表示

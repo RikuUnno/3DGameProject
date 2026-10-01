@@ -248,6 +248,70 @@ void PachinkoGame_StageScene::SpawnSensors() {
 						_activeBallCount = static_cast<int>(_liveBalls.size());
 					}
 				}
+				// 電チュウセンサーの場合、ボールを削除（持ち球には戻さない）+ 抽選
+				else if (strcmp(name, "CenterSensor") == 0 && other && other->owner) {
+					GameObject* ball = other->owner;
+					
+					// ボールをアクティブリストから削除
+					auto it = std::find(_liveBalls.begin(), _liveBalls.end(), ball);
+					if (it != _liveBalls.end()) {
+						// 対応するBallTrackも削除
+						auto tit = _ballTracks.begin() + std::distance(_liveBalls.begin(), it);
+						_liveBalls.erase(it);
+						_ballTracks.erase(tit);
+						
+						// ボールをリリース
+						if (ball->IsActive()) {
+							ObjectManager::Instance().Release(ball);
+						}
+						
+						// カウンターを更新
+						++_deletedBallCount;
+						_activeBallCount = static_cast<int>(_liveBalls.size());
+						
+						// 抽選処理（1/99の確率で当たり）
+						const float lottery = RandRange(0.0f, 1.0f);
+						const bool isWin = (lottery < 1.0f / 99.0f);  // 1/99の確率
+						
+						// テンパイ判定（1/32の確率）
+						const bool isTempai = !isWin && (RandRange(0.0f, 1.0f) < 1.0f / 32.0f);
+						
+						// 抽選結果を設定
+						_lotteryResult.isActive = true;
+						_lotteryResult.isWin = isWin;
+						_lotteryResult.isTempai = isTempai;
+						_lotteryResult.displayTimer = 0.0f;
+						
+						if (isWin) {
+							// 当たり：3つの数字揃い（1-9）
+							const int winNumber = static_cast<int>(RandRange(1.0f, 10.0f));
+							_lotteryResult.numbers[0] = winNumber;
+							_lotteryResult.numbers[1] = winNumber;
+							_lotteryResult.numbers[2] = winNumber;
+							
+							// ボーナススコア
+							_remainingBalls += 300;
+						}
+						else if (isTempai) {
+							// テンパイ：2つ同じ数字
+							const int num1 = static_cast<int>(RandRange(1.0f, 10.0f));
+							int num2;
+							do {
+								num2 = static_cast<int>(RandRange(1.0f, 10.0f));
+							} while (num2 == num1);
+							
+							_lotteryResult.numbers[0] = num1;
+							_lotteryResult.numbers[1] = num1;  // 2つ同じ
+							_lotteryResult.numbers[2] = num2;
+						}
+						else {
+							// はずれ：バラ目（すべて異なる数字）
+							_lotteryResult.numbers[0] = static_cast<int>(RandRange(1.0f, 10.0f));
+							_lotteryResult.numbers[1] = static_cast<int>(RandRange(1.0f, 10.0f));
+							_lotteryResult.numbers[2] = static_cast<int>(RandRange(1.0f, 10.0f));
+						}
+					}
+				}
 			};
 			_sensors.push_back(sensor);
 		}
@@ -398,9 +462,12 @@ void PachinkoGame_StageScene::Update(float dtSec) {
 		GameObject* ball = *it;
 		bool remove = false;
 
+		// 古い弾（生成から一定時間経過） or 画面下に落下した弾を削除
 		if (!ball || !ball->IsActive() || ball->transform.WorldPosition().y < -40.0f) {
 			remove = true;
-		} else {
+		} 
+		// スタック判定（位置変化量チェック）
+		else {
 			// スタック判定（位置変化量チェック）
 			BallTrack& track = *tit;
 			track.accumSec += dtSec;
@@ -440,6 +507,7 @@ void PachinkoGame_StageScene::Update(float dtSec) {
 				}
 			}
 			
+			// ボールを Pool に返却d
 			if (ball && ball->IsActive()) om.Release(ball);
 			it  = _liveBalls.erase(it);
 			tit = _ballTracks.erase(tit);
@@ -455,6 +523,7 @@ void PachinkoGame_StageScene::Update(float dtSec) {
 		}
 	}
 
+	// アクティブ鉄球数が上限を超えた場合、古い鉄球から順に削除して Pool に返却
 	while (_liveBalls.size() > kMaxLiveBalls) {
 		GameObject* old = _liveBalls.front();
 		_liveBalls.pop_front();
@@ -469,6 +538,7 @@ void PachinkoGame_StageScene::Update(float dtSec) {
 	}
 #endif // _DEBUG
 
+	// F1キーでフリーカメラモード切替
 	if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_F1)) {
 		_freeCameraMode = !_freeCameraMode;
 		if (!_freeCameraMode) {
@@ -479,6 +549,7 @@ void PachinkoGame_StageScene::Update(float dtSec) {
 		}
 	}
 
+	// フリーカメラモード時のカメラ操作
 	if (_freeCameraMode) {
 		// 右ドラッグで視点回転、WASD/EQで移動、ホイールで前後移動
 		_cameraController.UpdateFreeMoveMouse(8.0f, 1.8f, 1.5f, dtSec);
@@ -522,6 +593,14 @@ void PachinkoGame_StageScene::Update(float dtSec) {
 		_remainingBalls += 125;  // 持ち球を125増やす
 	}
 
+	// 抽選結果の表示タイマーを更新
+	if (_lotteryResult.isActive) {
+		_lotteryResult.displayTimer += dtSec;
+		if (_lotteryResult.displayTimer >= _lotteryResult.displayDuration) {
+			_lotteryResult.isActive = false;  // 表示時間が過ぎたら非表示に
+		}
+	}
+
 	// メニューへ戻る（Escキー）
 	if (KeyInput::Instance().IsKeyInputTrigger(KEY_INPUT_ESCAPE)) {
 		_returningToMenu = true;
@@ -548,7 +627,8 @@ void PachinkoGame_StageScene::Draw() {
 	DrawFormatString(10, 150, GetColor(220, 220, 220), "アクティブ鉄球数: %d", _activeBallCount);
 
 	// 右上に持ち球を表示
-	DrawFormatString(1150 - 200, 10, GetColor(255, 255, 0), "持ち球: %d", _remainingBalls);
+	const int screenWidth = 640;  // 画面幅（仮定）
+	DrawFormatString(screenWidth - 200, 10, GetColor(255, 255, 0), "持ち球: %d", _remainingBalls);
 
 	// ボール管理情報（左上）
 	DrawFormatString(10, 170, GetColor(255, 200, 100), "生成数: %d", _spawnedBallCount);
@@ -557,10 +637,41 @@ void PachinkoGame_StageScene::Draw() {
 
 	// センサー入賞情報
 	DrawFormatString(10, 230, GetColor(255, 220, 50), "スコア: %d", _totalScore);
-	for (int i = 0; i < static_cast<int>(_sensors.size()); ++i) {
-		const PachinkoSensor* s = _sensors[i];
-		DrawFormatString(10, 250 + i * 18, GetColor(180, 255, 180),
-			"[%s] 入賞: %d 回", s->GetSensorName().c_str(), s->GetHitCount());
+
+	// 抽選結果表示
+	if (_lotteryResult.isActive) {
+		// 表示位置（画面中央やや上）
+		const int centerX = 320;
+		const int centerY = 330;
+		
+		if (_lotteryResult.isWin) {
+			// 当たり：3つの数字揃い（1-9）
+			DrawFormatString(centerX - 100, centerY - 30, GetColor(255, 50, 50), "★ 大当たり！ ★");
+			DrawFormatString(centerX - 80, centerY, GetColor(255, 255, 0), 
+				"%d %d %d", 
+				_lotteryResult.numbers[0], 
+				_lotteryResult.numbers[1], 
+				_lotteryResult.numbers[2]);
+			DrawFormatString(centerX - 60, centerY + 30, GetColor(255, 200, 100), "+300発追加！");
+		}
+		else if (_lotteryResult.isTempai) {
+			// テンパイ：バラ目だがあと一歩
+			DrawFormatString(centerX - 100, centerY - 30, GetColor(100, 200, 255), "テンパイ！");
+			DrawFormatString(centerX - 80, centerY, GetColor(200, 200, 255), 
+				"%d %d %d", 
+				_lotteryResult.numbers[0], // 1つ目の数字
+				_lotteryResult.numbers[1],  // 2つ目の数字
+				_lotteryResult.numbers[2]); // 3つ目の数字
+		}
+		else {
+			// はずれ：バラ目
+			DrawFormatString(centerX - 100, centerY - 30, GetColor(150, 150, 150), "はずれ");	// 灰色表示
+			DrawFormatString(centerX - 80, centerY, GetColor(200, 200, 200),					// 白色表示
+				"%d %d %d", 
+				_lotteryResult.numbers[0],	// 1つ目の数字
+				_lotteryResult.numbers[1],  // 2つ目の数字
+				_lotteryResult.numbers[2]); // 3つ目の数字
+		}
 	}
 
 	// カメラ座標と視線方向の表示

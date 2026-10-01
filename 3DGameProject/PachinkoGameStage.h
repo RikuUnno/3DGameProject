@@ -76,7 +76,14 @@ private:
 	int _spawnedBallCount = 0;			// 生成したボールの総数
 	int _deletedBallCount = 0;			// 削除したボールの総数
 
-
-
-	
+	// 抽選結果
+	struct LotteryResult {
+		bool isActive = false;			// 抽選結果が有効か
+		bool isWin = false;				// 当たりか
+		bool isTempai = false;			// テンパイか
+		int numbers[3] = {0, 0, 0};		// 抽選数字（3つ）
+		float displayTimer = 0.0f;		// 表示タイマー
+		float displayDuration = 3.0f;	// 表示時間（秒）
+	};
+	LotteryResult _lotteryResult;		// 抽選結果
 };
